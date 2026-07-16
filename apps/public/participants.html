@@ -6,10 +6,13 @@
   <link rel="stylesheet" href="/shared/tokens.css" /><link rel="stylesheet" href="/shared/ui.css" />
 </head>
 <body>
-  <header class="pf-topbar" id="topbar"></header>
+  <header class="pf-publicbar" id="topbar"></header>
   <main class="pf-container pf-container--narrow">
-    <a class="pf-muted" id="back" href="#">← Torna all'evento</a>
-    <h1>Squadre iscritte</h1>
+    <a class="pf-back" id="back" href="#">← Torna all'evento</a>
+    <div class="pf-pagehead">
+      <div class="pf-eyebrow" id="eyebrow">Torneo</div>
+      <h1>Squadre iscritte</h1>
+    </div>
     <div class="pf-card" id="list"></div>
   </main>
   <script type="module" src="./participants.ts"></script>

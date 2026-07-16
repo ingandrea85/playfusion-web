@@ -118,6 +118,20 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-cat--full .pf-cat__bar > i { background: var(--color-success); }
 .pf-cat--full .pf-cat__cap { color: var(--color-success); font-weight: 700; }
 
+/* ---------- Team list (public "squadre iscritte") ---------- */
+.pf-teamgroup { margin-bottom: var(--space-6); }
+.pf-teamgroup:last-child { margin-bottom: 0; }
+.pf-teamgroup__head { display: flex; align-items: baseline; gap: var(--space-3);
+  padding-bottom: var(--space-2); margin-bottom: var(--space-2); border-bottom: 2px solid var(--color-border); }
+.pf-teamgroup__head .pf-cat__label { font-size: 18px; }
+.pf-teamlist { list-style: none; margin: 0; padding: 0; }
+.pf-team { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); }
+.pf-team:last-child { border-bottom: none; }
+.pf-team__badge { flex: none; width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--color-surface-sunken); color: var(--color-action-primary);
+  font-family: var(--font-display); font-weight: 800; font-size: 13px; letter-spacing: -0.02em; }
+.pf-team__name { font-weight: 700; }
+
 /* ---------- Setup checklist (run of show) ---------- */
 .pf-steplist { list-style: none; padding: 0; margin: 0; }
 .pf-steplist li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
