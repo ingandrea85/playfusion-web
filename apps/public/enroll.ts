@@ -13,7 +13,7 @@ document.getElementById('form')!.addEventListener('submit', (ev) => {
   const data = new FormData(ev.target as HTMLFormElement)
   addRegistration({
     eventId: id, categoryId: String(data.get('categoryId')), teamName: String(data.get('teamName')),
-    coachName: String(data.get('coachName')), contactPhone: String(data.get('contactPhone')),
+    contactName: String(data.get('contactName')), contactPhone: String(data.get('contactPhone')),
   })
   ;(document.getElementById('form') as HTMLElement).style.display = 'none'
   ;(document.getElementById('done') as HTMLElement).style.display = 'block'

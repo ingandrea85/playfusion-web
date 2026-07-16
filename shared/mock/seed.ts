@@ -14,13 +14,13 @@ export function buildSeed(): State {
     ],
     registrations: [
       { id: 'reg-1', eventId: 'evt-1', categoryId: 'cat-1', teamName: 'ASD Aurora',
-        coachName: 'Luigi Verdi', contactPhone: '340 1112223', status: 'CONFIRMED',
+        contactName: 'Luigi Verdi', contactPhone: '340 1112223', status: 'CONFIRMED',
         paymentStatus: 'PAID', createdAt: '2026-07-10T09:00:00.000Z' },
       { id: 'reg-2', eventId: 'evt-1', categoryId: 'cat-2', teamName: 'Polisportiva San Marco',
-        coachName: 'Anna Bianchi', contactPhone: '347 4445556', status: 'CONFIRMED',
+        contactName: 'Anna Bianchi', contactPhone: '347 4445556', status: 'CONFIRMED',
         paymentStatus: 'UNPAID', createdAt: '2026-07-11T14:30:00.000Z' },
       { id: 'reg-3', eventId: 'evt-1', categoryId: 'cat-1', teamName: 'GS Rivalta',
-        coachName: 'Marco Neri', contactPhone: '333 7778889', status: 'PENDING',
+        contactName: 'Marco Neri', contactPhone: '333 7778889', status: 'PENDING',
         paymentStatus: 'UNPAID', createdAt: '2026-07-12T08:15:00.000Z' },
     ],
   }

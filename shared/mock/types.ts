@@ -18,7 +18,7 @@ export interface Registration {
   eventId: string
   categoryId: string
   teamName: string
-  coachName: string
+  contactName: string
   contactPhone: string
   status: RegStatus
   paymentStatus: PayStatus

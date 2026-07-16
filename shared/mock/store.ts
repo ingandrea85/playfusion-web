@@ -43,7 +43,7 @@ export function getRegistrations(eventId: string): Registration[] {
   return load().registrations.filter(r => r.eventId === eventId)
 }
 export function addRegistration(input: {
-  eventId: string; categoryId: string; teamName: string; coachName: string; contactPhone: string
+  eventId: string; categoryId: string; teamName: string; contactName: string; contactPhone: string
 }): Registration {
   const state = load()
   const reg: Registration = {
