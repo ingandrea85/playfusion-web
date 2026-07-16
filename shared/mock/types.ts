@@ -20,6 +20,7 @@ export interface Registration {
   teamName: string
   contactName: string
   contactPhone: string
+  contactEmail: string
   status: RegStatus
   paymentStatus: PayStatus
   createdAt: string

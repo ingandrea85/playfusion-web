@@ -14,6 +14,7 @@ document.getElementById('form')!.addEventListener('submit', (ev) => {
   addRegistration({
     eventId: id, categoryId: String(data.get('categoryId')), teamName: String(data.get('teamName')),
     contactName: String(data.get('contactName')), contactPhone: String(data.get('contactPhone')),
+    contactEmail: String(data.get('contactEmail')),
   })
   ;(document.getElementById('form') as HTMLElement).style.display = 'none'
   ;(document.getElementById('done') as HTMLElement).style.display = 'block'

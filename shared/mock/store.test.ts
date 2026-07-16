@@ -34,7 +34,7 @@ describe('store', () => {
 
   it('addRegistration creates a PENDING/UNPAID registration visible in the list', () => {
     const r = addRegistration({ eventId: 'evt-1', categoryId: 'cat-3', teamName: 'Nuova Squadra',
-      contactName: 'Test Referente', contactPhone: '000' })
+      contactName: 'Test Referente', contactPhone: '000', contactEmail: 'test@example.it' })
     expect(r.id).toBe('reg-4')
     expect(r.status).toBe('PENDING')
     expect(r.paymentStatus).toBe('UNPAID')
