@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Organizer · Competizione</title>
+  <link rel="stylesheet" href="/shared/tokens.css" /><link rel="stylesheet" href="/shared/ui.css" />
+</head>
+<body>
+  <header class="pf-topbar" id="topbar"></header>
+  <main class="pf-container">
+    <a class="pf-back" id="back" href="#">← Torna all'evento</a>
+    <div class="pf-pagehead">
+      <div class="pf-eyebrow">Setup · Competizione</div>
+      <h1>Configura competizione</h1>
+    </div>
+    <div class="pf-card">
+      <label class="pf-switch"><input type="checkbox" id="uniform" /> Stessa configurazione per tutte le categorie</label>
+    </div>
+    <div id="content"></div>
+  </main>
+  <script type="module" src="./competition.ts"></script>
+</body>
+</html>

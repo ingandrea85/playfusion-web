@@ -1,5 +1,5 @@
 import { renderOrganizerTopbar } from '../../shared/chrome'
-import { getEvent, getRegistrations } from '../../shared/mock/store'
+import { getEvent, getRegistrations, getCategories, getCompetitions } from '../../shared/mock/store'
 
 document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
 
@@ -12,6 +12,10 @@ document.getElementById('meta')!.textContent = event
 const regs = event ? getRegistrations(id) : []
 const anyPaid = regs.some(r => r.paymentStatus === 'PAID')
 
+const cats = getCategories(id)
+const comps = getCompetitions(id)
+const competitionConfigured = cats.length > 0 && cats.every(c => comps.some(k => k.categoryId === c.id))
+
 type Step = { label: string; href?: string; done: boolean; disabled?: boolean }
 const steps: Step[] = [
   { label: 'Crea evento da template', done: !!event },
@@ -19,6 +23,7 @@ const steps: Step[] = [
   { label: 'Apri iscrizioni', href: `/apps/organizer/registrations.html?event=${id}`, done: !!event?.registrationsOpen },
   { label: 'Conferma squadre', href: `/apps/organizer/inbox.html?event=${id}`, done: regs.some(r => r.status === 'CONFIRMED') },
   { label: 'Riscuoti quote', href: `/apps/organizer/payments.html?event=${id}`, done: anyPaid },
+  { label: 'Configura competizione', href: `/apps/organizer/competition.html?event=${id}`, done: competitionConfigured },
   { label: 'Genera calendario', done: false, disabled: true },
   { label: 'Approva calendario', done: false, disabled: true },
   { label: 'Pubblica evento', done: false, disabled: true },

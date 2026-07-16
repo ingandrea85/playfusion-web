@@ -165,6 +165,10 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 :focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 
+/* ---------- Switch (toggle) ---------- */
+.pf-switch { display: inline-flex; align-items: center; gap: var(--space-3); font-weight: 700; cursor: pointer; }
+.pf-switch input { width: 18px; height: 18px; accent-color: var(--color-action-primary); }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
   .pf-container { padding: var(--space-5) var(--space-4) var(--space-6); }

@@ -16,6 +16,7 @@ export default defineConfig({
         registrations: r('apps/organizer/registrations.html'),
         inbox: r('apps/organizer/inbox.html'),
         payments: r('apps/organizer/payments.html'),
+        competition: r('apps/organizer/competition.html'),
         landing: r('apps/public/landing.html'),
         enroll: r('apps/public/enroll.html'),
         participants: r('apps/public/participants.html'),
