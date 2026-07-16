@@ -2,8 +2,9 @@
 
 Navigable mid-fidelity mockups for PlayFusion 2.0 web experiences.
 
-## Scope (first round)
+## Scope
 - **E1 Organizer** (`apps/organizer/`) — Bundle Enrollment setup flow.
+- **E1 Organizer** competition setup (`apps/organizer/competition.html`) — O6 structure per category (format, legs, groups, finals) with a same-for-all / per-category toggle.
 - **E3 Public** (`apps/public/`) — public landing + team enrollment.
 
 State is fake: seed data + `localStorage` (`shared/mock/`). No backend, no framework.
