@@ -33,6 +33,44 @@ export interface Competition extends CompetitionConfig {
   categoryId: string
 }
 
+export type ScheduleStatus = 'NONE' | 'GENERATED' | 'APPROVED' | 'PUBLISHED'
+
+export interface ScheduleConfig {
+  fields: string[]
+  periods: number
+  periodMinutes: number
+  breakMinutes: number
+  dailyStart: string
+  slotsPerDay: number
+}
+
+export interface Schedule {
+  eventId: string
+  status: ScheduleStatus
+  config: ScheduleConfig
+}
+
+export interface ScheduledMatch {
+  id: string
+  eventId: string
+  categoryId: string
+  groupLabel: string
+  day: string
+  time: string
+  field: string
+  home: string
+  away: string
+}
+
+export interface FixtureCategory {
+  id: string
+  name: string
+  format: CompetitionFormat
+  groupsCount: number
+  legs: Legs
+  teams: string[]
+}
+
 export interface Registration {
   id: string
   eventId: string
@@ -51,4 +89,6 @@ export interface State {
   categories: Category[]
   registrations: Registration[]
   competitions: Competition[]
+  schedules: Schedule[]
+  scheduledMatches: ScheduledMatch[]
 }

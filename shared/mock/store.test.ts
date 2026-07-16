@@ -11,7 +11,7 @@ describe('store', () => {
     expect(getEvents()).toHaveLength(1)
     expect(getEvent('evt-1')?.name).toBe('Torneo Estivo Memorial')
     expect(getCategories('evt-1')).toHaveLength(3)
-    expect(getRegistrations('evt-1')).toHaveLength(3)
+    expect(getRegistrations('evt-1')).toHaveLength(12)
   })
 
   it('createEvent appends an event with a fresh id and open registrations off', () => {
@@ -36,10 +36,10 @@ describe('store', () => {
   it('addRegistration creates a PENDING/UNPAID registration visible in the list', () => {
     const r = addRegistration({ eventId: 'evt-1', categoryId: 'cat-3', teamName: 'Nuova Squadra',
       contactName: 'Test Referente', contactPhone: '000', contactEmail: 'test@example.it' })
-    expect(r.id).toBe('reg-4')
+    expect(r.id).toBe('reg-13')
     expect(r.status).toBe('PENDING')
     expect(r.paymentStatus).toBe('UNPAID')
-    expect(getRegistrations('evt-1')).toHaveLength(4)
+    expect(getRegistrations('evt-1')).toHaveLength(13)
   })
 
   it('confirmTeam and markPaid mutate the registration', () => {
