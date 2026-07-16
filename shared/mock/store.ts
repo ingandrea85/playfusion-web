@@ -1,5 +1,6 @@
-import type { Category, Competition, CompetitionConfig, Registration, State, TournamentEvent } from './types'
+import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, FixtureCategory, State, TournamentEvent } from './types'
 import { buildSeed } from './seed'
+import { buildFixtures } from './fixtures'
 
 const KEY = 'playfusion-mock-v1'
 
@@ -83,5 +84,51 @@ export function applyToAllCategories(eventId: string, config: CompetitionConfig)
     if (existing) Object.assign(existing, config)
     else state.competitions.push({ id: `comp-${state.competitions.length + 1}`, eventId, categoryId: cat.id, ...config })
   }
+  save(state)
+}
+
+export function getSchedule(eventId: string): Schedule | undefined {
+  return load().schedules.find(s => s.eventId === eventId)
+}
+export function getScheduledMatches(eventId: string): ScheduledMatch[] {
+  return load().scheduledMatches.filter(m => m.eventId === eventId)
+}
+function ensureSchedule(state: State, eventId: string): Schedule {
+  let s = state.schedules.find(x => x.eventId === eventId)
+  if (!s) {
+    s = { eventId, status: 'NONE', config: { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', slotsPerDay: 8 } }
+    state.schedules.push(s)
+  }
+  return s
+}
+export function generateSchedule(eventId: string, config: ScheduleConfig): void {
+  const state = load()
+  const sched = ensureSchedule(state, eventId)
+  if (sched.status === 'APPROVED' || sched.status === 'PUBLISHED') { save(state); return }
+  const event = state.events.find(e => e.id === eventId)
+  if (!event) { save(state); return }
+  sched.config = config
+  const cats: FixtureCategory[] = state.categories.filter(c => c.eventId === eventId).map(c => {
+    const comp = state.competitions.find(k => k.categoryId === c.id)
+    const teams = state.registrations
+      .filter(r => r.eventId === eventId && r.categoryId === c.id && r.status === 'CONFIRMED')
+      .map(r => r.teamName)
+    return { id: c.id, name: c.name, format: comp?.format ?? 'ROUND_ROBIN', groupsCount: comp?.groupsCount ?? 1, legs: comp?.legs ?? 'SINGLE', teams }
+  })
+  const matches = buildFixtures(eventId, event.startDate, event.endDate, config, cats)
+  state.scheduledMatches = state.scheduledMatches.filter(m => m.eventId !== eventId).concat(matches)
+  sched.status = 'GENERATED'
+  save(state)
+}
+export function approveSchedule(eventId: string): void {
+  const state = load()
+  const s = state.schedules.find(x => x.eventId === eventId)
+  if (s && s.status === 'GENERATED') s.status = 'APPROVED'
+  save(state)
+}
+export function publishSchedule(eventId: string): void {
+  const state = load()
+  const s = state.schedules.find(x => x.eventId === eventId)
+  if (s && s.status === 'APPROVED') s.status = 'PUBLISHED'
   save(state)
 }
