@@ -3,6 +3,7 @@
 import '@fontsource-variable/archivo'
 import '@fontsource-variable/hanken-grotesk'
 import '@fontsource-variable/spline-sans-mono'
+import type { ScheduledMatch } from './mock/types'
 
 export function renderOrganizerTopbar(active: string): string {
   const link = (href: string, label: string, key: string) =>
@@ -29,4 +30,21 @@ export function renderCategoryTag(name: string, count: number, maxTeams: number)
       <div class="pf-cat__bar"><i style="width:${pct}%"></i></div>
     </div>
   </li>`
+}
+
+// Calendar rendering — grouped by day, matches sorted by time then field. Shared by E1 and E3.
+export function renderCalendar(matches: ScheduledMatch[], catName: (id: string) => string): string {
+  if (!matches.length) return `<p class="pf-muted">Nessuna partita in calendario.</p>`
+  const days = [...new Set(matches.map(m => m.day))].sort()
+  return days.map(day => {
+    const rows = matches.filter(m => m.day === day)
+      .sort((a, b) => a.time.localeCompare(b.time) || a.field.localeCompare(b.field))
+      .map(m => `<li class="pf-match">
+        <span class="pf-match__time">${m.time}</span>
+        <span class="pf-match__field">${m.field}</span>
+        <span class="pf-match__cat">${catName(m.categoryId)} · ${m.groupLabel}</span>
+        <span class="pf-match__teams">${m.home} <b>vs</b> ${m.away}</span>
+      </li>`).join('')
+    return `<div class="pf-calday"><div class="pf-calday__head">${day}</div><ul class="pf-callist">${rows}</ul></div>`
+  }).join('')
 }

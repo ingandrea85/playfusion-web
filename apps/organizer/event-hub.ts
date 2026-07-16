@@ -1,5 +1,5 @@
 import { renderOrganizerTopbar } from '../../shared/chrome'
-import { getEvent, getRegistrations, getCategories, getCompetitions } from '../../shared/mock/store'
+import { getEvent, getRegistrations, getCategories, getCompetitions, getSchedule } from '../../shared/mock/store'
 
 document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
 
@@ -15,6 +15,7 @@ const anyPaid = regs.some(r => r.paymentStatus === 'PAID')
 const cats = getCategories(id)
 const comps = getCompetitions(id)
 const competitionConfigured = cats.length > 0 && cats.every(c => comps.some(k => k.categoryId === c.id))
+const schedStatus = getSchedule(id)?.status ?? 'NONE'
 
 type Step = { label: string; href?: string; done: boolean; disabled?: boolean }
 const steps: Step[] = [
@@ -24,9 +25,9 @@ const steps: Step[] = [
   { label: 'Conferma squadre', href: `/apps/organizer/inbox.html?event=${id}`, done: regs.some(r => r.status === 'CONFIRMED') },
   { label: 'Riscuoti quote', href: `/apps/organizer/payments.html?event=${id}`, done: anyPaid },
   { label: 'Configura competizione', href: `/apps/organizer/competition.html?event=${id}`, done: competitionConfigured },
-  { label: 'Genera calendario', done: false, disabled: true },
-  { label: 'Approva calendario', done: false, disabled: true },
-  { label: 'Pubblica evento', done: false, disabled: true },
+  { label: 'Genera calendario', href: `/apps/organizer/schedule.html?event=${id}`, done: schedStatus !== 'NONE' },
+  { label: 'Approva calendario', href: `/apps/organizer/schedule.html?event=${id}`, done: schedStatus === 'APPROVED' || schedStatus === 'PUBLISHED' },
+  { label: 'Pubblica evento', href: `/apps/organizer/schedule.html?event=${id}`, done: schedStatus === 'PUBLISHED' },
 ]
 
 document.getElementById('steps')!.innerHTML = steps.map(s => {
