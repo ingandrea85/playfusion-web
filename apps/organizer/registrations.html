@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Organizer · Iscrizioni</title>
+  <link rel="stylesheet" href="/shared/tokens.css" /><link rel="stylesheet" href="/shared/ui.css" />
+</head>
+<body>
+  <header class="pf-topbar" id="topbar"></header>
+  <main class="pf-container pf-container--narrow">
+    <a class="pf-muted" id="back" href="#">← Torna all'evento</a>
+    <h1>Iscrizioni</h1>
+    <div class="pf-card">
+      <p>Stato: <strong id="state"></strong></p>
+      <button class="pf-btn pf-btn--primary" id="toggle"></button>
+    </div>
+    <div class="pf-card" id="linkcard">
+      <h2>Link iscrizioni</h2>
+      <p class="pf-muted">Condividi questo link (es. WhatsApp). I coach si iscrivono da qui.</p>
+      <div style="display:flex;gap:8px">
+        <input id="link" readonly style="flex:1;padding:12px;border:1px solid var(--color-border);border-radius:6px" />
+        <a class="pf-btn pf-btn--primary" id="open" target="_blank">Apri</a>
+      </div>
+    </div>
+  </main>
+  <script type="module" src="./registrations.ts"></script>
+</body>
+</html>
