@@ -9,19 +9,27 @@
 </head>
 <body>
   <div class="pf-container pf-container--narrow">
-    <h1>PlayFusion — Mockup navigabili</h1>
-    <p class="pf-muted">Demo del flusso Bundle Enrollment. Lo stato è finto (localStorage).</p>
+    <div class="pf-pagehead">
+      <div class="pf-eyebrow">Demo · Mockup navigabili</div>
+      <h1>PlayFusion</h1>
+    </div>
+    <p class="pf-muted" style="margin-bottom:var(--space-6)">Flusso Bundle Enrollment. Lo stato è finto e vive nel browser (localStorage).</p>
     <div class="pf-card">
-      <h2>E1 — Organizer</h2>
+      <div class="pf-eyebrow">E1 · Desktop</div>
+      <h2 style="margin:6px 0 4px">Organizer</h2>
+      <p class="pf-muted">Crea il torneo, apri le iscrizioni, conferma le squadre, incassa le quote.</p>
       <a class="pf-btn pf-btn--primary" href="/apps/organizer/dashboard.html">Apri Organizer</a>
     </div>
     <div class="pf-card">
-      <h2>E3 — Public</h2>
+      <div class="pf-eyebrow">E3 · Mobile</div>
+      <h2 style="margin:6px 0 4px">Vista pubblica</h2>
+      <p class="pf-muted">La pagina che gira su WhatsApp: iscrivi una squadra, guarda gli iscritti.</p>
       <a class="pf-btn pf-btn--primary" href="/apps/public/landing.html?event=evt-1">Apri vista pubblica</a>
     </div>
     <button class="pf-btn" id="reset">Reset demo</button>
   </div>
   <script type="module">
+    import '/shared/chrome.ts'
     import { resetDemo } from '/shared/mock/store.ts'
     document.getElementById('reset').addEventListener('click', () => { resetDemo(); alert('Demo resettata.') })
   </script>

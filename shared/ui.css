@@ -1,34 +1,146 @@
+/* PlayFusion mockups — "Matchday" component language.
+   Class names are shared across all screens; restyling here lifts every page. */
+
 * { box-sizing: border-box; }
-body { margin: 0; font-family: var(--font-sans); color: var(--color-text); background: var(--color-bg); }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
 a { color: var(--color-action-primary); }
-.pf-container { max-width: 1040px; margin: 0 auto; padding: var(--space-5); }
-.pf-container--narrow { max-width: 560px; }
-.pf-topbar { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-5);
-  background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
-.pf-topbar strong { font-size: 18px; }
-.pf-topbar nav { display: flex; gap: var(--space-4); margin-left: auto; }
-.pf-topbar nav a { text-decoration: none; color: var(--color-text-muted); }
-.pf-topbar nav a[aria-current="page"] { color: var(--color-text); font-weight: 600; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; margin: 0; }
+h1 { font-size: 30px; }
+h2 { font-size: 20px; }
+h3 { font-size: 15px; letter-spacing: 0.02em; }
+
+/* ---------- Layout ---------- */
+.pf-container { max-width: 1080px; margin: 0 auto; padding: var(--space-6) var(--space-5) var(--space-8); }
+.pf-container--narrow { max-width: 600px; }
+
+/* ---------- App bar (E1 Organizer) ---------- */
+.pf-topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter: saturate(1.2) blur(8px);
+  border-bottom: 1px solid var(--color-border);
+}
+.pf-brand { display: inline-flex; align-items: baseline; gap: 2px;
+  font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -0.02em;
+  color: var(--color-text); text-decoration: none; }
+.pf-brand b { color: var(--color-action-primary); }
+.pf-brand .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-action-accent); align-self: center; margin: 0 1px; }
+.pf-brand small { font-family: var(--font-sans); font-weight: 600; font-size: 12px; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-left: var(--space-2); }
+.pf-topbar nav { display: flex; align-items: center; gap: var(--space-5); margin-left: auto; }
+.pf-topbar nav a { text-decoration: none; color: var(--color-text-muted); font-weight: 600; font-size: 14px; }
+.pf-topbar nav a:hover { color: var(--color-text); }
+.pf-topbar nav a[aria-current="page"] { color: var(--color-text); }
+
+/* ---------- Page header (eyebrow + title + signature rule) ---------- */
+.pf-pagehead { margin-bottom: var(--space-6); }
+.pf-eyebrow { font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--color-text-muted); display: flex; align-items: center; gap: var(--space-2); }
+.pf-eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--color-action-accent); }
+.pf-pagehead h1 { margin: var(--space-2) 0 var(--space-3); }
+.pf-pagehead::after, .pf-rule { content: ""; display: block; width: 44px; height: 4px; border-radius: 2px;
+  background: var(--color-action-accent); }
+.pf-back { display: inline-block; margin-bottom: var(--space-4); color: var(--color-text-muted);
+  text-decoration: none; font-weight: 600; font-size: 14px; }
+.pf-back:hover { color: var(--color-text); }
+
+/* ---------- Cards ---------- */
 .pf-card { background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: var(--radius-2); padding: var(--space-5); box-shadow: var(--shadow-1); margin-bottom: var(--space-4); }
-.pf-btn { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-1); border: 1px solid var(--color-border); background: var(--color-surface);
-  color: var(--color-text); font: inherit; cursor: pointer; text-decoration: none; }
-.pf-btn--primary { background: var(--color-action-primary); color: var(--color-action-primary-text); border-color: transparent; }
+  border-radius: var(--radius-3); padding: var(--space-5); box-shadow: var(--shadow-1); margin-bottom: var(--space-4); }
+.pf-card--link { transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease; }
+.pf-card--link:hover { box-shadow: var(--shadow-2); border-color: var(--color-border-strong); transform: translateY(-2px); }
+
+/* ---------- Buttons ---------- */
+.pf-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: 10px var(--space-4); border-radius: var(--radius-2); border: 1px solid var(--color-border);
+  background: var(--color-surface); color: var(--color-text); font-family: var(--font-sans);
+  font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; transition: background .15s ease, border-color .15s ease; }
+.pf-btn:hover { border-color: var(--color-border-strong); background: var(--color-surface-sunken); }
+.pf-btn--primary { background: var(--color-action-accent); color: #fff; border-color: transparent; }
+.pf-btn--primary:hover { background: var(--color-action-accent-hover); border-color: transparent; }
+.pf-btn--lg { padding: 14px var(--space-6); font-size: 16px; }
 .pf-btn:disabled, .pf-btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
-.pf-table { width: 100%; border-collapse: collapse; }
-.pf-table th, .pf-table td { text-align: left; padding: var(--space-3); border-bottom: 1px solid var(--color-border); }
-.pf-badge { display: inline-block; padding: 2px var(--space-2); border-radius: var(--radius-1); font-size: 12px; font-weight: 600; }
-.pf-badge--paid { background: #e7f6ee; color: var(--color-success); }
-.pf-badge--unpaid { background: #fbeeee; color: var(--color-danger); }
-.pf-badge--pending { background: #fff4e0; color: var(--color-warning); }
-.pf-field { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
-.pf-field input, .pf-field select { padding: var(--space-3); border: 1px solid var(--color-border);
-  border-radius: var(--radius-1); font: inherit; }
-.pf-muted { color: var(--color-text-muted); }
+
+/* ---------- Tables (team sheets / standings) ---------- */
+.pf-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pf-table th { text-align: left; padding: var(--space-3); border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-mono); font-weight: 500; font-size: 11px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--color-text-muted); }
+.pf-table td { text-align: left; padding: var(--space-4) var(--space-3); border-bottom: 1px solid var(--color-border); vertical-align: middle; }
+.pf-table tr:last-child td { border-bottom: none; }
+.pf-table td .pf-mono, .pf-mono { font-family: var(--font-mono); font-size: 12.5px; color: var(--color-text-muted); }
+.pf-teamname { font-weight: 700; }
+
+/* ---------- Badges (status) ---------- */
+.pf-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: var(--radius-pill);
+  font-size: 12px; font-weight: 700; line-height: 1.4; }
+.pf-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pf-badge--paid { background: #eafaf1; color: var(--color-success); }
+.pf-badge--unpaid { background: #fdecec; color: var(--color-danger); }
+.pf-badge--pending { background: #fef3e2; color: #b45309; }
+
+/* ---------- Form fields ---------- */
+.pf-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-4); }
+.pf-field label { font-weight: 700; font-size: 13px; color: var(--color-text-soft); }
+.pf-field input, .pf-field select { padding: 11px var(--space-3); border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-2); font-family: var(--font-sans); font-size: 15px; background: var(--color-surface); color: var(--color-text); }
+.pf-field input:focus, .pf-field select:focus { outline: none; border-color: var(--color-action-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-action-primary) 18%, transparent); }
+
+/* ---------- Chips (categories / gironi) ---------- */
+.pf-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); list-style: none; padding: 0; margin: 0; }
+.pf-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken); border: 1px solid var(--color-border); font-weight: 700; font-size: 13px; }
+.pf-chip b { font-family: var(--font-display); font-weight: 800; color: var(--color-action-primary); }
+
+/* ---------- Setup checklist (run of show) ---------- */
 .pf-steplist { list-style: none; padding: 0; margin: 0; }
-.pf-steplist li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-border); }
-.pf-steplist li[data-done="true"]::before { content: "✓"; color: var(--color-success); font-weight: 700; }
-.pf-steplist li[data-done="false"]::before { content: "○"; color: var(--color-text-muted); }
-.pf-steplist li[data-disabled="true"] { opacity: .45; }
+.pf-steplist li { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border); font-weight: 600; }
+.pf-steplist li:last-child { border-bottom: none; }
+.pf-steplist li::before { display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%; font-size: 13px; font-weight: 800; flex: none; }
+.pf-steplist li[data-done="true"]::before { content: "✓"; background: #eafaf1; color: var(--color-success); }
+.pf-steplist li[data-done="false"]::before { content: ""; border: 2px dashed var(--color-border-strong); }
+.pf-steplist li[data-disabled="true"] { opacity: .4; }
+.pf-steplist a { text-decoration: none; color: var(--color-text); }
+.pf-steplist a:hover { color: var(--color-action-primary); }
+
+/* ---------- E3 Public hero (matchday poster) ---------- */
+.pf-publicbar { display: flex; align-items: center; padding: var(--space-3) var(--space-5);
+  background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
+.pf-hero { background: linear-gradient(135deg, var(--color-hero-from), var(--color-hero-to)); border-bottom: 1px solid var(--color-border); }
+.pf-hero__inner { max-width: 600px; margin: 0 auto; padding: var(--space-8) var(--space-5); }
+.pf-hero .pf-eyebrow { color: var(--color-text-soft); }
+.pf-hero h1 { font-size: clamp(34px, 9vw, 52px); text-transform: uppercase; margin: var(--space-3) 0; }
+.pf-hero__meta { font-family: var(--font-mono); font-size: 13px; color: var(--color-text-soft);
+  text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--space-5); }
+.pf-hero .pf-chips { margin-bottom: var(--space-6); }
+
+/* ---------- Helpers ---------- */
+.pf-muted { color: var(--color-text-muted); }
+.pf-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+.pf-stack > * + * { margin-top: var(--space-3); }
+
+/* ---------- Accessibility floor ---------- */
+:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 640px) {
+  .pf-container { padding: var(--space-5) var(--space-4) var(--space-6); }
+  h1 { font-size: 26px; }
+  .pf-topbar nav { gap: var(--space-3); }
+  .pf-brand small { display: none; }
+}

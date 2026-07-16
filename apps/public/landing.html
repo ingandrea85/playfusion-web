@@ -6,17 +6,21 @@
   <link rel="stylesheet" href="/shared/tokens.css" /><link rel="stylesheet" href="/shared/ui.css" />
 </head>
 <body>
-  <header class="pf-topbar" id="topbar"></header>
-  <main class="pf-container pf-container--narrow">
-    <div class="pf-card">
+  <header class="pf-publicbar" id="topbar"></header>
+  <section class="pf-hero">
+    <div class="pf-hero__inner">
+      <div class="pf-eyebrow" id="eyebrow"></div>
       <h1 id="title"></h1>
-      <p class="pf-muted" id="meta"></p>
+      <div class="pf-hero__meta" id="meta"></div>
+      <ul class="pf-chips" id="cats"></ul>
       <div id="cta"></div>
     </div>
+  </section>
+  <main class="pf-container pf-container--narrow">
     <div class="pf-card">
-      <h2>Categorie</h2>
-      <ul id="cats"></ul>
-      <a id="participants" href="#">Vedi le squadre iscritte →</a>
+      <h2>Squadre iscritte</h2>
+      <p class="pf-muted">Guarda chi ha già confermato la partecipazione al torneo.</p>
+      <a class="pf-btn" id="participants" href="#">Vedi le squadre iscritte →</a>
     </div>
   </main>
   <script type="module" src="./landing.ts"></script>

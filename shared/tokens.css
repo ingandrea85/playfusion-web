@@ -1,17 +1,45 @@
+/* Design tokens — mirrored from the PlayFusion design system
+   (playfusion-frontend/libs/tokens) so the mockups match the real product.
+   Typography is chosen here (the design system has not fixed fonts yet). */
 :root {
-  --color-bg: #f6f7f9;
-  --color-surface: #ffffff;
-  --color-border: #e2e5ea;
-  --color-text: #1c2430;
-  --color-text-muted: #667085;
-  --color-action-primary: #2f6df6;
+  /* Brand palette (verbatim from libs/tokens/src/tokens.css) */
+  --color-action-primary: #0b5fff;
+  --color-action-primary-hover: #0847c7;
   --color-action-primary-text: #ffffff;
-  --color-success: #1f9d55;
-  --color-warning: #b7791f;
-  --color-danger: #d64545;
+  --color-action-accent: #ff6b00;
+  --color-action-accent-hover: #e35f00;
+
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --color-danger: #dc2626;
+  --color-status-finished: #64748b;
+
+  --color-bg: #f4f7fb;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #eef2f8;
+  --color-text: #0f172a;
+  --color-text-muted: #475569;
+  --color-text-soft: #334155;
+  --color-border: #d9e2ec;
+  --color-border-strong: #cbd5e1;
+
+  --color-hero-from: #eef4ff;
+  --color-hero-to: #fff2e8;
+
+  /* Typography */
+  --font-display: 'Archivo Variable', system-ui, sans-serif;
+  --font-sans: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Spline Sans Mono Variable', ui-monospace, 'SF Mono', monospace;
+
+  /* Spacing */
   --space-1: 4px; --space-2: 8px; --space-3: 12px;
-  --space-4: 16px; --space-5: 24px; --space-6: 32px;
-  --radius-1: 6px; --radius-2: 10px;
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --shadow-1: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.1);
+  --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-8: 48px;
+
+  /* Radius */
+  --radius-1: 6px; --radius-2: 10px; --radius-3: 16px; --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, .06);
+  --shadow-2: 0 4px 12px rgba(15, 23, 42, .08);
+  --shadow-3: 0 16px 40px rgba(15, 23, 42, .14);
 }

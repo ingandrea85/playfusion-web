@@ -8,11 +8,14 @@
 <body>
   <header class="pf-topbar" id="topbar"></header>
   <main class="pf-container">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <h1>I tuoi eventi</h1>
+    <div class="pf-row" style="margin-bottom:var(--space-6)">
+      <div class="pf-pagehead" style="margin-bottom:0">
+        <div class="pf-eyebrow">Stagione 2026</div>
+        <h1>I tuoi tornei</h1>
+      </div>
       <a class="pf-btn pf-btn--primary" href="/apps/organizer/create-event.html">+ Crea evento</a>
     </div>
-    <div id="events"></div>
+    <div id="events" class="pf-stack"></div>
   </main>
   <script type="module" src="./dashboard.ts"></script>
 </body>
