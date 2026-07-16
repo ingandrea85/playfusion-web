@@ -15,6 +15,24 @@ export interface TournamentEvent {
 
 export interface Category { id: string; eventId: string; name: string; maxTeams: number }
 
+export type CompetitionFormat = 'ROUND_ROBIN' | 'GROUPS_KNOCKOUT'
+export type Legs = 'SINGLE' | 'HOME_AWAY'
+export type FinalsType = 'PLACEMENT' | 'SINGLE_GROUP_CROSSOVER' | 'SPLIT_GROUP_FINALS'
+
+export interface CompetitionConfig {
+  format: CompetitionFormat
+  legs: Legs
+  groupsCount: number
+  qualifiersPerGroup: number
+  finalsType: FinalsType
+}
+
+export interface Competition extends CompetitionConfig {
+  id: string
+  eventId: string
+  categoryId: string
+}
+
 export interface Registration {
   id: string
   eventId: string
@@ -32,4 +50,5 @@ export interface State {
   events: TournamentEvent[]
   categories: Category[]
   registrations: Registration[]
+  competitions: Competition[]
 }

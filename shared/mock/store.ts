@@ -1,4 +1,4 @@
-import type { Category, Registration, State, TournamentEvent } from './types'
+import type { Category, Competition, CompetitionConfig, Registration, State, TournamentEvent } from './types'
 import { buildSeed } from './seed'
 
 const KEY = 'playfusion-mock-v1'
@@ -60,5 +60,28 @@ export function confirmTeam(regId: string): void {
 export function markPaid(regId: string): void {
   const state = load()
   const r = state.registrations.find(x => x.id === regId); if (r) r.paymentStatus = 'PAID'
+  save(state)
+}
+
+export function getCompetitions(eventId: string): Competition[] {
+  return load().competitions.filter(c => c.eventId === eventId)
+}
+export function getCompetition(categoryId: string): Competition | undefined {
+  return load().competitions.find(c => c.categoryId === categoryId)
+}
+export function upsertCompetition(input: { eventId: string; categoryId: string } & CompetitionConfig): Competition {
+  const state = load()
+  const existing = state.competitions.find(c => c.categoryId === input.categoryId)
+  if (existing) { Object.assign(existing, input); save(state); return existing }
+  const comp: Competition = { id: `comp-${state.competitions.length + 1}`, ...input }
+  state.competitions.push(comp); save(state); return comp
+}
+export function applyToAllCategories(eventId: string, config: CompetitionConfig): void {
+  const state = load()
+  for (const cat of state.categories.filter(c => c.eventId === eventId)) {
+    const existing = state.competitions.find(c => c.categoryId === cat.id)
+    if (existing) Object.assign(existing, config)
+    else state.competitions.push({ id: `comp-${state.competitions.length + 1}`, eventId, categoryId: cat.id, ...config })
+  }
   save(state)
 }

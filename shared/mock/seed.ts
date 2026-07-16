@@ -24,5 +24,10 @@ export function buildSeed(): State {
         contactName: 'Marco Neri', contactPhone: '333 7778889', contactEmail: 'mneri@gsrivalta.it', status: 'PENDING',
         paymentStatus: 'UNPAID', createdAt: '2026-07-12T08:15:00.000Z' },
     ],
+    competitions: [
+      { id: 'comp-1', eventId: 'evt-1', categoryId: 'cat-1', format: 'GROUPS_KNOCKOUT', legs: 'SINGLE', groupsCount: 2, qualifiersPerGroup: 2, finalsType: 'PLACEMENT' },
+      { id: 'comp-2', eventId: 'evt-1', categoryId: 'cat-2', format: 'GROUPS_KNOCKOUT', legs: 'SINGLE', groupsCount: 2, qualifiersPerGroup: 2, finalsType: 'PLACEMENT' },
+      { id: 'comp-3', eventId: 'evt-1', categoryId: 'cat-3', format: 'GROUPS_KNOCKOUT', legs: 'SINGLE', groupsCount: 2, qualifiersPerGroup: 2, finalsType: 'PLACEMENT' },
+    ],
   }
 }
