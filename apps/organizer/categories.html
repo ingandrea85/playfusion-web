@@ -8,13 +8,19 @@
 <body>
   <header class="pf-topbar" id="topbar"></header>
   <main class="pf-container pf-container--narrow">
-    <a class="pf-muted" id="back" href="#">← Torna all'evento</a>
-    <h1>Categorie</h1>
+    <a class="pf-back" id="back" href="#">← Torna all'evento</a>
+    <div class="pf-pagehead">
+      <div class="pf-eyebrow">Setup · Categorie</div>
+      <h1>Categorie</h1>
+    </div>
     <div class="pf-card">
-      <ul id="list"></ul>
-      <form id="form" style="display:flex;gap:8px;margin-top:16px">
-        <input class="pf-field" name="name" placeholder="Es. U16" required style="flex:1" />
-        <button class="pf-btn pf-btn--primary" type="submit">Aggiungi</button>
+      <ul class="pf-catlist" id="list" style="margin-bottom:var(--space-5)"></ul>
+      <form id="form">
+        <div class="pf-row" style="align-items:flex-end">
+          <div class="pf-field" style="flex:1;margin-bottom:0"><label>Nome categoria</label><input name="name" placeholder="Es. U16" required /></div>
+          <div class="pf-field" style="width:130px;margin-bottom:0"><label>Max squadre</label><input name="maxTeams" type="number" min="2" value="8" required /></div>
+          <button class="pf-btn pf-btn--primary" type="submit">Aggiungi</button>
+        </div>
       </form>
     </div>
   </main>

@@ -21,9 +21,10 @@ describe('store', () => {
     expect(getEvents()).toHaveLength(2)
   })
 
-  it('addCategory appends to the event', () => {
-    const c = addCategory('evt-1', 'U16')
+  it('addCategory appends to the event with its registration cap', () => {
+    const c = addCategory('evt-1', 'U16', 10)
     expect(c.id).toBe('cat-4')
+    expect(c.maxTeams).toBe(10)
     expect(getCategories('evt-1').map(x => x.name)).toContain('U16')
   })
 
@@ -49,7 +50,7 @@ describe('store', () => {
   })
 
   it('persists across store reads via localStorage', () => {
-    addCategory('evt-1', 'U16')
+    addCategory('evt-1', 'U16', 8)
     expect(getCategories('evt-1')).toHaveLength(4)
   })
 })

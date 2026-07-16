@@ -17,3 +17,16 @@ export function renderOrganizerTopbar(active: string): string {
 export function renderPublicTopbar(): string {
   return `<a class="pf-brand" href="/index.html">play<b>fusion</b></a>`
 }
+
+// Category tag: age bracket + registration capacity meter. Shared by E1 and E3.
+export function renderCategoryTag(name: string, count: number, maxTeams: number): string {
+  const full = count >= maxTeams
+  const pct = maxTeams > 0 ? Math.min(100, Math.round((count / maxTeams) * 100)) : 0
+  return `<li class="pf-cat${full ? ' pf-cat--full' : ''}">
+    <span class="pf-cat__label">${name}</span>
+    <div class="pf-cat__body">
+      <div class="pf-cat__cap">${count}/${maxTeams} squadre${full ? ' · completa' : ''}</div>
+      <div class="pf-cat__bar"><i style="width:${pct}%"></i></div>
+    </div>
+  </li>`
+}

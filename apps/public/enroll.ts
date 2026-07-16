@@ -1,12 +1,18 @@
 import { renderPublicTopbar } from '../../shared/chrome'
-import { addRegistration, getCategories } from '../../shared/mock/store'
+import { addRegistration, getCategories, getRegistrations } from '../../shared/mock/store'
 
 document.getElementById('topbar')!.innerHTML = renderPublicTopbar()
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
 document.getElementById('backlink')!.setAttribute('href', `/apps/public/landing.html?event=${id}`)
 
+const counts: Record<string, number> = {}
+for (const r of getRegistrations(id)) counts[r.categoryId] = (counts[r.categoryId] ?? 0) + 1
 document.getElementById('cat')!.innerHTML =
-  getCategories(id).map(c => `<option value="${c.id}">${c.name}</option>`).join('')
+  getCategories(id).map(c => {
+    const n = counts[c.id] ?? 0
+    const full = n >= c.maxTeams
+    return `<option value="${c.id}"${full ? ' disabled' : ''}>${c.name} — ${n}/${c.maxTeams}${full ? ' (completa)' : ''}</option>`
+  }).join('')
 
 document.getElementById('form')!.addEventListener('submit', (ev) => {
   ev.preventDefault()

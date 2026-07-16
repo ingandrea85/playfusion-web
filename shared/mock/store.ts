@@ -27,9 +27,9 @@ export function createEvent(input: { name: string; sport: string; startDate: str
 export function getCategories(eventId: string): Category[] {
   return load().categories.filter(c => c.eventId === eventId)
 }
-export function addCategory(eventId: string, name: string): Category {
+export function addCategory(eventId: string, name: string, maxTeams: number): Category {
   const state = load()
-  const category: Category = { id: `cat-${state.categories.length + 1}`, eventId, name }
+  const category: Category = { id: `cat-${state.categories.length + 1}`, eventId, name, maxTeams }
   state.categories.push(category); save(state); return category
 }
 

@@ -8,9 +8,9 @@ export function buildSeed(): State {
       registrationsOpen: true,
     }],
     categories: [
-      { id: 'cat-1', eventId: 'evt-1', name: 'U10' },
-      { id: 'cat-2', eventId: 'evt-1', name: 'U12' },
-      { id: 'cat-3', eventId: 'evt-1', name: 'U14' },
+      { id: 'cat-1', eventId: 'evt-1', name: 'U10', maxTeams: 8 },
+      { id: 'cat-2', eventId: 'evt-1', name: 'U12', maxTeams: 8 },
+      { id: 'cat-3', eventId: 'evt-1', name: 'U14', maxTeams: 6 },
     ],
     registrations: [
       { id: 'reg-1', eventId: 'evt-1', categoryId: 'cat-1', teamName: 'ASD Aurora',

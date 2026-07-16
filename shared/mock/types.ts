@@ -11,7 +11,7 @@ export interface TournamentEvent {
   registrationsOpen: boolean
 }
 
-export interface Category { id: string; eventId: string; name: string }
+export interface Category { id: string; eventId: string; name: string; maxTeams: number }
 
 export interface Registration {
   id: string

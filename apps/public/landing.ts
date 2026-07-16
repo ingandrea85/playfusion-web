@@ -1,5 +1,5 @@
-import { renderPublicTopbar } from '../../shared/chrome'
-import { getCategories, getEvent } from '../../shared/mock/store'
+import { renderPublicTopbar, renderCategoryTag } from '../../shared/chrome'
+import { getCategories, getEvent, getRegistrations } from '../../shared/mock/store'
 
 document.getElementById('topbar')!.innerHTML = renderPublicTopbar()
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
@@ -10,8 +10,10 @@ document.getElementById('eyebrow')!.textContent =
   event ? `${event.sport} · Iscrizioni ${open ? 'aperte' : 'chiuse'}` : 'Evento'
 document.getElementById('title')!.textContent = event?.name ?? 'Evento non trovato'
 document.getElementById('meta')!.textContent = event ? `${event.startDate} → ${event.endDate}` : ''
+const counts: Record<string, number> = {}
+for (const r of getRegistrations(id)) counts[r.categoryId] = (counts[r.categoryId] ?? 0) + 1
 document.getElementById('cats')!.innerHTML =
-  getCategories(id).map(c => `<li class="pf-chip"><b>${c.name}</b></li>`).join('')
+  getCategories(id).map(c => renderCategoryTag(c.name, counts[c.id] ?? 0, c.maxTeams)).join('')
 document.getElementById('participants')!.setAttribute('href', `/apps/public/participants.html?event=${id}`)
 
 document.getElementById('cta')!.innerHTML = open
