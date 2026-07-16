@@ -1,6 +1,6 @@
 import { renderOrganizerTopbar, renderCalendar } from '../../shared/chrome'
 import {
-  getEvent, getCategories, getSchedule, getScheduledMatches,
+  getCategories, getSchedule, getScheduledMatches,
   generateSchedule, approveSchedule, publishSchedule,
 } from '../../shared/mock/store'
 import type { ScheduleConfig } from '../../shared/mock/types'
