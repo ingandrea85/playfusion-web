@@ -15,7 +15,7 @@ describe('store', () => {
   })
 
   it('createEvent appends an event with a fresh id and open registrations off', () => {
-    const e = createEvent({ name: 'Coppa Primavera', sport: 'Calcio', startDate: '2026-09-01', endDate: '2026-09-02' })
+    const e = createEvent({ name: 'Coppa Primavera', sport: 'Calcio', location: 'Palestra', startDate: '2026-09-01', startTime: '10:00', endDate: '2026-09-02' })
     expect(e.id).toBe('evt-2')
     expect(e.registrationsOpen).toBe(false)
     expect(getEvents()).toHaveLength(2)

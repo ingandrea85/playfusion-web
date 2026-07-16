@@ -11,6 +11,6 @@ document.getElementById('events')!.innerHTML = events.map(e => {
       href="/apps/organizer/event-hub.html?event=${e.id}">
     <div class="pf-eyebrow">${e.sport} · ${e.template}</div>
     <h2 style="margin:6px 0 10px">${e.name}</h2>
-    <div class="pf-mono">${e.startDate} → ${e.endDate} · ${count} iscrizioni</div>
+    <div class="pf-mono">${e.startDate} → ${e.endDate} · ${e.location} · ${count} iscrizioni</div>
   </a>`
 }).join('')

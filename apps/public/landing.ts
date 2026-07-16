@@ -9,7 +9,8 @@ const open = !!event?.registrationsOpen
 document.getElementById('eyebrow')!.textContent =
   event ? `${event.sport} · Iscrizioni ${open ? 'aperte' : 'chiuse'}` : 'Evento'
 document.getElementById('title')!.textContent = event?.name ?? 'Evento non trovato'
-document.getElementById('meta')!.textContent = event ? `${event.startDate} → ${event.endDate}` : ''
+document.getElementById('meta')!.textContent = event
+  ? `${event.startDate} → ${event.endDate} · ore ${event.startTime} · ${event.location}` : ''
 const counts: Record<string, number> = {}
 for (const r of getRegistrations(id)) counts[r.categoryId] = (counts[r.categoryId] ?? 0) + 1
 document.getElementById('cats')!.innerHTML =

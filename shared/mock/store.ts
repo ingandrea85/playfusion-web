@@ -15,11 +15,11 @@ export function resetDemo(): void { save(buildSeed()) }
 export function getEvents(): TournamentEvent[] { return load().events }
 export function getEvent(id: string): TournamentEvent | undefined { return load().events.find(e => e.id === id) }
 
-export function createEvent(input: { name: string; sport: string; startDate: string; endDate: string }): TournamentEvent {
+export function createEvent(input: { name: string; sport: string; location: string; startDate: string; startTime: string; endDate: string }): TournamentEvent {
   const state = load()
   const event: TournamentEvent = {
-    id: `evt-${state.events.length + 1}`, name: input.name, sport: input.sport,
-    startDate: input.startDate, endDate: input.endDate, template: 'PB-1', registrationsOpen: false,
+    id: `evt-${state.events.length + 1}`, name: input.name, sport: input.sport, location: input.location,
+    startDate: input.startDate, startTime: input.startTime, endDate: input.endDate, template: 'PB-1', registrationsOpen: false,
   }
   state.events.push(event); save(state); return event
 }

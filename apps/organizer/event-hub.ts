@@ -6,6 +6,8 @@ document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard'
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
 const event = getEvent(id)
 document.getElementById('title')!.textContent = event ? event.name : 'Evento non trovato'
+document.getElementById('meta')!.textContent = event
+  ? `${event.sport} · ${event.location} · ${event.startDate} ${event.startTime}→${event.endDate}` : ''
 
 const regs = event ? getRegistrations(id) : []
 const anyPaid = regs.some(r => r.paymentStatus === 'PAID')

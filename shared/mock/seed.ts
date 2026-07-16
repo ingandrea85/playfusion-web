@@ -4,7 +4,8 @@ export function buildSeed(): State {
   return {
     events: [{
       id: 'evt-1', name: 'Torneo Estivo Memorial', sport: 'Calcio',
-      startDate: '2026-08-29', endDate: '2026-08-30', template: 'PB-1',
+      location: 'Centro Sportivo Comunale · Rivalta (TO)',
+      startDate: '2026-08-29', startTime: '09:00', endDate: '2026-08-30', template: 'PB-1',
       registrationsOpen: true,
     }],
     categories: [

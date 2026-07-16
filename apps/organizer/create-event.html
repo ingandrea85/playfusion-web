@@ -14,7 +14,11 @@
         <select name="template"><option value="PB-1">PB-1 · Torneo Estivo Memorial (Calcio giovanile)</option></select></div>
       <div class="pf-field"><label>Nome evento</label><input name="name" required value="Torneo Estivo Memorial" /></div>
       <div class="pf-field"><label>Sport</label><input name="sport" required value="Calcio" /></div>
-      <div class="pf-field"><label>Inizio</label><input name="startDate" type="date" required value="2026-08-29" /></div>
+      <div class="pf-field"><label>Luogo</label><input name="location" required value="Centro Sportivo Comunale · Rivalta (TO)" /></div>
+      <div class="pf-row" style="align-items:flex-end;gap:var(--space-3)">
+        <div class="pf-field" style="flex:1;margin-bottom:0"><label>Inizio</label><input name="startDate" type="date" required value="2026-08-29" /></div>
+        <div class="pf-field" style="width:120px;margin-bottom:0"><label>Ora</label><input name="startTime" type="time" required value="09:00" /></div>
+      </div>
       <div class="pf-field"><label>Fine</label><input name="endDate" type="date" required value="2026-08-30" /></div>
       <button class="pf-btn pf-btn--primary" type="submit">Crea evento</button>
     </form>

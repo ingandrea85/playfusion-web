@@ -5,7 +5,9 @@ export interface TournamentEvent {
   id: string
   name: string
   sport: string
+  location: string
   startDate: string
+  startTime: string
   endDate: string
   template: string
   registrationsOpen: boolean
