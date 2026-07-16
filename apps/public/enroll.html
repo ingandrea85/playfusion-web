@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PlayFusion · Iscrizione</title>
+  <link rel="stylesheet" href="/shared/tokens.css" /><link rel="stylesheet" href="/shared/ui.css" />
+</head>
+<body>
+  <header class="pf-topbar" id="topbar"></header>
+  <main class="pf-container pf-container--narrow">
+    <h1>Iscrivi la squadra</h1>
+    <form class="pf-card" id="form">
+      <div class="pf-field"><label>Categoria</label><select name="categoryId" id="cat" required></select></div>
+      <div class="pf-field"><label>Nome squadra</label><input name="teamName" required /></div>
+      <div class="pf-field"><label>Nome allenatore</label><input name="coachName" required /></div>
+      <div class="pf-field"><label>Telefono</label><input name="contactPhone" required /></div>
+      <button class="pf-btn pf-btn--primary" type="submit">Invia iscrizione</button>
+    </form>
+    <div class="pf-card" id="done" style="display:none">
+      <h2>Iscrizione inviata ✓</h2>
+      <p class="pf-muted">L'organizzatore la vedrà nella sua inbox e la confermerà.</p>
+      <a class="pf-btn" id="backlink" href="#">Torna all'evento</a>
+    </div>
+  </main>
+  <script type="module" src="./enroll.ts"></script>
+</body>
+</html>
