@@ -1,0 +1,25 @@
+import { defineConfig } from 'vite'
+import { resolve } from 'node:path'
+
+const r = (p: string) => resolve(__dirname, p)
+
+export default defineConfig({
+  appType: 'mpa',
+  build: {
+    rollupOptions: {
+      input: {
+        hub: r('index.html'),
+        dashboard: r('apps/organizer/dashboard.html'),
+        createEvent: r('apps/organizer/create-event.html'),
+        eventHub: r('apps/organizer/event-hub.html'),
+        categories: r('apps/organizer/categories.html'),
+        registrations: r('apps/organizer/registrations.html'),
+        inbox: r('apps/organizer/inbox.html'),
+        payments: r('apps/organizer/payments.html'),
+        landing: r('apps/public/landing.html'),
+        enroll: r('apps/public/enroll.html'),
+        participants: r('apps/public/participants.html'),
+      },
+    },
+  },
+})
