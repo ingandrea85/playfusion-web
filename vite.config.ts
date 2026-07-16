@@ -21,6 +21,7 @@ export default defineConfig({
         landing: r('apps/public/landing.html'),
         enroll: r('apps/public/enroll.html'),
         participants: r('apps/public/participants.html'),
+        calendar: r('apps/public/calendar.html'),
       },
     },
   },

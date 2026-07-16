@@ -1,5 +1,5 @@
 import { renderPublicTopbar, renderCategoryTag } from '../../shared/chrome'
-import { getCategories, getEvent, getRegistrations } from '../../shared/mock/store'
+import { getCategories, getEvent, getRegistrations, getSchedule } from '../../shared/mock/store'
 
 document.getElementById('topbar')!.innerHTML = renderPublicTopbar()
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
@@ -17,6 +17,9 @@ document.getElementById('cats')!.innerHTML =
   getCategories(id).map(c => renderCategoryTag(c.name, counts[c.id] ?? 0, c.maxTeams)).join('')
 document.getElementById('participants')!.setAttribute('href', `/apps/public/participants.html?event=${id}`)
 
-document.getElementById('cta')!.innerHTML = open
-  ? `<a class="pf-btn pf-btn--primary pf-btn--lg" href="/apps/public/enroll.html?event=${id}">Iscrivi la squadra</a>`
-  : `<p class="pf-muted">Le iscrizioni sono chiuse.</p>`
+const published = getSchedule(id)?.status === 'PUBLISHED'
+document.getElementById('cta')!.innerHTML = `
+  ${open
+    ? `<a class="pf-btn pf-btn--primary pf-btn--lg" href="/apps/public/enroll.html?event=${id}">Iscrivi la squadra</a>`
+    : `<p class="pf-muted">Le iscrizioni sono chiuse.</p>`}
+  ${published ? `<a class="pf-btn pf-btn--lg" style="margin-left:var(--space-2)" href="/apps/public/calendar.html?event=${id}">Calendario</a>` : ''}`
