@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Organizer · Crea evento</title>
+  <link rel="stylesheet" href="/shared/tokens.css" /><link rel="stylesheet" href="/shared/ui.css" />
+</head>
+<body>
+  <header class="pf-topbar" id="topbar"></header>
+  <main class="pf-container pf-container--narrow">
+    <h1>Crea evento</h1>
+    <form class="pf-card" id="form">
+      <div class="pf-field"><label>Template</label>
+        <select name="template"><option value="PB-1">PB-1 · Torneo Estivo Memorial (Calcio giovanile)</option></select></div>
+      <div class="pf-field"><label>Nome evento</label><input name="name" required value="Torneo Estivo Memorial" /></div>
+      <div class="pf-field"><label>Sport</label><input name="sport" required value="Calcio" /></div>
+      <div class="pf-field"><label>Inizio</label><input name="startDate" type="date" required value="2026-08-29" /></div>
+      <div class="pf-field"><label>Fine</label><input name="endDate" type="date" required value="2026-08-30" /></div>
+      <button class="pf-btn pf-btn--primary" type="submit">Crea evento</button>
+    </form>
+  </main>
+  <script type="module" src="./create-event.ts"></script>
+</body>
+</html>
