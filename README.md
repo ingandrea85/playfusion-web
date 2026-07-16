@@ -1,0 +1,26 @@
+# playfusion-web
+
+Navigable mid-fidelity mockups for PlayFusion 2.0 web experiences.
+
+## Scope (first round)
+- **E1 Organizer** (`apps/organizer/`) — Bundle Enrollment setup flow.
+- **E3 Public** (`apps/public/`) — public landing + team enrollment.
+
+State is fake: seed data + `localStorage` (`shared/mock/`). No backend, no framework.
+
+## Run
+```bash
+npm install
+npm run dev     # open the printed URL → start at the hub (index.html)
+npm test        # store unit tests
+npm run build   # production build of all screens
+```
+
+## The demo loop
+Organizer opens registrations and shares a link → a coach enrolls via that link (E3) →
+the enrollment shows up in the Organizer inbox (E1) → confirm + mark the fee paid →
+the confirmed team appears on the public participants page. "Reset demo" (hub) restores seed state.
+
+## Not included
+E2 Referee (separate mobile repo), E4 Admin, real backend wiring, Auth0, deploy,
+PB-1 steps after "quota pagata" (shown disabled).
