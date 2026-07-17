@@ -51,12 +51,16 @@ export function setRegistrationsOpen(eventId: string, open: boolean): void {
 export function getRegistrations(eventId: string): Registration[] {
   return load().registrations.filter(r => r.eventId === eventId)
 }
+// Max-based id (not length-based) so a remove-then-add sequence never reuses a live id.
+function nextRegId(state: State): string {
+  return `reg-${Math.max(0, ...state.registrations.map(r => Number(r.id.replace('reg-', '')) || 0)) + 1}`
+}
 export function addRegistration(input: {
   eventId: string; categoryId: string; teamName: string; contactName: string; contactPhone: string; contactEmail: string
 }): Registration {
   const state = load()
   const reg: Registration = {
-    id: `reg-${state.registrations.length + 1}`, ...input,
+    id: nextRegId(state), ...input,
     status: 'PENDING', paymentStatus: 'UNPAID', createdAt: new Date().toISOString(),
   }
   state.registrations.push(reg); save(state); return reg
@@ -64,7 +68,7 @@ export function addRegistration(input: {
 export function addTeam(eventId: string, categoryId: string, teamName: string, contacts?: { contactName?: string; contactPhone?: string; contactEmail?: string }): Registration {
   const state = load()
   const reg: Registration = {
-    id: `reg-${state.registrations.length + 1}`, eventId, categoryId, teamName,
+    id: nextRegId(state), eventId, categoryId, teamName,
     contactName: contacts?.contactName ?? '', contactPhone: contacts?.contactPhone ?? '', contactEmail: contacts?.contactEmail ?? '',
     status: 'CONFIRMED', paymentStatus: 'UNPAID', createdAt: new Date().toISOString(),
   }

@@ -36,4 +36,15 @@ describe('direct roster (PB-2)', () => {
     expect(getRegistrations('evt-direct').some(x => x.id === r.id)).toBe(false)
     expect(getGroupSlots('evt-direct').some(s => s.team === r.teamName)).toBe(false) // pruned
   })
+
+  it('never reuses a registration id after removals', () => {
+    const x = addTeam('evt-direct', 'evt-direct-cat', 'X', {})
+    const seed = getRegistrations('evt-direct').filter(r => r.id.startsWith('reg-direct-'))
+    removeTeam(seed[0].id); removeTeam(seed[1].id)
+    addTeam('evt-direct', 'evt-direct-cat', 'Y', {})
+    const z = addTeam('evt-direct', 'evt-direct-cat', 'Z', {})
+    const all = getRegistrations('evt-1').concat(getRegistrations('evt-direct')).map(r => r.id)
+    expect(new Set(all).size).toBe(all.length) // globally unique
+    expect(z.id).not.toBe(x.id)
+  })
 })

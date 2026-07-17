@@ -36,7 +36,7 @@ describe('store', () => {
   it('addRegistration creates a PENDING/UNPAID registration visible in the list', () => {
     const r = addRegistration({ eventId: 'evt-1', categoryId: 'cat-3', teamName: 'Nuova Squadra',
       contactName: 'Test Referente', contactPhone: '000', contactEmail: 'test@example.it' })
-    expect(r.id).toBe('reg-17') // reg-1..reg-12 (evt-1) + reg-direct-1..4 (evt-direct) + new one
+    expect(r.id).toBe('reg-13') // max-based over reg-1..reg-12 (reg-direct-* are non-numeric → ignored)
     expect(r.status).toBe('PENDING')
     expect(r.paymentStatus).toBe('UNPAID')
     expect(getRegistrations('evt-1')).toHaveLength(13)
