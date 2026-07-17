@@ -69,8 +69,13 @@ const toggle = document.getElementById('uniform') as HTMLInputElement
 toggle.checked = uniform
 toggle.addEventListener('change', () => { uniform = toggle.checked; render() })
 
+function flash(msg: string): void {
+  document.getElementById('flash')!.innerHTML = `<div class="pf-flash">✓ ${msg}</div>`
+}
+
 function render(): void {
   const content = document.getElementById('content')!
+  document.getElementById('flash')!.innerHTML = ''
   if (cats.length === 0) {
     content.innerHTML = `<div class="pf-card pf-muted">Nessuna categoria. Aggiungile prima nello step Categorie.</div>`
     return
@@ -89,7 +94,7 @@ function render(): void {
       </div>`
     const form = document.getElementById('common') as HTMLFormElement
     wireConditional(form)
-    form.addEventListener('submit', (e) => { e.preventDefault(); applyToAllCategories(id, readConfig(form)); render() })
+    form.addEventListener('submit', (e) => { e.preventDefault(); applyToAllCategories(id, readConfig(form)); render(); flash('Configurazione applicata a tutte le categorie') })
   } else {
     content.innerHTML = cats.map(c => {
       const cfg = getCompetition(c.id) ?? DEFAULT
@@ -105,6 +110,8 @@ function render(): void {
         e.preventDefault()
         upsertCompetition({ eventId: id, categoryId: form.dataset.cat!, ...readConfig(form) })
         render()
+        const cat = cats.find(c => c.id === form.dataset.cat)
+        flash(`Categoria ${cat?.name ?? ''} salvata`)
       })
     })
   }

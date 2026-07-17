@@ -169,6 +169,11 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-switch { display: inline-flex; align-items: center; gap: var(--space-3); font-weight: 700; cursor: pointer; }
 .pf-switch input { width: 18px; height: 18px; accent-color: var(--color-action-primary); }
 
+/* ---------- Flash (save confirmation) ---------- */
+.pf-flash { display: flex; align-items: center; gap: var(--space-2); background: #eafaf1; color: var(--color-success);
+  border: 1px solid #bfe8cf; border-radius: var(--radius-2); padding: var(--space-3) var(--space-4);
+  font-weight: 700; margin-bottom: var(--space-4); }
+
 /* ---------- Calendar ---------- */
 .pf-calday { margin-bottom: var(--space-5); }
 .pf-calday__head { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
