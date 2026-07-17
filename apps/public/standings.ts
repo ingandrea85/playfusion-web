@@ -1,5 +1,5 @@
 import { renderPublicTopbar, renderStandings, renderTabs } from '../../shared/chrome'
-import { getCategories, getEvent, getSchedule, getStandings, getScheduledMatches } from '../../shared/mock/store'
+import { getCategories, getEvent, getSchedule, getStandings, getScheduledMatches, getTieOverrides } from '../../shared/mock/store'
 
 document.getElementById('topbar')!.innerHTML = renderPublicTopbar()
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
@@ -24,7 +24,7 @@ function gironiOf(catId: string): string[] {
 }
 function renderViews(): void {
   const catsPresent = presentCats()
-  if (!catsPresent.length) { document.getElementById('standings')!.innerHTML = renderStandings([], [], [], catName); return }
+  if (!catsPresent.length) { document.getElementById('standings')!.innerHTML = renderStandings([], [], [], [], catName); return }
   if (!catsPresent.includes(selCat)) selCat = catsPresent[0]
   const gironi = gironiOf(selCat)
   if (selGir !== 'ALL' && !gironi.includes(selGir)) selGir = 'ALL'
@@ -37,7 +37,7 @@ function renderViews(): void {
   bars[1].querySelectorAll<HTMLButtonElement>('.pf-tab').forEach(b =>
     b.addEventListener('click', () => { selGir = b.dataset.key!; renderViews() }))
   const rows = getStandings(id).filter(s => s.categoryId === selCat && (selGir === 'ALL' || s.groupLabel === selGir))
-  document.getElementById('standings')!.innerHTML = renderStandings(rows, getScheduledMatches(id), getEvent(id)?.tieBreak ?? [], catName)
+  document.getElementById('standings')!.innerHTML = renderStandings(rows, getScheduledMatches(id), getEvent(id)?.tieBreak ?? [], getTieOverrides(id), catName)
 }
 
 if (!published) {

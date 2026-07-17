@@ -1,5 +1,6 @@
 import { renderOrganizerTopbar, renderCalendar, renderStandings, renderTabs, renderBracket } from '../../shared/chrome'
-import { getCategories, getSchedule, getScheduledMatches, getStandings, getFinals, getEvent, generateSchedule, approveSchedule, publishSchedule, rescheduleMatch, recordResult } from '../../shared/mock/store'
+import { getCategories, getSchedule, getScheduledMatches, getStandings, getFinals, getEvent, generateSchedule, approveSchedule, publishSchedule, rescheduleMatch, recordResult, getTieOverrides, setTieOverride } from '../../shared/mock/store'
+import { rankStanding } from '../../shared/mock/ranking'
 import type { CategorySchedule, ScheduleConfig } from '../../shared/mock/types'
 
 document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
@@ -162,6 +163,31 @@ function openResultPanel(matchId: string): void {
   document.getElementById('rs-cancel')!.addEventListener('click', () => { panel.innerHTML = '' })
 }
 
+function openTiePanel(categoryId: string, groupLabel: string, teams: string[]): void {
+  const panel = document.getElementById('editmatch')!
+  const order = [...teams]
+  const draw = (): void => {
+    panel.innerHTML = `<div class="pf-card">
+      <h2>Risolvi parità</h2>
+      <p class="pf-muted">${groupLabel} · ordina le squadre a pari merito</p>
+      <ol class="pf-tblist">${order.map((t, i) => `<li class="pf-tbrow">
+        <span>${i + 1}. ${t}</span>
+        <span class="pf-tbmove">
+          <button type="button" class="pf-btn pf-btn--ghost" data-up="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
+          <button type="button" class="pf-btn pf-btn--ghost" data-down="${i}" ${i === order.length - 1 ? 'disabled' : ''}>↓</button>
+        </span></li>`).join('')}</ol>
+      <div class="pf-row" style="gap:var(--space-2)"><button class="pf-btn pf-btn--primary" id="tie-save">Salva</button><button class="pf-btn" id="tie-cancel">Annulla</button></div>
+    </div>`
+    panel.querySelectorAll<HTMLButtonElement>('button[data-up]').forEach(b =>
+      b.addEventListener('click', () => { const i = Number(b.dataset.up); [order[i - 1], order[i]] = [order[i], order[i - 1]]; draw() }))
+    panel.querySelectorAll<HTMLButtonElement>('button[data-down]').forEach(b =>
+      b.addEventListener('click', () => { const i = Number(b.dataset.down); [order[i + 1], order[i]] = [order[i], order[i + 1]]; draw() }))
+    document.getElementById('tie-save')!.addEventListener('click', () => { setTieOverride(id, categoryId, groupLabel, order); panel.innerHTML = ''; renderViews() })
+    document.getElementById('tie-cancel')!.addEventListener('click', () => { panel.innerHTML = '' })
+  }
+  draw()
+}
+
 function renderViews(): void {
   document.getElementById('editmatch')!.innerHTML = ''
   const catsPresent = presentCats()
@@ -169,6 +195,7 @@ function renderViews(): void {
     document.getElementById('viewtabs')!.innerHTML = ''
     document.getElementById('calendar')!.innerHTML = ''
     document.getElementById('standings')!.innerHTML = ''
+    document.getElementById('tieactions')!.innerHTML = ''
     document.getElementById('finals')!.innerHTML = ''
     return
   }
@@ -192,7 +219,24 @@ function renderViews(): void {
   document.getElementById('standings')!.innerHTML =
     `<div class="pf-pagehead" style="margin:var(--space-6) 0 var(--space-4)"><div class="pf-eyebrow">Classifiche</div><h2>Classifiche di girone</h2></div>`
     + `<p class="pf-muted" style="margin-top:calc(-1*var(--space-2));margin-bottom:var(--space-4)">Classifica iniziale · nessuna partita giocata.</p>`
-    + renderStandings(getStandings(id).filter(s => inSel(s.categoryId, s.groupLabel)), getScheduledMatches(id), getEvent(id)?.tieBreak ?? [], catName)
+    + renderStandings(getStandings(id).filter(s => inSel(s.categoryId, s.groupLabel)), getScheduledMatches(id), getEvent(id)?.tieBreak ?? [], getTieOverrides(id), catName)
+  // Manual tie resolution (E1 only): a button per still-unresolved group in view.
+  const tieEl = document.getElementById('tieactions')!
+  const visRows = getStandings(id).filter(s => inSel(s.categoryId, s.groupLabel))
+  const ovAll = getTieOverrides(id)
+  const seenG: Array<{ cat: string; g: string }> = []
+  for (const s of visRows) if (!seenG.some(x => x.cat === s.categoryId && x.g === s.groupLabel)) seenG.push({ cat: s.categoryId, g: s.groupLabel })
+  const tieGroups: Array<{ cat: string; g: string; teams: string[] }> = []
+  for (const { cat, g } of seenG) {
+    const grows = visRows.filter(s => s.categoryId === cat && s.groupLabel === g)
+    const gms = getScheduledMatches(id).filter(m => m.categoryId === cat && m.groupLabel === g)
+    const ov = ovAll.filter(o => o.categoryId === cat && o.groupLabel === g).map(o => o.order)
+    const res = rankStanding(grows, gms, getEvent(id)?.tieBreak ?? [], ov)
+    for (const grp of res.unresolved) tieGroups.push({ cat, g, teams: grp })
+  }
+  tieEl.innerHTML = tieGroups.map((u, i) => `<button class="pf-btn" data-tie="${i}">Risolvi parità · ${u.g}: ${u.teams.join(', ')}</button>`).join('')
+  tieEl.querySelectorAll<HTMLButtonElement>('button[data-tie]').forEach(b =>
+    b.addEventListener('click', () => { const u = tieGroups[Number(b.dataset.tie)]; openTiePanel(u.cat, u.g, u.teams) }))
   document.getElementById('finals')!.innerHTML = getFinals(id).some(f => f.categoryId === selCat)
     ? `<div class="pf-pagehead" style="margin:var(--space-6) 0 var(--space-4)"><div class="pf-eyebrow">Finali</div><h2>Fase finale</h2></div>`
       + renderBracket(getFinals(id).filter(f => f.categoryId === selCat))
@@ -209,6 +253,7 @@ function render(): void {
     document.getElementById('editmatch')!.innerHTML = ''
     document.getElementById('calendar')!.innerHTML = ''
     document.getElementById('standings')!.innerHTML = ''
+    document.getElementById('tieactions')!.innerHTML = ''
     document.getElementById('finals')!.innerHTML = ''
     return
   }
@@ -220,6 +265,7 @@ function render(): void {
     document.getElementById('editmatch')!.innerHTML = ''
     document.getElementById('calendar')!.innerHTML = ''
     document.getElementById('standings')!.innerHTML = ''
+    document.getElementById('tieactions')!.innerHTML = ''
     document.getElementById('finals')!.innerHTML = ''
   } else {
     renderViews()
