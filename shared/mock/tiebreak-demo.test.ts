@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { resetDemo, getEvents, getStandings, getFinals, getScheduledMatches, getTieOverrides, setTieOverride } from './store'
+import { resetDemo, getEvents, getStandings, getFinals, getScheduledMatches, getTieOverrides, setTieOverride, recordResult } from './store'
 import { rankStanding } from './ranking'
 import { defaultTieBreak } from './tiebreak'
 
@@ -69,5 +69,17 @@ describe('tie-break demo events', () => {
     const f = getFinals('evt-tie-open')[0]
     expect(f.homeResolved).toBeNull()
     expect(f.awayResolved).toBeNull()
+  })
+
+  it('self-invalidates: a later result that breaks the tie makes the saved override inert', () => {
+    const cat = 'evt-tie-open-cat'
+    setTieOverride('evt-tie-open', cat, 'Girone A', ['Bravo', 'Alfa']) // manual: Bravo first
+    expect(getFinals('evt-tie-open')[0].homeResolved).toBe('Bravo')     // applied while tied
+    // Break the Alfa–Bravo tie: Alfa beats Bravo, so Alfa is 1st on points alone.
+    recordResult('evt-tie-open-m1', 2, 0)
+    const f = getFinals('evt-tie-open')[0]
+    expect(f.homeResolved).toBe('Alfa') // points decide now; stale override no longer flips them
+    expect(f.awayResolved).toBe('Bravo')
+    expect(rankOf('evt-tie-open').unresolved).toEqual([]) // no tie remains
   })
 })
