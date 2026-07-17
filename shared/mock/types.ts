@@ -31,6 +31,7 @@ export interface Competition extends CompetitionConfig {
   id: string
   eventId: string
   categoryId: string
+  groupsLocked: boolean
 }
 
 export type ScheduleStatus = 'NONE' | 'GENERATED' | 'APPROVED' | 'PUBLISHED'
@@ -111,6 +112,23 @@ export interface FixtureCategory {
   breakMinutes: number
 }
 
+export interface GroupSlot {
+  eventId: string
+  categoryId: string
+  team: string
+  groupLabel: string
+}
+
+export interface ScheduledCategory {
+  id: string
+  legs: Legs
+  fields: string[]
+  periods: number
+  periodMinutes: number
+  breakMinutes: number
+  groups: Array<{ groupLabel: string; teams: string[] }>
+}
+
 export interface Registration {
   id: string
   eventId: string
@@ -133,4 +151,5 @@ export interface State {
   scheduledMatches: ScheduledMatch[]
   standings: StandingRow[]
   finals: FinalMatch[]
+  groupSlots: GroupSlot[]
 }

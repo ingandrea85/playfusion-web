@@ -40,9 +40,9 @@ export function buildSeed(): State {
         contactName: 'Marco Sala', contactPhone: '342 0001112', contactEmail: 'm.sala@calciobra.it', status: 'CONFIRMED', paymentStatus: 'PAID', createdAt: '2026-07-12T18:00:00.000Z' },
     ],
     competitions: [
-      { id: 'comp-1', eventId: 'evt-1', categoryId: 'cat-1', format: 'GROUPS_KNOCKOUT', legs: 'SINGLE', groupsCount: 2, qualifiersPerGroup: 2, finalsType: 'PLACEMENT' },
-      { id: 'comp-2', eventId: 'evt-1', categoryId: 'cat-2', format: 'GROUPS_KNOCKOUT', legs: 'SINGLE', groupsCount: 2, qualifiersPerGroup: 2, finalsType: 'PLACEMENT' },
-      { id: 'comp-3', eventId: 'evt-1', categoryId: 'cat-3', format: 'GROUPS_KNOCKOUT', legs: 'SINGLE', groupsCount: 2, qualifiersPerGroup: 2, finalsType: 'PLACEMENT' },
+      { id: 'comp-1', eventId: 'evt-1', categoryId: 'cat-1', format: 'GROUPS_KNOCKOUT', legs: 'SINGLE', groupsCount: 2, qualifiersPerGroup: 2, finalsType: 'PLACEMENT', groupsLocked: false },
+      { id: 'comp-2', eventId: 'evt-1', categoryId: 'cat-2', format: 'GROUPS_KNOCKOUT', legs: 'SINGLE', groupsCount: 2, qualifiersPerGroup: 2, finalsType: 'PLACEMENT', groupsLocked: false },
+      { id: 'comp-3', eventId: 'evt-1', categoryId: 'cat-3', format: 'GROUPS_KNOCKOUT', legs: 'SINGLE', groupsCount: 2, qualifiersPerGroup: 2, finalsType: 'PLACEMENT', groupsLocked: false },
     ],
     schedules: [
       { eventId: 'evt-1', status: 'NONE', config: {
@@ -57,5 +57,6 @@ export function buildSeed(): State {
     scheduledMatches: [],
     standings: [],
     finals: [],
+    groupSlots: [],
   }
 }

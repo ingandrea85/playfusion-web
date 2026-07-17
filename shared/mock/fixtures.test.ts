@@ -1,58 +1,47 @@
 import { describe, expect, it } from 'vitest'
 import { buildFixtures, buildGroups } from './fixtures'
-import type { FixtureCategory } from './types'
+import type { ScheduledCategory } from './types'
 
-function cat(over: Partial<FixtureCategory>): FixtureCategory {
-  return { id: 'c1', name: 'U10', format: 'GROUPS_KNOCKOUT', groupsCount: 2, legs: 'SINGLE',
-    teams: ['A', 'B', 'C', 'D'], fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, ...over }
+function sc(over: Partial<ScheduledCategory>): ScheduledCategory {
+  return { id: 'c1', legs: 'SINGLE', fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10,
+    groups: [{ groupLabel: 'Girone A', teams: ['A', 'C'] }, { groupLabel: 'Girone B', teams: ['B', 'D'] }], ...over }
 }
 
-describe('buildFixtures', () => {
-  it('splits teams into groups and produces single-leg round-robin pairs on the category fields', () => {
-    const m = buildFixtures('evt-1', '2026-08-29', '2026-08-30', '09:00', 8, [cat({})])
+describe('buildFixtures (pre-resolved groups)', () => {
+  it('round-robin pairs per group, placed on the fields', () => {
+    const m = buildFixtures('evt-1', '2026-08-29', '2026-08-30', '09:00', 8, [sc({})])
     expect(m).toHaveLength(2)
     expect(m[0]).toMatchObject({ home: 'A', away: 'C', groupLabel: 'Girone A', field: 'Campo A', time: '09:00', day: '2026-08-29' })
     expect(m[1]).toMatchObject({ home: 'B', away: 'D', groupLabel: 'Girone B', field: 'Campo B', time: '09:00' })
   })
 
-  it('doubles matches for home-away', () => {
-    const m = buildFixtures('evt-1', '2026-08-29', '2026-08-30', '09:00', 8, [cat({ groupsCount: 1, legs: 'HOME_AWAY', teams: ['A', 'B', 'C'] })])
+  it('home-away doubles each pair', () => {
+    const m = buildFixtures('evt-1', '2026-08-29', '2026-08-30', '09:00', 8, [sc({ legs: 'HOME_AWAY', groups: [{ groupLabel: 'Girone A', teams: ['A', 'B', 'C'] }] })])
     expect(m).toHaveLength(6)
     expect(m.filter(x => x.home === 'B' && x.away === 'A')).toHaveLength(1)
   })
 
-  it('treats ROUND_ROBIN as a single group', () => {
-    const m = buildFixtures('evt-1', '2026-08-29', '2026-08-30', '09:00', 8, [cat({ format: 'ROUND_ROBIN', groupsCount: 5, teams: ['A', 'B', 'C'] })])
-    expect(m).toHaveLength(3)
-    expect(m.every(x => x.groupLabel === 'Girone A')).toBe(true)
-  })
-
-  it('uses each category slot length: single field → 2nd match at 09:50 (slot = 2*20+10)', () => {
-    const m = buildFixtures('evt-1', '2026-08-29', '2026-08-30', '09:00', 8, [cat({ groupsCount: 1, fields: ['Solo'] })])
+  it('single field advances the slot: 2nd match at 09:50', () => {
+    const m = buildFixtures('evt-1', '2026-08-29', '2026-08-30', '09:00', 8, [sc({ fields: ['Solo'], groups: [{ groupLabel: 'Girone A', teams: ['A', 'B', 'C', 'D'] }] })])
     expect(m).toHaveLength(6)
     expect(m[1]).toMatchObject({ field: 'Solo', time: '09:50' })
   })
 
-  it('places each category independently on its own fields from dailyStart', () => {
-    const cats: FixtureCategory[] = [
-      cat({ id: 'c1', name: 'U10', format: 'ROUND_ROBIN', groupsCount: 1, teams: ['A', 'B'], fields: ['Campo Nord'], periodMinutes: 15, breakMinutes: 5 }),
-      cat({ id: 'c2', name: 'U14', format: 'ROUND_ROBIN', groupsCount: 1, teams: ['X', 'Y'], fields: ['Campo Sud'], periodMinutes: 30, breakMinutes: 10 }),
-    ]
-    const m = buildFixtures('evt-1', '2026-08-29', '2026-08-30', '09:00', 8, cats)
+  it('places each category independently on its own fields', () => {
+    const m = buildFixtures('evt-1', '2026-08-29', '2026-08-30', '09:00', 8, [
+      sc({ id: 'c1', fields: ['Campo Nord'], groups: [{ groupLabel: 'Girone A', teams: ['A', 'B'] }] }),
+      sc({ id: 'c2', fields: ['Campo Sud'], periodMinutes: 30, groups: [{ groupLabel: 'Girone A', teams: ['X', 'Y'] }] }),
+    ])
     expect(m).toHaveLength(2)
     expect(m[0]).toMatchObject({ categoryId: 'c1', field: 'Campo Nord', time: '09:00' })
     expect(m[1]).toMatchObject({ categoryId: 'c2', field: 'Campo Sud', time: '09:00' })
   })
 
-  it('buildGroups splits each category into labelled groups (single source of grouping)', () => {
-    const groups = buildGroups([
-      cat({ id: 'c1', groupsCount: 2, teams: ['A', 'B', 'C', 'D'] }),
-      cat({ id: 'c2', format: 'ROUND_ROBIN', groupsCount: 9, teams: ['X', 'Y', 'Z'] }),
-    ])
-    expect(groups).toEqual([
-      { categoryId: 'c1', groupLabel: 'Girone A', teams: ['A', 'C'] },
-      { categoryId: 'c1', groupLabel: 'Girone B', teams: ['B', 'D'] },
-      { categoryId: 'c2', groupLabel: 'Girone A', teams: ['X', 'Y', 'Z'] },
-    ])
+  it('buildGroups still auto-splits by i % groups (used by the auto path)', () => {
+    expect(buildGroups([{ id: 'c1', name: 'U10', format: 'GROUPS_KNOCKOUT', groupsCount: 2, legs: 'SINGLE', teams: ['A', 'B', 'C', 'D'], fields: [], periods: 2, periodMinutes: 20, breakMinutes: 10 }]))
+      .toEqual([
+        { categoryId: 'c1', groupLabel: 'Girone A', teams: ['A', 'C'] },
+        { categoryId: 'c1', groupLabel: 'Girone B', teams: ['B', 'D'] },
+      ])
   })
 })
