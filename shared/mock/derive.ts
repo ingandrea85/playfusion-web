@@ -1,6 +1,16 @@
-import type { State } from './types'
+import type { State, FinalMatch } from './types'
 import { rankStanding } from './ranking'
 import { roundShort } from './finals'
+
+export function decideMatch(m: FinalMatch): { winner: string; loser: string } | null {
+  if (m.homeResolved === null || m.awayResolved === null) return null
+  if (m.homeScore === null || m.awayScore === null) return null
+  let homeWins: boolean
+  if (m.homeScore !== m.awayScore) homeWins = m.homeScore > m.awayScore
+  else if (m.homeShootout !== null && m.awayShootout !== null && m.homeShootout !== m.awayShootout) homeWins = m.homeShootout > m.awayShootout
+  else return null
+  return homeWins ? { winner: m.homeResolved, loser: m.awayResolved } : { winner: m.awayResolved, loser: m.homeResolved }
+}
 
 export function recomputeStandings(state: State, eventId: string): void {
   for (const s of state.standings) {
@@ -42,15 +52,13 @@ function resolveSlot(state: State, eventId: string, categoryId: string, bracketL
     if (res.unresolved.some(g => g.includes(team))) return null
     return team
   }
-  const w = /^Vincente (SF|QF|OF|F|T)(\d+)$/.exec(placeholder)
+  const w = /^(Vincente|Perdente) (SF|QF|OF|F|T)(\d+)$/.exec(placeholder)
   if (w) {
-    const code = w[1]
-    const ord = Number(w[2])
-    const src = state.finals.find(f => f.eventId === eventId && f.categoryId === categoryId && f.bracketLabel === bracketLabel && roundShort(f.round) === code && f.order === ord)
-    if (!src || src.homeScore === null || src.awayScore === null) return null
-    if (src.homeResolved === null || src.awayResolved === null) return null
-    if (src.homeScore === src.awayScore) return null // no winner on a draw
-    return src.homeScore > src.awayScore ? src.homeResolved : src.awayResolved
+    const src = state.finals.find(f => f.eventId === eventId && f.categoryId === categoryId && f.bracketLabel === bracketLabel && roundShort(f.round) === w[2] && f.order === Number(w[3]))
+    if (!src) return null
+    const d = decideMatch(src)
+    if (!d) return null
+    return w[1] === 'Vincente' ? d.winner : d.loser
   }
   return null
 }

@@ -75,4 +75,24 @@ describe('finals bracket — winner propagation', () => {
     const champion = played.homeScore! > played.awayScore! ? played.homeResolved : played.awayResolved
     expect(champion).toBe(semi(1).homeResolved)
   })
+
+  it('a drawn semifinal is decided by the shootout and propagates the winner', () => {
+    recordFinalResult(semi(1).id, 1, 1, { home: 5, away: 4 }) // draw, home wins on penalties
+    recordFinalResult(semi(2).id, 2, 0)
+    expect(finale().homeResolved).toBe(semi(1).homeResolved) // shootout winner advances
+  })
+
+  it('propagates the loser into the Finale 3º/4º', () => {
+    recordFinalResult(semi(1).id, 2, 0) // home wins SF1 → away is loser
+    recordFinalResult(semi(2).id, 0, 1) // away wins SF2 → home is loser
+    const tp = getFinals('evt-finals').find(f => f.round === 'Finale 3º/4º')!
+    expect(tp.homeResolved).toBe(semi(1).awayResolved) // Perdente SF1
+    expect(tp.awayResolved).toBe(semi(2).homeResolved) // Perdente SF2
+  })
+
+  it('a shootout is ignored when regular time is not a draw', () => {
+    recordFinalResult(semi(1).id, 2, 1, { home: 1, away: 9 }) // home won in regular time
+    expect(semi(1).homeShootout).toBeNull()
+    expect(finale().homeResolved).toBe(semi(1).homeResolved) // regular-time winner, not the shootout
+  })
 })

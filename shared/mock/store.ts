@@ -297,11 +297,13 @@ export function recordResult(matchId: string, homeScore: number, awayScore: numb
   save(state)
 }
 
-export function recordFinalResult(finalMatchId: string, homeScore: number, awayScore: number): void {
+export function recordFinalResult(finalMatchId: string, homeScore: number, awayScore: number, shootout?: { home: number; away: number }): void {
   const state = load()
   const f = state.finals.find(x => x.id === finalMatchId)
   if (!f) { save(state); return }
   f.homeScore = homeScore; f.awayScore = awayScore
+  if (shootout && homeScore === awayScore) { f.homeShootout = shootout.home; f.awayShootout = shootout.away }
+  else { f.homeShootout = null; f.awayShootout = null }
   resolveFinals(state, f.eventId)
   save(state)
 }
