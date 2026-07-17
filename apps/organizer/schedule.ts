@@ -1,4 +1,4 @@
-import { renderOrganizerTopbar, renderCalendar, renderStandings } from '../../shared/chrome'
+import { renderOrganizerTopbar, renderCalendar, renderStandings, renderTabs } from '../../shared/chrome'
 import { getCategories, getSchedule, getScheduledMatches, getStandings, generateSchedule, approveSchedule, publishSchedule } from '../../shared/mock/store'
 import type { CategorySchedule, ScheduleConfig } from '../../shared/mock/types'
 
@@ -98,23 +98,61 @@ function renderActions(): void {
   if (!pb.disabled) pb.addEventListener('click', () => { publishSchedule(id); render(); flash('Calendario pubblicato') })
 }
 
+let selCat = ''
+let selGir = 'ALL'
+
+function presentCats(): string[] {
+  const seen: string[] = []
+  for (const m of getScheduledMatches(id)) if (!seen.includes(m.categoryId)) seen.push(m.categoryId)
+  return seen
+}
+function gironiOf(catId: string): string[] {
+  const seen: string[] = []
+  for (const m of getScheduledMatches(id)) if (m.categoryId === catId && !seen.includes(m.groupLabel)) seen.push(m.groupLabel)
+  return seen
+}
+function renderViews(): void {
+  const catsPresent = presentCats()
+  if (!catsPresent.includes(selCat)) selCat = catsPresent[0]
+  const gironi = gironiOf(selCat)
+  if (selGir !== 'ALL' && !gironi.includes(selGir)) selGir = 'ALL'
+  const catTabs = renderTabs(catsPresent.map(c => ({ key: c, label: catName(c) })), selCat)
+  const girTabs = renderTabs([{ key: 'ALL', label: 'Tutti i gironi' }, ...gironi.map(g => ({ key: g, label: g }))], selGir)
+  document.getElementById('viewtabs')!.innerHTML = catTabs + girTabs
+  const bars = document.querySelectorAll<HTMLElement>('#viewtabs .pf-tabs')
+  bars[0].querySelectorAll<HTMLButtonElement>('.pf-tab').forEach(b =>
+    b.addEventListener('click', () => { selCat = b.dataset.key!; selGir = 'ALL'; renderViews() }))
+  bars[1].querySelectorAll<HTMLButtonElement>('.pf-tab').forEach(b =>
+    b.addEventListener('click', () => { selGir = b.dataset.key!; renderViews() }))
+  const inSel = (categoryId: string, groupLabel: string) => categoryId === selCat && (selGir === 'ALL' || groupLabel === selGir)
+  document.getElementById('calendar')!.innerHTML = renderCalendar(getScheduledMatches(id).filter(m => inSel(m.categoryId, m.groupLabel)), catName)
+  document.getElementById('standings')!.innerHTML =
+    `<div class="pf-pagehead" style="margin:var(--space-6) 0 var(--space-4)"><div class="pf-eyebrow">Classifiche</div><h2>Classifiche di girone</h2></div>`
+    + `<p class="pf-muted" style="margin-top:calc(-1*var(--space-2));margin-bottom:var(--space-4)">Classifica iniziale · nessuna partita giocata.</p>`
+    + renderStandings(getStandings(id).filter(s => inSel(s.categoryId, s.groupLabel)), catName)
+}
+
 function render(): void {
   document.getElementById('flash')!.innerHTML = ''
   if (cats.length === 0) {
     document.getElementById('window')!.innerHTML = ''
     document.getElementById('configarea')!.innerHTML = `<div class="pf-card pf-muted">Nessuna categoria. Aggiungile prima nello step Categorie.</div>`
     document.getElementById('actions')!.innerHTML = ''
+    document.getElementById('viewtabs')!.innerHTML = ''
+    document.getElementById('calendar')!.innerHTML = ''
     document.getElementById('standings')!.innerHTML = ''
     return
   }
   renderWindow()
   renderConfigArea()
   renderActions()
-  document.getElementById('calendar')!.innerHTML = schedule().status === 'NONE' ? '' : renderCalendar(getScheduledMatches(id), catName)
-  document.getElementById('standings')!.innerHTML = schedule().status === 'NONE' ? ''
-    : `<div class="pf-pagehead" style="margin:var(--space-6) 0 var(--space-4)"><div class="pf-eyebrow">Classifiche</div><h2>Classifiche di girone</h2></div>`
-      + `<p class="pf-muted" style="margin-top:calc(-1*var(--space-2));margin-bottom:var(--space-4)">Classifica iniziale · nessuna partita giocata.</p>`
-      + renderStandings(getStandings(id), catName)
+  if (schedule().status === 'NONE') {
+    document.getElementById('viewtabs')!.innerHTML = ''
+    document.getElementById('calendar')!.innerHTML = ''
+    document.getElementById('standings')!.innerHTML = ''
+  } else {
+    renderViews()
+  }
 }
 
 const toggle = document.getElementById('uniform') as HTMLInputElement
