@@ -1,9 +1,10 @@
 import type { State, ScheduledMatch, StandingRow, FinalMatch, Competition, Schedule, GroupSlot, Category, TournamentEvent } from './types'
 import { recomputeStandings, resolveFinals } from './derive'
+import { buildFinals } from './finals'
 
 // One demo event: single category, single girone "Girone A", SINGLE_GROUP_CROSSOVER
 // final (1ª vs 2ª). `results` are [homeIdx, homeScore, awayIdx, awayScore] over `teams`.
-function demoEvent(id: string, name: string, teams: string[], results: [number, number, number, number][]): {
+function demoEvent(id: string, name: string, teams: string[], results: [number, number, number, number][], qualifiers = 2): {
   event: TournamentEvent; category: Category; competition: Competition; schedule: Schedule;
   groupSlots: GroupSlot[]; matches: ScheduledMatch[]; standings: StandingRow[]; finals: FinalMatch[]
 } {
@@ -16,7 +17,7 @@ function demoEvent(id: string, name: string, teams: string[], results: [number, 
   const category: Category = { id: catId, eventId: id, name: 'Unica', maxTeams: teams.length }
   const competition: Competition = {
     id: `${id}-comp`, eventId: id, categoryId: catId, format: 'GROUPS_KNOCKOUT', legs: 'SINGLE',
-    groupsCount: 1, qualifiersPerGroup: 2, finalsType: 'SINGLE_GROUP_CROSSOVER', groupsLocked: true,
+    groupsCount: 1, qualifiersPerGroup: qualifiers, finalsType: 'SINGLE_GROUP_CROSSOVER', groupsLocked: true,
   }
   const schedule: Schedule = {
     eventId: id, status: 'PUBLISHED', config: {
@@ -34,11 +35,11 @@ function demoEvent(id: string, name: string, teams: string[], results: [number, 
     eventId: id, categoryId: catId, groupLabel: 'Girone A', team: t,
     played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0,
   }))
-  const finals: FinalMatch[] = [{
-    id: `${id}-f1`, eventId: id, categoryId: catId, bracketLabel: 'Tabellone', round: 'Finale', order: 1,
-    home: '1ª Girone A', away: '2ª Girone A', day: '2026-09-01', time: '11:00', field: 'Campo 1',
-    homeResolved: null, awayResolved: null,
-  }]
+  const finals: FinalMatch[] = buildFinals(['Girone A'], qualifiers, 'SINGLE_GROUP_CROSSOVER').map((d, i) => ({
+    id: `${id}-f${i + 1}`, eventId: id, categoryId: catId, bracketLabel: d.bracketLabel, round: d.round, order: d.order,
+    home: d.home, away: d.away, day: '2026-09-01', time: '11:00', field: 'Campo 1',
+    homeResolved: null, awayResolved: null, homeScore: null, awayScore: null,
+  }))
   return { event, category, competition, schedule, groupSlots, matches, standings, finals }
 }
 
@@ -53,6 +54,8 @@ const DEMOS = [
     [[0, 2, 1, 2], [0, 3, 2, 1], [1, 2, 2, 0]]),
   demoEvent('evt-tie-open', 'Demo · Parità irrisolta', ['Alfa', 'Bravo', 'Charlie'],
     [[0, 1, 1, 1], [0, 2, 2, 0], [1, 2, 2, 0]]),
+  demoEvent('evt-finals', 'Demo · Tabellone (semifinali)', ['Alfa', 'Bravo', 'Charlie', 'Delta'],
+    [[0, 1, 1, 0], [0, 1, 2, 0], [0, 1, 3, 0], [1, 1, 2, 0], [1, 1, 3, 0], [2, 1, 3, 0]], 4),
 ]
 
 export function buildSeed(): State {

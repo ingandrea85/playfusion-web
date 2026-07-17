@@ -8,7 +8,7 @@ beforeEach(() => { localStorage.clear(); resetDemo() })
 
 describe('store', () => {
   it('seeds one event with three categories and three registrations', () => {
-    expect(getEvents()).toHaveLength(6) // evt-1 + 5 tie-break demo events
+    expect(getEvents()).toHaveLength(7) // evt-1 + 5 tie-break demo events + evt-finals
     expect(getEvent('evt-1')?.name).toBe('Torneo Estivo Memorial')
     expect(getCategories('evt-1')).toHaveLength(3)
     expect(getRegistrations('evt-1')).toHaveLength(12)
@@ -18,12 +18,12 @@ describe('store', () => {
     const e = createEvent({ name: 'Coppa Primavera', sport: 'Calcio', location: 'Palestra', startDate: '2026-09-01', startTime: '10:00', endDate: '2026-09-02' })
     expect(e.id).toBe('evt-2')
     expect(e.registrationsOpen).toBe(false)
-    expect(getEvents()).toHaveLength(7) // evt-1 + 5 tie-break demo events + new one
+    expect(getEvents()).toHaveLength(8) // evt-1 + 5 tie-break demo events + evt-finals + new one
   })
 
   it('addCategory appends to the event with its registration cap', () => {
     const c = addCategory('evt-1', 'U16', 10)
-    expect(c.id).toBe('cat-9') // cat-1..cat-3 (evt-1) + cat-tie-*-cat (5 demo events)
+    expect(c.id).toBe('cat-10') // cat-1..cat-3 (evt-1) + cat-tie-*-cat (5 demo events) + evt-finals-cat
     expect(c.maxTeams).toBe(10)
     expect(getCategories('evt-1').map(x => x.name)).toContain('U16')
   })

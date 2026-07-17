@@ -105,6 +105,8 @@ export interface FinalMatch extends FinalDraw {
   field: string
   homeResolved: string | null
   awayResolved: string | null
+  homeScore: number | null
+  awayScore: number | null
 }
 
 export interface FixtureCategory {

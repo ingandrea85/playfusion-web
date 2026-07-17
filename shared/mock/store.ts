@@ -158,7 +158,7 @@ export function generateSchedule(eventId: string, config: ScheduleConfig): void 
     const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes
     let fi = 0, si = 0
     for (const d of draws) {
-      finalsOut.push({ id: `fm-${++fseq}`, eventId, categoryId: cat.id, bracketLabel: d.bracketLabel, round: d.round, order: d.order, home: d.home, away: d.away, day: config.finalsDate, time: addMinutes(config.dailyStart, si * slotMinutes), field: fields[fi], homeResolved: null, awayResolved: null })
+      finalsOut.push({ id: `fm-${++fseq}`, eventId, categoryId: cat.id, bracketLabel: d.bracketLabel, round: d.round, order: d.order, home: d.home, away: d.away, day: config.finalsDate, time: addMinutes(config.dailyStart, si * slotMinutes), field: fields[fi], homeResolved: null, awayResolved: null, homeScore: null, awayScore: null })
       fi++; if (fi >= fields.length) { fi = 0; si++ }
     }
   }
