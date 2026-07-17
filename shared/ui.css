@@ -229,6 +229,10 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-final__teams { display: block; font-weight: 700; margin-top: 2px; }
 .pf-final__teams b { color: var(--color-text-muted); font-weight: 600; margin: 0 4px; }
 
+/* ---------- Tie-break badge ---------- */
+.pf-tiebadge { color: var(--color-action-accent, #ff6b00); font-weight: 700; }
+.pf-tienote { margin-top: 6px; font-size: 0.85em; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
   .pf-container { padding: var(--space-5) var(--space-4) var(--space-6); }
