@@ -101,18 +101,26 @@ function renderActions(): void {
 let selCat = ''
 let selGir = 'ALL'
 
+// Derive tabs from standings (the superset: every group has standing rows even
+// when it has <2 teams and thus no matches), so no girone/category is unreachable.
 function presentCats(): string[] {
   const seen: string[] = []
-  for (const m of getScheduledMatches(id)) if (!seen.includes(m.categoryId)) seen.push(m.categoryId)
+  for (const s of getStandings(id)) if (!seen.includes(s.categoryId)) seen.push(s.categoryId)
   return seen
 }
 function gironiOf(catId: string): string[] {
   const seen: string[] = []
-  for (const m of getScheduledMatches(id)) if (m.categoryId === catId && !seen.includes(m.groupLabel)) seen.push(m.groupLabel)
+  for (const s of getStandings(id)) if (s.categoryId === catId && !seen.includes(s.groupLabel)) seen.push(s.groupLabel)
   return seen
 }
 function renderViews(): void {
   const catsPresent = presentCats()
+  if (!catsPresent.length) {
+    document.getElementById('viewtabs')!.innerHTML = ''
+    document.getElementById('calendar')!.innerHTML = ''
+    document.getElementById('standings')!.innerHTML = ''
+    return
+  }
   if (!catsPresent.includes(selCat)) selCat = catsPresent[0]
   const gironi = gironiOf(selCat)
   if (selGir !== 'ALL' && !gironi.includes(selGir)) selGir = 'ALL'
