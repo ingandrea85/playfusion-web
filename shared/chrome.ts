@@ -4,6 +4,7 @@ import '@fontsource-variable/archivo'
 import '@fontsource-variable/hanken-grotesk'
 import '@fontsource-variable/spline-sans-mono'
 import type { ScheduledMatch, StandingRow, FinalMatch } from './mock/types'
+import { rankStanding } from './mock/ranking'
 
 export function renderOrganizerTopbar(active: string): string {
   const link = (href: string, label: string, key: string) =>
@@ -70,11 +71,7 @@ export function renderStandings(rows: StandingRow[], catName: (id: string) => st
     const groups: string[] = []
     for (const r of catRows) if (!groups.includes(r.groupLabel)) groups.push(r.groupLabel)
     return groups.map(g => {
-      const gr = catRows.filter(r => r.groupLabel === g)
-        .sort((a, b) => b.points - a.points
-          || (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst)
-          || b.goalsFor - a.goalsFor
-          || a.team.localeCompare(b.team))
+      const gr = rankStanding(catRows.filter(r => r.groupLabel === g))
       const body = gr.map((r, i) => `<tr>
         <td>${i + 1}</td><td class="pf-stand__team">${r.team}</td>
         <td>${r.played}</td><td>${r.won}</td><td>${r.drawn}</td><td>${r.lost}</td>
@@ -110,7 +107,7 @@ export function renderBracket(finals: FinalMatch[]): string {
     const roundsHtml = rounds.map(r => {
       const rows = lf.filter(f => f.round === r).sort((a, b) => a.order - b.order).map(m => `<li class="pf-final">
         <span class="pf-final__meta pf-mono">${m.day} · ${m.time} · ${m.field}</span>
-        <span class="pf-final__teams">${m.home} <b>vs</b> ${m.away}</span>
+        <span class="pf-final__teams">${m.homeResolved ?? m.home} <b>vs</b> ${m.awayResolved ?? m.away}</span>
       </li>`).join('')
       return `<div class="pf-final-round"><div class="pf-final-round__head pf-mono">${r}</div><ul class="pf-finallist">${rows}</ul></div>`
     }).join('')
