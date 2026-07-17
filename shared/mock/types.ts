@@ -151,6 +151,15 @@ export interface Organization {
   modules: string[]
 }
 
+export type PlanKey = 'FREE' | 'PRO' | 'BUSINESS'
+export type SubStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE'
+export interface Subscription {
+  organizationId: string
+  plan: PlanKey
+  status: SubStatus
+  renewsOn: string
+}
+
 export interface State {
   events: TournamentEvent[]
   categories: Category[]
@@ -162,4 +171,5 @@ export interface State {
   finals: FinalMatch[]
   groupSlots: GroupSlot[]
   organizations: Organization[]
+  subscriptions: Subscription[]
 }

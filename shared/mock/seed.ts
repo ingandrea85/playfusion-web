@@ -64,5 +64,11 @@ export function buildSeed(): State {
       { id: 'org-3', name: 'US Basse Valle', status: 'SUSPENDED', modules: ['M-Core', 'M-Compete', 'M-Broadcast'] },
       { id: 'org-4', name: 'GS Collina Padel', status: 'ACTIVE', modules: ['M-Core', 'M-Compete', 'M-Payments', 'M-Billing'] },
     ],
+    subscriptions: [
+      { organizationId: 'org-1', plan: 'PRO', status: 'ACTIVE', renewsOn: '2027-01-10' },
+      { organizationId: 'org-2', plan: 'FREE', status: 'TRIAL', renewsOn: '2026-08-15' },
+      { organizationId: 'org-3', plan: 'PRO', status: 'PAST_DUE', renewsOn: '2026-07-01' },
+      { organizationId: 'org-4', plan: 'BUSINESS', status: 'ACTIVE', renewsOn: '2027-03-20' },
+    ],
   }
 }

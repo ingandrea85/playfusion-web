@@ -1,4 +1,4 @@
-import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus } from './types'
+import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus, Subscription, PlanKey, SubStatus } from './types'
 import { buildSeed } from './seed'
 import { buildFixtures, splitIntoGroups, addMinutes } from './fixtures'
 import { buildFinals } from './finals'
@@ -225,5 +225,19 @@ export function setOrgModule(id: string, moduleKey: string, active: boolean): vo
   if (!o || moduleKey === 'M-Core') { save(state); return }
   if (active) { if (!o.modules.includes(moduleKey)) o.modules.push(moduleKey) }
   else o.modules = o.modules.filter(m => m !== moduleKey)
+  save(state)
+}
+
+export function getSubscription(orgId: string): Subscription | undefined {
+  return load().subscriptions.find(s => s.organizationId === orgId)
+}
+export function setSubscriptionPlan(orgId: string, plan: PlanKey): void {
+  const state = load()
+  const s = state.subscriptions.find(x => x.organizationId === orgId); if (s) s.plan = plan
+  save(state)
+}
+export function setSubscriptionStatus(orgId: string, status: SubStatus): void {
+  const state = load()
+  const s = state.subscriptions.find(x => x.organizationId === orgId); if (s) s.status = status
   save(state)
 }
