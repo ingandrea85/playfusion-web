@@ -103,3 +103,11 @@ export function renderBracket(finals: FinalMatch[]): string {
     return `<div class="pf-bracket"><div class="pf-bracket__head"><span class="pf-cat__label">${lb}</span></div>${roundsHtml}</div>`
   }).join('')
 }
+
+export function renderAdminTopbar(): string {
+  return `<a class="pf-brand" href="/apps/admin/organizations.html">play<b>fusion</b><small>Admin</small></a>
+    <nav>
+      <a href="/apps/admin/organizations.html" aria-current="page">Organizzazioni</a>
+      <a href="/index.html">Esci demo</a>
+    </nav>`
+}

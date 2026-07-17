@@ -25,6 +25,8 @@ export default defineConfig({
         calendar: r('apps/public/calendar.html'),
         standings: r('apps/public/standings.html'),
         bracket: r('apps/public/bracket.html'),
+        adminOrgs: r('apps/admin/organizations.html'),
+        adminOrg: r('apps/admin/organization.html'),
       },
     },
   },
