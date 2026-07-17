@@ -243,3 +243,30 @@ export function setSubscriptionStatus(orgId: string, status: SubStatus): void {
   const s = state.subscriptions.find(x => x.organizationId === orgId); if (s) s.status = status
   save(state)
 }
+
+function recomputeStandings(state: State, eventId: string): void {
+  for (const s of state.standings) {
+    if (s.eventId !== eventId) continue
+    s.played = 0; s.won = 0; s.drawn = 0; s.lost = 0; s.goalsFor = 0; s.goalsAgainst = 0; s.points = 0
+  }
+  for (const m of state.scheduledMatches) {
+    if (m.eventId !== eventId || m.homeScore === null || m.awayScore === null) continue
+    const h = state.standings.find(s => s.eventId === eventId && s.categoryId === m.categoryId && s.team === m.home)
+    const a = state.standings.find(s => s.eventId === eventId && s.categoryId === m.categoryId && s.team === m.away)
+    if (!h || !a) continue
+    h.played++; a.played++
+    h.goalsFor += m.homeScore; h.goalsAgainst += m.awayScore
+    a.goalsFor += m.awayScore; a.goalsAgainst += m.homeScore
+    if (m.homeScore > m.awayScore) { h.won++; h.points += 3; a.lost++ }
+    else if (m.homeScore < m.awayScore) { a.won++; a.points += 3; h.lost++ }
+    else { h.drawn++; a.drawn++; h.points++; a.points++ }
+  }
+}
+export function recordResult(matchId: string, homeScore: number, awayScore: number): void {
+  const state = load()
+  const m = state.scheduledMatches.find(x => x.id === matchId)
+  if (!m) { save(state); return }
+  m.homeScore = homeScore; m.awayScore = awayScore
+  recomputeStandings(state, m.eventId)
+  save(state)
+}

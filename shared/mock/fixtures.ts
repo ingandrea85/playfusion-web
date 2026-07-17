@@ -55,7 +55,7 @@ export function buildFixtures(
     let field = 0, slot = 0, day = 0
     for (const r of raw) {
       out.push({ id: `sm-${++seq}`, eventId, categoryId: cat.id, groupLabel: r.groupLabel,
-        day: days[day % days.length], time: addMinutes(dailyStart, slot * slotMinutes), field: fields[field], home: r.home, away: r.away })
+        day: days[day % days.length], time: addMinutes(dailyStart, slot * slotMinutes), field: fields[field], home: r.home, away: r.away, homeScore: null, awayScore: null })
       field++
       if (field >= fields.length) { field = 0; slot++; if (slot >= slotsPerDay) { slot = 0; day++ } }
     }

@@ -67,6 +67,8 @@ export interface ScheduledMatch {
   field: string
   home: string
   away: string
+  homeScore: number | null
+  awayScore: number | null
 }
 
 export interface StandingRow {
