@@ -13,6 +13,7 @@ function demoEvent(id: string, name: string, teams: string[], results: [number, 
     id, organizationId: 'org-1', name, sport: 'Calcio', location: 'Campo Demo',
     startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', template: 'PB-1',
     registrationsOpen: false, tieBreak: ['HEAD_TO_HEAD', 'GOAL_DIFFERENCE', 'GOALS_FOR'],
+    playbook: 'PB-1',
   }
   const category: Category = { id: catId, eventId: id, name: 'Unica', maxTeams: teams.length }
   const competition: Competition = {
@@ -66,6 +67,7 @@ export function buildSeed(): State {
       startDate: '2026-08-29', startTime: '09:00', endDate: '2026-08-30', template: 'PB-1',
       registrationsOpen: true,
       tieBreak: ['HEAD_TO_HEAD', 'GOAL_DIFFERENCE', 'GOALS_FOR'],
+      playbook: 'PB-1',
     }],
     categories: [
       { id: 'cat-1', eventId: 'evt-1', name: 'U10', maxTeams: 8 },
@@ -142,5 +144,17 @@ export function buildSeed(): State {
     state.finals.push(...d.finals)
   }
   for (const d of DEMOS) { recomputeStandings(state, d.event.id); resolveFinals(state, d.event.id) }
+  state.events.push({
+    id: 'evt-direct', organizationId: 'org-1', name: 'Demo · Iscrizione diretta', sport: 'Calcio',
+    location: 'Palasport Comunale', startDate: '2026-09-05', startTime: '09:00', endDate: '2026-09-05',
+    template: 'PB-1', playbook: 'PB-2', registrationsOpen: false,
+    tieBreak: ['HEAD_TO_HEAD', 'GOAL_DIFFERENCE', 'GOALS_FOR'],
+  })
+  state.categories.push({ id: 'evt-direct-cat', eventId: 'evt-direct', name: 'Open', maxTeams: 8 })
+  ;['Tigri Rosse', 'Falchi Blu', 'Leoni Verdi', 'Aquile Nere'].forEach((t, i) => state.registrations.push({
+    id: `reg-direct-${i + 1}`, eventId: 'evt-direct', categoryId: 'evt-direct-cat', teamName: t,
+    contactName: '', contactPhone: '', contactEmail: '', status: 'CONFIRMED', paymentStatus: 'UNPAID',
+    createdAt: '2026-08-01T09:00:00.000Z',
+  }))
   return state
 }

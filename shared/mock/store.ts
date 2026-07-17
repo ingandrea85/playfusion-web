@@ -21,13 +21,14 @@ export function resetDemo(): void { save(buildSeed()) }
 export function getEvents(): TournamentEvent[] { return load().events }
 export function getEvent(id: string): TournamentEvent | undefined { return load().events.find(e => e.id === id) }
 
-export function createEvent(input: { name: string; sport: string; location: string; startDate: string; startTime: string; endDate: string; tieBreak?: TieBreakCriterion[] }): TournamentEvent {
+export function createEvent(input: { name: string; sport: string; location: string; startDate: string; startTime: string; endDate: string; tieBreak?: TieBreakCriterion[]; playbook?: 'PB-1' | 'PB-2' }): TournamentEvent {
   const state = load()
   const nextNum = Math.max(1, ...state.events.map(e => Number(e.id.replace('evt-', '')) || 0)) + 1
   const event: TournamentEvent = {
     id: `evt-${nextNum}`, organizationId: 'org-1', name: input.name, sport: input.sport, location: input.location,
     startDate: input.startDate, startTime: input.startTime, endDate: input.endDate, template: 'PB-1', registrationsOpen: false,
     tieBreak: input.tieBreak ?? defaultTieBreak(input.sport),
+    playbook: input.playbook ?? 'PB-1',
   }
   state.events.push(event); save(state); return event
 }
@@ -59,6 +60,28 @@ export function addRegistration(input: {
     status: 'PENDING', paymentStatus: 'UNPAID', createdAt: new Date().toISOString(),
   }
   state.registrations.push(reg); save(state); return reg
+}
+export function addTeam(eventId: string, categoryId: string, teamName: string, contacts?: { contactName?: string; contactPhone?: string; contactEmail?: string }): Registration {
+  const state = load()
+  const reg: Registration = {
+    id: `reg-${state.registrations.length + 1}`, eventId, categoryId, teamName,
+    contactName: contacts?.contactName ?? '', contactPhone: contacts?.contactPhone ?? '', contactEmail: contacts?.contactEmail ?? '',
+    status: 'CONFIRMED', paymentStatus: 'UNPAID', createdAt: new Date().toISOString(),
+  }
+  state.registrations.push(reg); save(state); return reg
+}
+export function updateTeam(regId: string, patch: { teamName?: string; categoryId?: string; contactName?: string; contactPhone?: string; contactEmail?: string }): void {
+  const state = load()
+  const r = state.registrations.find(x => x.id === regId); if (r) Object.assign(r, patch)
+  save(state)
+}
+export function removeTeam(regId: string): void {
+  const state = load()
+  const r = state.registrations.find(x => x.id === regId)
+  if (!r) { save(state); return }
+  state.registrations = state.registrations.filter(x => x.id !== regId)
+  state.groupSlots = state.groupSlots.filter(s => !(s.eventId === r.eventId && s.categoryId === r.categoryId && s.team === r.teamName))
+  save(state)
 }
 export function confirmTeam(regId: string): void {
   const state = load()

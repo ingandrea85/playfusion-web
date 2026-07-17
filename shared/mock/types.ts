@@ -15,6 +15,7 @@ export interface TournamentEvent {
   template: string
   registrationsOpen: boolean
   tieBreak: TieBreakCriterion[]
+  playbook: 'PB-1' | 'PB-2'
 }
 
 export interface Category { id: string; eventId: string; name: string; maxTeams: number }
