@@ -1,5 +1,5 @@
-import { renderOrganizerTopbar, renderCalendar, renderStandings, renderTabs } from '../../shared/chrome'
-import { getCategories, getSchedule, getScheduledMatches, getStandings, generateSchedule, approveSchedule, publishSchedule } from '../../shared/mock/store'
+import { renderOrganizerTopbar, renderCalendar, renderStandings, renderTabs, renderBracket } from '../../shared/chrome'
+import { getCategories, getSchedule, getScheduledMatches, getStandings, getFinals, generateSchedule, approveSchedule, publishSchedule } from '../../shared/mock/store'
 import type { CategorySchedule, ScheduleConfig } from '../../shared/mock/types'
 
 document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
@@ -45,6 +45,7 @@ function readCat(scope: HTMLElement): CategorySchedule {
 function buildConfig(): ScheduleConfig {
   const dailyStart = (document.getElementById('dailyStart') as HTMLInputElement).value
   const slotsPerDay = Number((document.getElementById('slotsPerDay') as HTMLInputElement).value)
+  const finalsDate = (document.getElementById('finalsDate') as HTMLInputElement).value
   const byCategory: Record<string, CategorySchedule> = {}
   if (uniform) {
     const cs = readCat(document.getElementById('shared')!)
@@ -52,7 +53,7 @@ function buildConfig(): ScheduleConfig {
   } else {
     document.querySelectorAll<HTMLElement>('.js-catcfg').forEach(el => { byCategory[el.dataset.cat!] = readCat(el) })
   }
-  return { dailyStart, slotsPerDay, byCategory }
+  return { dailyStart, slotsPerDay, finalsDate, byCategory }
 }
 
 function renderWindow(): void {
@@ -63,6 +64,7 @@ function renderWindow(): void {
     <div class="pf-row" style="align-items:flex-end;gap:var(--space-3)">
       <div class="pf-field" style="flex:1;margin-bottom:0"><label>Inizio giornata</label><input id="dailyStart" type="time" value="${cfg.dailyStart}" ${dis} /></div>
       <div class="pf-field" style="flex:1;margin-bottom:0"><label>Slot per giornata</label><input id="slotsPerDay" type="number" min="1" value="${cfg.slotsPerDay}" ${dis} /></div>
+      <div class="pf-field" style="flex:1;margin-bottom:0"><label>Data finali</label><input id="finalsDate" type="date" value="${cfg.finalsDate}" ${dis} /></div>
     </div>`
 }
 
@@ -119,6 +121,7 @@ function renderViews(): void {
     document.getElementById('viewtabs')!.innerHTML = ''
     document.getElementById('calendar')!.innerHTML = ''
     document.getElementById('standings')!.innerHTML = ''
+    document.getElementById('finals')!.innerHTML = ''
     return
   }
   if (!catsPresent.includes(selCat)) selCat = catsPresent[0]
@@ -138,6 +141,10 @@ function renderViews(): void {
     `<div class="pf-pagehead" style="margin:var(--space-6) 0 var(--space-4)"><div class="pf-eyebrow">Classifiche</div><h2>Classifiche di girone</h2></div>`
     + `<p class="pf-muted" style="margin-top:calc(-1*var(--space-2));margin-bottom:var(--space-4)">Classifica iniziale · nessuna partita giocata.</p>`
     + renderStandings(getStandings(id).filter(s => inSel(s.categoryId, s.groupLabel)), catName)
+  document.getElementById('finals')!.innerHTML = getFinals(id).some(f => f.categoryId === selCat)
+    ? `<div class="pf-pagehead" style="margin:var(--space-6) 0 var(--space-4)"><div class="pf-eyebrow">Finali</div><h2>Fase finale</h2></div>`
+      + renderBracket(getFinals(id).filter(f => f.categoryId === selCat))
+    : ''
 }
 
 function render(): void {
@@ -149,6 +156,7 @@ function render(): void {
     document.getElementById('viewtabs')!.innerHTML = ''
     document.getElementById('calendar')!.innerHTML = ''
     document.getElementById('standings')!.innerHTML = ''
+    document.getElementById('finals')!.innerHTML = ''
     return
   }
   renderWindow()
@@ -158,6 +166,7 @@ function render(): void {
     document.getElementById('viewtabs')!.innerHTML = ''
     document.getElementById('calendar')!.innerHTML = ''
     document.getElementById('standings')!.innerHTML = ''
+    document.getElementById('finals')!.innerHTML = ''
   } else {
     renderViews()
   }

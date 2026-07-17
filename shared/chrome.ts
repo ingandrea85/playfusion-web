@@ -3,7 +3,7 @@
 import '@fontsource-variable/archivo'
 import '@fontsource-variable/hanken-grotesk'
 import '@fontsource-variable/spline-sans-mono'
-import type { ScheduledMatch, StandingRow } from './mock/types'
+import type { ScheduledMatch, StandingRow, FinalMatch } from './mock/types'
 
 export function renderOrganizerTopbar(active: string): string {
   const link = (href: string, label: string, key: string) =>
@@ -81,4 +81,24 @@ export function renderTabs(items: Array<{ key: string; label: string }>, activeK
   return `<div class="pf-tabs">${items.map(t =>
     `<button class="pf-tab" type="button" data-key="${t.key}"${t.key === activeKey ? ' aria-selected="true"' : ''}>${t.label}</button>`,
   ).join('')}</div>`
+}
+
+// Finals bracket — grouped by bracketLabel → round; placeholder matchups. Shared by E1 and E3.
+export function renderBracket(finals: FinalMatch[]): string {
+  if (!finals.length) return `<p class="pf-muted">Nessuna fase finale.</p>`
+  const labels: string[] = []
+  for (const f of finals) if (!labels.includes(f.bracketLabel)) labels.push(f.bracketLabel)
+  return labels.map(lb => {
+    const lf = finals.filter(f => f.bracketLabel === lb)
+    const rounds: string[] = []
+    for (const f of lf) if (!rounds.includes(f.round)) rounds.push(f.round)
+    const roundsHtml = rounds.map(r => {
+      const rows = lf.filter(f => f.round === r).sort((a, b) => a.order - b.order).map(m => `<li class="pf-final">
+        <span class="pf-final__meta pf-mono">${m.day} · ${m.time} · ${m.field}</span>
+        <span class="pf-final__teams">${m.home} <b>vs</b> ${m.away}</span>
+      </li>`).join('')
+      return `<div class="pf-final-round"><div class="pf-final-round__head pf-mono">${r}</div><ul class="pf-finallist">${rows}</ul></div>`
+    }).join('')
+    return `<div class="pf-bracket"><div class="pf-bracket__head"><span class="pf-cat__label">${lb}</span></div>${roundsHtml}</div>`
+  }).join('')
 }
