@@ -19,12 +19,19 @@ const gironiComposed = cats.length > 0 && cats.every(c => getGroupSlots(id).some
 const schedStatus = getSchedule(id)?.status ?? 'NONE'
 
 type Step = { label: string; href?: string; done: boolean; disabled?: boolean }
+const pb2 = event?.playbook === 'PB-2'
+document.getElementById('setup-title')!.textContent = `Setup — ${event?.playbook ?? 'PB-1'}`
+const rosterSteps: Step[] = pb2
+  ? [{ label: 'Inserisci squadre', href: `/apps/organizer/teams.html?event=${id}`, done: regs.some(r => r.status === 'CONFIRMED') }]
+  : [
+      { label: 'Apri iscrizioni', href: `/apps/organizer/registrations.html?event=${id}`, done: !!event?.registrationsOpen },
+      { label: 'Conferma squadre', href: `/apps/organizer/inbox.html?event=${id}`, done: regs.some(r => r.status === 'CONFIRMED') },
+      { label: 'Riscuoti quote', href: `/apps/organizer/payments.html?event=${id}`, done: anyPaid },
+    ]
 const steps: Step[] = [
   { label: 'Crea evento da template', done: !!event },
   { label: 'Configura categorie', href: `/apps/organizer/categories.html?event=${id}`, done: true },
-  { label: 'Apri iscrizioni', href: `/apps/organizer/registrations.html?event=${id}`, done: !!event?.registrationsOpen },
-  { label: 'Conferma squadre', href: `/apps/organizer/inbox.html?event=${id}`, done: regs.some(r => r.status === 'CONFIRMED') },
-  { label: 'Riscuoti quote', href: `/apps/organizer/payments.html?event=${id}`, done: anyPaid },
+  ...rosterSteps,
   { label: 'Configura competizione', href: `/apps/organizer/competition.html?event=${id}`, done: competitionConfigured },
   { label: 'Componi gironi', href: `/apps/organizer/gironi.html?event=${id}`, done: gironiComposed },
   { label: 'Genera calendario', href: `/apps/organizer/schedule.html?event=${id}`, done: schedStatus !== 'NONE' },

@@ -52,6 +52,7 @@ document.getElementById('form')!.addEventListener('submit', (ev) => {
     name: String(data.get('name')), sport: String(data.get('sport')), location: String(data.get('location')),
     startDate: String(data.get('startDate')), startTime: String(data.get('startTime')), endDate: String(data.get('endDate')),
     tieBreak: collect(),
+    playbook: (data.get('playbook') as 'PB-1' | 'PB-2') ?? 'PB-1',
   })
   location.href = `/apps/organizer/event-hub.html?event=${event.id}`
 })
