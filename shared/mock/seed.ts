@@ -114,6 +114,7 @@ export function buildSeed(): State {
     standings: [],
     finals: [],
     groupSlots: [],
+    tieOverrides: [],
     organizations: [
       { id: 'org-1', name: 'ASD Memorial Rivalta', status: 'ACTIVE', modules: ['M-Core', 'M-Compete', 'M-Broadcast', 'M-Payments'] },
       { id: 'org-2', name: 'Polisportiva Chierese', status: 'ACTIVE', modules: ['M-Core', 'M-Compete'] },

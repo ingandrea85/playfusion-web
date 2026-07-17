@@ -53,4 +53,18 @@ describe('rankStanding — policy engine', () => {
     rankStanding(rows, [], P)
     expect(rows.map(r => r.team)).toEqual(before)
   })
+
+  it('applies a matching override to a fully-tied group instead of marking it unresolved', () => {
+    const rows = [row('Alfa', 4, 3, 1), row('Bravo', 4, 3, 1)] // identical → tie
+    const res = rankStanding(rows, [mt('Alfa', 1, 'Bravo', 1)], P, [['Bravo', 'Alfa']])
+    expect(res.rows.map(r => r.team)).toEqual(['Bravo', 'Alfa'])
+    expect(res.unresolved).toEqual([])
+  })
+
+  it('ignores an override whose team set does not match the tied group', () => {
+    const rows = [row('Alfa', 4, 3, 1), row('Bravo', 4, 3, 1)]
+    const res = rankStanding(rows, [mt('Alfa', 1, 'Bravo', 1)], P, [['Alfa', 'Charlie']])
+    expect(res.rows.map(r => r.team)).toEqual(['Alfa', 'Bravo']) // name-stable fallback
+    expect(res.unresolved).toEqual([['Alfa', 'Bravo']])
+  })
 })

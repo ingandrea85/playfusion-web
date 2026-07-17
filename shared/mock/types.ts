@@ -127,6 +127,13 @@ export interface GroupSlot {
   groupLabel: string
 }
 
+export interface TieOverride {
+  eventId: string
+  categoryId: string
+  groupLabel: string
+  order: string[]
+}
+
 export interface ScheduledCategory {
   id: string
   legs: Legs
@@ -177,6 +184,7 @@ export interface State {
   standings: StandingRow[]
   finals: FinalMatch[]
   groupSlots: GroupSlot[]
+  tieOverrides: TieOverride[]
   organizations: Organization[]
   subscriptions: Subscription[]
 }

@@ -47,12 +47,16 @@ function tupleFor(crit: TieBreakCriterion, group: StandingRow[], matches: Schedu
   return headToHeadTuple(group, matches)
 }
 
-export function rankStanding(rows: StandingRow[], matches: ScheduledMatch[], policy: TieBreakCriterion[]): RankResult {
+export function rankStanding(rows: StandingRow[], matches: ScheduledMatch[], policy: TieBreakCriterion[], overrides: string[][] = []): RankResult {
   const unresolved: string[][] = []
 
   const order = (group: StandingRow[], ci: number): StandingRow[] => {
     if (group.length <= 1) return group
     if (ci >= policy.length) {
+      const names = group.map(r => r.team)
+      // Match only a genuine permutation of the tied group (exact set, no duplicates).
+      const ov = overrides.find(o => o.length === group.length && new Set(o).size === o.length && o.every(t => names.includes(t)))
+      if (ov) return ov.map(t => group.find(r => r.team === t)!) // resolved manually — not unresolved
       const sorted = [...group].sort((a, b) => a.team.localeCompare(b.team))
       unresolved.push(sorted.map(r => r.team))
       return sorted
