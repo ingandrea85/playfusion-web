@@ -95,4 +95,14 @@ describe('finals bracket — winner propagation', () => {
     expect(semi(1).homeShootout).toBeNull()
     expect(finale().homeResolved).toBe(semi(1).homeResolved) // regular-time winner, not the shootout
   })
+
+  it('correcting a semifinal back to undecided clears the already-propagated downstream slot', () => {
+    recordFinalResult(semi(1).id, 2, 0)
+    recordFinalResult(semi(2).id, 1, 0)
+    expect(finale().homeResolved).not.toBeNull() // populated
+    recordFinalResult(semi(1).id, 1, 1) // draw, no shootout → SF1 undecided again
+    expect(finale().homeResolved).toBeNull() // Vincente SF1 reverts
+    const tp = getFinals('evt-finals').find(f => f.round === 'Finale 3º/4º')!
+    expect(tp.homeResolved).toBeNull() // Perdente SF1 reverts too
+  })
 })
