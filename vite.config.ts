@@ -22,6 +22,7 @@ export default defineConfig({
         enroll: r('apps/public/enroll.html'),
         participants: r('apps/public/participants.html'),
         calendar: r('apps/public/calendar.html'),
+        standings: r('apps/public/standings.html'),
       },
     },
   },

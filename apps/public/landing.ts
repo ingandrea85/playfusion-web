@@ -22,4 +22,5 @@ document.getElementById('cta')!.innerHTML = `
   ${open
     ? `<a class="pf-btn pf-btn--primary pf-btn--lg" href="/apps/public/enroll.html?event=${id}">Iscrivi la squadra</a>`
     : `<p class="pf-muted">Le iscrizioni sono chiuse.</p>`}
-  ${published ? `<a class="pf-btn pf-btn--lg" style="margin-left:var(--space-2)" href="/apps/public/calendar.html?event=${id}">Calendario</a>` : ''}`
+  ${published ? `<a class="pf-btn pf-btn--lg" style="margin-left:var(--space-2)" href="/apps/public/calendar.html?event=${id}">Calendario</a>
+    <a class="pf-btn pf-btn--lg" style="margin-left:var(--space-2)" href="/apps/public/standings.html?event=${id}">Classifiche</a>` : ''}`
