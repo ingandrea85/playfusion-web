@@ -19,6 +19,7 @@ export default defineConfig({
         competition: r('apps/organizer/competition.html'),
         schedule: r('apps/organizer/schedule.html'),
         gironi: r('apps/organizer/gironi.html'),
+        teams: r('apps/organizer/teams.html'),
         landing: r('apps/public/landing.html'),
         enroll: r('apps/public/enroll.html'),
         participants: r('apps/public/participants.html'),
