@@ -3,7 +3,7 @@
 import '@fontsource-variable/archivo'
 import '@fontsource-variable/hanken-grotesk'
 import '@fontsource-variable/spline-sans-mono'
-import type { ScheduledMatch } from './mock/types'
+import type { ScheduledMatch, StandingRow } from './mock/types'
 
 export function renderOrganizerTopbar(active: string): string {
   const link = (href: string, label: string, key: string) =>
@@ -46,5 +46,32 @@ export function renderCalendar(matches: ScheduledMatch[], catName: (id: string) 
         <span class="pf-match__teams">${m.home} <b>vs</b> ${m.away}</span>
       </li>`).join('')
     return `<div class="pf-calday"><div class="pf-calday__head">${day}</div><ul class="pf-callist">${rows}</ul></div>`
+  }).join('')
+}
+
+// Standings tables — grouped by category → girone; zero-point rows. Shared by E1 and E3.
+export function renderStandings(rows: StandingRow[], catName: (id: string) => string): string {
+  if (!rows.length) return `<p class="pf-muted">Nessuna classifica.</p>`
+  const catIds: string[] = []
+  for (const r of rows) if (!catIds.includes(r.categoryId)) catIds.push(r.categoryId)
+  return catIds.map(catId => {
+    const catRows = rows.filter(r => r.categoryId === catId)
+    const groups: string[] = []
+    for (const r of catRows) if (!groups.includes(r.groupLabel)) groups.push(r.groupLabel)
+    return groups.map(g => {
+      const gr = catRows.filter(r => r.groupLabel === g)
+      const body = gr.map((r, i) => `<tr>
+        <td>${i + 1}</td><td class="pf-stand__team">${r.team}</td>
+        <td>${r.played}</td><td>${r.won}</td><td>${r.drawn}</td><td>${r.lost}</td>
+        <td>${r.goalsFor}</td><td>${r.goalsAgainst}</td><td>${r.goalsFor - r.goalsAgainst}</td><td><b>${r.points}</b></td>
+      </tr>`).join('')
+      return `<div class="pf-stand">
+        <div class="pf-stand__head"><span class="pf-cat__label">${catName(catId)}</span><span class="pf-mono">${g}</span></div>
+        <div class="pf-tablewrap"><table class="pf-standings">
+          <thead><tr><th>#</th><th>Squadra</th><th>G</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>Pt</th></tr></thead>
+          <tbody>${body}</tbody>
+        </table></div>
+      </div>`
+    }).join('')
   }).join('')
 }

@@ -1,5 +1,5 @@
-import { renderOrganizerTopbar, renderCalendar } from '../../shared/chrome'
-import { getCategories, getSchedule, getScheduledMatches, generateSchedule, approveSchedule, publishSchedule } from '../../shared/mock/store'
+import { renderOrganizerTopbar, renderCalendar, renderStandings } from '../../shared/chrome'
+import { getCategories, getSchedule, getScheduledMatches, getStandings, generateSchedule, approveSchedule, publishSchedule } from '../../shared/mock/store'
 import type { CategorySchedule, ScheduleConfig } from '../../shared/mock/types'
 
 document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
@@ -104,12 +104,17 @@ function render(): void {
     document.getElementById('window')!.innerHTML = ''
     document.getElementById('configarea')!.innerHTML = `<div class="pf-card pf-muted">Nessuna categoria. Aggiungile prima nello step Categorie.</div>`
     document.getElementById('actions')!.innerHTML = ''
+    document.getElementById('standings')!.innerHTML = ''
     return
   }
   renderWindow()
   renderConfigArea()
   renderActions()
   document.getElementById('calendar')!.innerHTML = schedule().status === 'NONE' ? '' : renderCalendar(getScheduledMatches(id), catName)
+  document.getElementById('standings')!.innerHTML = schedule().status === 'NONE' ? ''
+    : `<div class="pf-pagehead" style="margin:var(--space-6) 0 var(--space-4)"><div class="pf-eyebrow">Classifiche</div><h2>Classifiche di girone</h2></div>`
+      + `<p class="pf-muted" style="margin-top:calc(-1*var(--space-2));margin-bottom:var(--space-4)">Classifica iniziale · nessuna partita giocata.</p>`
+      + renderStandings(getStandings(id), catName)
 }
 
 const toggle = document.getElementById('uniform') as HTMLInputElement

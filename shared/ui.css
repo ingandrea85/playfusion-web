@@ -195,6 +195,19 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
   .pf-match__teams { margin-top: 0; }
 }
 
+/* ---------- Standings ---------- */
+.pf-tablewrap { overflow-x: auto; }
+.pf-stand { margin-bottom: var(--space-5); }
+.pf-stand__head { display: flex; align-items: baseline; gap: var(--space-3); margin-bottom: var(--space-2); }
+.pf-standings { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
+.pf-standings th { font-family: var(--font-mono); font-size: 11px; font-weight: 500; text-transform: uppercase;
+  color: var(--color-text-muted); text-align: right; padding: var(--space-2); border-bottom: 2px solid var(--color-border); }
+.pf-standings th:nth-child(2) { text-align: left; }
+.pf-standings td { font-family: var(--font-mono); text-align: right; padding: var(--space-2); border-bottom: 1px solid var(--color-border); }
+.pf-standings td.pf-stand__team { font-family: var(--font-sans); font-weight: 700; text-align: left; }
+.pf-standings td:first-child { color: var(--color-text-muted); }
+.pf-standings tr:last-child td { border-bottom: none; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
   .pf-container { padding: var(--space-5) var(--space-4) var(--space-6); }
