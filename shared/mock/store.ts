@@ -269,3 +269,12 @@ export function recordResult(matchId: string, homeScore: number, awayScore: numb
   resolveFinals(state, m.eventId)
   save(state)
 }
+
+export function recordFinalResult(finalMatchId: string, homeScore: number, awayScore: number): void {
+  const state = load()
+  const f = state.finals.find(x => x.id === finalMatchId)
+  if (!f) { save(state); return }
+  f.homeScore = homeScore; f.awayScore = awayScore
+  resolveFinals(state, f.eventId)
+  save(state)
+}

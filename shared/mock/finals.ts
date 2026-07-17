@@ -5,7 +5,7 @@ const slot = (pos: number, girone: string) => `${pos}ª ${girone}`
 function roundName(n: number): string {
   return n === 2 ? 'Finale' : n === 4 ? 'Semifinali' : n === 8 ? 'Quarti' : n === 16 ? 'Ottavi' : 'Turno'
 }
-function roundShort(round: string): string {
+export function roundShort(round: string): string {
   return round === 'Finale' ? 'F' : round === 'Semifinali' ? 'SF' : round === 'Quarti' ? 'QF' : round === 'Ottavi' ? 'OF' : 'T'
 }
 

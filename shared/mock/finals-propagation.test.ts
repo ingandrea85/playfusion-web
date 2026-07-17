@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { resetDemo, getFinals } from './store'
+import { resetDemo, getFinals, recordFinalResult } from './store'
 
 beforeEach(() => { localStorage.clear(); resetDemo() })
 
@@ -28,5 +28,42 @@ describe('finals bracket — demo fixture', () => {
     expect(f).toHaveLength(1)
     expect(f[0].home).toBe('1ª Girone A')
     expect(f[0].away).toBe('2ª Girone A')
+  })
+})
+
+describe('finals bracket — winner propagation', () => {
+  const finale = () => getFinals('evt-finals').find(f => f.round === 'Finale')!
+  const semi = (order: number) => getFinals('evt-finals').find(f => f.round === 'Semifinali' && f.order === order)!
+
+  it('propagates semifinal winners into the final', () => {
+    recordFinalResult(semi(1).id, 2, 0) // SF1 home wins
+    recordFinalResult(semi(2).id, 1, 0) // SF2 home wins
+    expect(finale().homeResolved).toBe(semi(1).homeResolved) // Vincente SF1
+    expect(finale().awayResolved).toBe(semi(2).homeResolved) // Vincente SF2
+  })
+
+  it('a drawn knockout match propagates no winner', () => {
+    recordFinalResult(semi(1).id, 1, 1) // draw
+    expect(finale().homeResolved).toBeNull()
+  })
+
+  it('correcting a result re-propagates', () => {
+    recordFinalResult(semi(1).id, 2, 0) // home wins
+    recordFinalResult(semi(2).id, 1, 0)
+    expect(finale().homeResolved).toBe(semi(1).homeResolved)
+    recordFinalResult(semi(1).id, 0, 2) // now away wins
+    expect(finale().homeResolved).toBe(semi(1).awayResolved)
+  })
+
+  it('the final winner is determined once the final is played', () => {
+    recordFinalResult(semi(1).id, 2, 0) // SF1 → Alfa
+    recordFinalResult(semi(2).id, 1, 0) // SF2 → Bravo
+    const f = finale()
+    expect(f.homeResolved).toBe(semi(1).homeResolved) // Vincente SF1 (Alfa)
+    recordFinalResult(f.id, 3, 1)                     // home wins the final
+    const played = getFinals('evt-finals').find(x => x.round === 'Finale')!
+    // champion = higher-scored resolved participant = Vincente SF1's team
+    const champion = played.homeScore! > played.awayScore! ? played.homeResolved : played.awayResolved
+    expect(champion).toBe(semi(1).homeResolved)
   })
 })
