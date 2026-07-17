@@ -100,6 +100,8 @@ export interface FinalMatch extends FinalDraw {
   day: string
   time: string
   field: string
+  homeResolved: string | null
+  awayResolved: string | null
 }
 
 export interface FixtureCategory {
