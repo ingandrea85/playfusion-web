@@ -176,10 +176,18 @@ function openFinalResultPanel(finalMatchId: string): void {
       <div class="pf-field" style="flex:1;margin-bottom:0"><label>${home}</label><input id="ff-home" type="number" min="0" value="${f.homeScore ?? 0}" /></div>
       <div class="pf-field" style="flex:1;margin-bottom:0"><label>${away}</label><input id="ff-away" type="number" min="0" value="${f.awayScore ?? 0}" /></div>
     </div>
+    <p class="pf-muted" style="margin:var(--space-3) 0 4px">Rigori — solo in caso di parità</p>
+    <div class="pf-row" style="align-items:flex-end;gap:var(--space-3)">
+      <div class="pf-field" style="flex:1;margin-bottom:0"><label>${home} (d.c.r.)</label><input id="ff-sh-home" type="number" min="0" value="${f.homeShootout ?? ''}" /></div>
+      <div class="pf-field" style="flex:1;margin-bottom:0"><label>${away} (d.c.r.)</label><input id="ff-sh-away" type="number" min="0" value="${f.awayShootout ?? ''}" /></div>
+    </div>
     <div class="pf-row" style="gap:var(--space-2)"><button class="pf-btn pf-btn--primary" id="ff-save">Salva</button><button class="pf-btn" id="ff-cancel">Annulla</button></div>
   </div>`
   document.getElementById('ff-save')!.addEventListener('click', () => {
-    recordFinalResult(finalMatchId, Number((document.getElementById('ff-home') as HTMLInputElement).value), Number((document.getElementById('ff-away') as HTMLInputElement).value))
+    const hs = (document.getElementById('ff-sh-home') as HTMLInputElement).value
+    const as = (document.getElementById('ff-sh-away') as HTMLInputElement).value
+    const shootout = hs !== '' && as !== '' ? { home: Number(hs), away: Number(as) } : undefined
+    recordFinalResult(finalMatchId, Number((document.getElementById('ff-home') as HTMLInputElement).value), Number((document.getElementById('ff-away') as HTMLInputElement).value), shootout)
     panel.innerHTML = ''
     renderViews()
   })

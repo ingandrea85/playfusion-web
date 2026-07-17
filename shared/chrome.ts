@@ -5,6 +5,7 @@ import '@fontsource-variable/hanken-grotesk'
 import '@fontsource-variable/spline-sans-mono'
 import type { ScheduledMatch, StandingRow, FinalMatch, TieBreakCriterion, TieOverride } from './mock/types'
 import { rankStanding } from './mock/ranking'
+import { decideMatch } from './mock/derive'
 
 export function renderOrganizerTopbar(active: string): string {
   const link = (href: string, label: string, key: string) =>
@@ -115,7 +116,8 @@ export function renderBracket(finals: FinalMatch[], editable = false): string {
         const home = m.homeResolved ?? m.home
         const away = m.awayResolved ?? m.away
         const played = m.homeScore !== null && m.awayScore !== null
-        const score = played ? `<span class="pf-final__score pf-mono">${m.homeScore} – ${m.awayScore}</span>` : `<b>vs</b>`
+        const dcr = m.homeShootout !== null && m.awayShootout !== null ? ` <span class="pf-final__dcr pf-mono">d.c.r. ${m.homeShootout}-${m.awayShootout}</span>` : ''
+        const score = played ? `<span class="pf-final__score pf-mono">${m.homeScore} – ${m.awayScore}</span>${dcr}` : `<b>vs</b>`
         const canPlay = editable && m.homeResolved !== null && m.awayResolved !== null
         const btn = canPlay ? `<button class="pf-btn pf-btn--ghost" data-final="${m.id}">Risultato</button>` : ''
         return `<li class="pf-final">
@@ -127,11 +129,8 @@ export function renderBracket(finals: FinalMatch[], editable = false): string {
       return `<div class="pf-final-round"><div class="pf-final-round__head pf-mono">${r}</div><ul class="pf-finallist">${rows}</ul></div>`
     }).join('')
     const fin = lf.find(f => f.round === 'Finale')
-    let champ = ''
-    if (fin && fin.homeResolved !== null && fin.awayResolved !== null && fin.homeScore !== null && fin.awayScore !== null && fin.homeScore !== fin.awayScore) {
-      const winner = fin.homeScore > fin.awayScore ? fin.homeResolved : fin.awayResolved
-      champ = `<div class="pf-champion">🏆 Campione: <b>${winner}</b></div>`
-    }
+    const champWinner = fin ? decideMatch(fin)?.winner : undefined
+    const champ = champWinner ? `<div class="pf-champion">🏆 Campione: <b>${champWinner}</b></div>` : ''
     return `<div class="pf-bracket"><div class="pf-bracket__head"><span class="pf-cat__label">${lb}</span></div>${roundsHtml}${champ}</div>`
   }).join('')
 }
