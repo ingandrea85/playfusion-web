@@ -11,6 +11,7 @@ Navigable mid-fidelity mockups for PlayFusion 2.0 web experiences.
 - **Standings** — generating the calendar also creates zero-point group standings (O6 `Standing`), shown in E1 under the calendar and on the public E3 `standings.html` once published.
 - **Finals** — generating also builds per-category finals brackets with placeholders (by `finalsType`, O6), scheduled on a global finals date; shown in E1 under standings and on the public E3 `bracket.html` once published.
 - **Gironi editor** (`apps/organizer/gironi.html`) — explicit group composition (O6): draw, move teams between gironi (select controls), lock; fixtures/standings/finals derive from it.
+- **Calendar editor** — reschedule a single match (campo/giorno/ora) from the E1 calendar (O7), allowed even after publish; public calendar reflects it, stays read-only.
 - **Tabs** — calendar/standings/finals filter by category + girone.
 
 State is fake: seed data + `localStorage` (`shared/mock/`). No backend, no framework.
