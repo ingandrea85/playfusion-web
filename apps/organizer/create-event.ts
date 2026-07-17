@@ -6,8 +6,9 @@ import type { TieBreakCriterion } from '../../shared/mock/types'
 document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
 
 const ALL: TieBreakCriterion[] = ['HEAD_TO_HEAD', 'GOAL_DIFFERENCE', 'GOALS_FOR']
+const sportInput = document.querySelector<HTMLInputElement>('input[name=sport]')!
 // Ordered working list; `enabled` marks which criteria are active (in this order).
-let policy: TieBreakCriterion[] = defaultTieBreak('Calcio')
+let policy: TieBreakCriterion[] = defaultTieBreak(sportInput.value)
 let enabled = new Set(policy)
 // Keep a stable ordered view of all criteria (active ones first, in policy order).
 let ordered: TieBreakCriterion[] = [...policy, ...ALL.filter(c => !policy.includes(c))]
@@ -34,7 +35,6 @@ function renderEditor(): void {
     b.addEventListener('click', () => { const i = Number(b.dataset.down); [ordered[i + 1], ordered[i]] = [ordered[i], ordered[i + 1]]; renderEditor() }))
 }
 
-const sportInput = document.querySelector<HTMLInputElement>('input[name=sport]')!
 sportInput.addEventListener('change', () => {
   policy = defaultTieBreak(sportInput.value)
   enabled = new Set(policy)
