@@ -45,7 +45,14 @@ export function buildSeed(): State {
       { id: 'comp-3', eventId: 'evt-1', categoryId: 'cat-3', format: 'GROUPS_KNOCKOUT', legs: 'SINGLE', groupsCount: 2, qualifiersPerGroup: 2, finalsType: 'PLACEMENT' },
     ],
     schedules: [
-      { eventId: 'evt-1', status: 'NONE', config: { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', slotsPerDay: 8 } },
+      { eventId: 'evt-1', status: 'NONE', config: {
+        dailyStart: '09:00', slotsPerDay: 8,
+        byCategory: {
+          'cat-1': { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10 },
+          'cat-2': { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10 },
+          'cat-3': { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10 },
+        },
+      } },
     ],
     scheduledMatches: [],
   }

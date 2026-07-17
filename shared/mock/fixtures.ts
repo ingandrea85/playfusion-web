@@ -1,4 +1,4 @@
-import type { FixtureCategory, ScheduleConfig, ScheduledMatch } from './types'
+import type { FixtureCategory, ScheduledMatch } from './types'
 
 function pairs(teams: string[]): Array<[string, string]> {
   const out: Array<[string, string]> = []
@@ -25,32 +25,35 @@ function addMinutes(hhmm: string, mins: number): string {
 }
 
 export function buildFixtures(
-  eventId: string, startDate: string, endDate: string, config: ScheduleConfig, cats: FixtureCategory[],
+  eventId: string, startDate: string, endDate: string,
+  dailyStart: string, slotsPerDay: number, cats: FixtureCategory[],
 ): ScheduledMatch[] {
-  const raw: Array<{ categoryId: string; groupLabel: string; home: string; away: string }> = []
+  const days = dateRange(startDate, endDate)
+  const out: ScheduledMatch[] = []
+  let seq = 0
   for (const cat of cats) {
     const groups = cat.format === 'ROUND_ROBIN' ? 1 : Math.max(1, cat.groupsCount)
     const buckets: string[][] = Array.from({ length: groups }, () => [])
     cat.teams.forEach((t, i) => buckets[i % groups].push(t))
+    const raw: Array<{ groupLabel: string; home: string; away: string }> = []
     buckets.forEach((bucket, gi) => {
       for (const [home, away] of pairs(bucket)) {
-        raw.push({ categoryId: cat.id, groupLabel: groupLabel(gi), home, away })
-        if (cat.legs === 'HOME_AWAY') raw.push({ categoryId: cat.id, groupLabel: groupLabel(gi), home: away, away: home })
+        raw.push({ groupLabel: groupLabel(gi), home, away })
+        if (cat.legs === 'HOME_AWAY') raw.push({ groupLabel: groupLabel(gi), home: away, away: home })
       }
     })
-  }
-  const days = dateRange(startDate, endDate)
-  const slotMinutes = config.periods * config.periodMinutes + config.breakMinutes
-  const fields = config.fields.length ? config.fields : ['Campo 1']
-  let field = 0, slot = 0, day = 0
-  return raw.map((r, idx) => {
-    const match: ScheduledMatch = {
-      id: `sm-${idx + 1}`, eventId, categoryId: r.categoryId, groupLabel: r.groupLabel,
-      day: days[day % days.length], time: addMinutes(config.dailyStart, slot * slotMinutes),
-      field: fields[field], home: r.home, away: r.away,
+    const fields = cat.fields.length ? cat.fields : ['Campo 1']
+    const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes
+    let field = 0, slot = 0, day = 0
+    for (const r of raw) {
+      out.push({
+        id: `sm-${++seq}`, eventId, categoryId: cat.id, groupLabel: r.groupLabel,
+        day: days[day % days.length], time: addMinutes(dailyStart, slot * slotMinutes),
+        field: fields[field], home: r.home, away: r.away,
+      })
+      field++
+      if (field >= fields.length) { field = 0; slot++; if (slot >= slotsPerDay) { slot = 0; day++ } }
     }
-    field++
-    if (field >= fields.length) { field = 0; slot++; if (slot >= config.slotsPerDay) { slot = 0; day++ } }
-    return match
-  })
+  }
+  return out
 }

@@ -35,13 +35,17 @@ export interface Competition extends CompetitionConfig {
 
 export type ScheduleStatus = 'NONE' | 'GENERATED' | 'APPROVED' | 'PUBLISHED'
 
-export interface ScheduleConfig {
+export interface CategorySchedule {
   fields: string[]
   periods: number
   periodMinutes: number
   breakMinutes: number
+}
+
+export interface ScheduleConfig {
   dailyStart: string
   slotsPerDay: number
+  byCategory: Record<string, CategorySchedule>
 }
 
 export interface Schedule {
@@ -69,6 +73,10 @@ export interface FixtureCategory {
   groupsCount: number
   legs: Legs
   teams: string[]
+  fields: string[]
+  periods: number
+  periodMinutes: number
+  breakMinutes: number
 }
 
 export interface Registration {
