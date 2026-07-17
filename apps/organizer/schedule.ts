@@ -1,64 +1,83 @@
 import { renderOrganizerTopbar, renderCalendar } from '../../shared/chrome'
-import {
-  getCategories, getSchedule, getScheduledMatches,
-  generateSchedule, approveSchedule, publishSchedule,
-} from '../../shared/mock/store'
-import type { ScheduleConfig } from '../../shared/mock/types'
+import { getCategories, getSchedule, getScheduledMatches, generateSchedule, approveSchedule, publishSchedule } from '../../shared/mock/store'
+import type { CategorySchedule, ScheduleConfig } from '../../shared/mock/types'
 
 document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
 document.getElementById('back')!.setAttribute('href', `/apps/organizer/event-hub.html?event=${id}`)
 
-const catName = (catId: string) => getCategories(id).find(c => c.id === catId)?.name ?? '—'
+const cats = getCategories(id)
+const catName = (catId: string) => cats.find(c => c.id === catId)?.name ?? '—'
 const schedule = () => getSchedule(id)!
-let fields = [...schedule().config.fields]
+const DEF: CategorySchedule = { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10 }
+const catCfg = (catId: string): CategorySchedule => schedule().config.byCategory[catId] ?? DEF
 
 function locked(): boolean { const s = schedule().status; return s === 'APPROVED' || s === 'PUBLISHED' }
+function sameCat(a: CategorySchedule, b: CategorySchedule): boolean {
+  return a.fields.join(',') === b.fields.join(',') && a.periods === b.periods && a.periodMinutes === b.periodMinutes && a.breakMinutes === b.breakMinutes
+}
+function allSame(): boolean {
+  const cs = cats.map(c => catCfg(c.id))
+  return cs.length > 0 && cs.every(x => sameCat(x, cs[0]))
+}
+let uniform = allSame()
 
-function renderConfig(): void {
+function flash(msg: string): void { document.getElementById('flash')!.innerHTML = `<div class="pf-flash">✓ ${msg}</div>` }
+
+function catConfigForm(cs: CategorySchedule, dis: string): string {
+  return `
+    <div class="pf-field"><label>Campi (separati da virgola)</label><input class="js-fields" value="${cs.fields.join(', ')}" ${dis} /></div>
+    <div class="pf-row" style="align-items:flex-end;gap:var(--space-3)">
+      <div class="pf-field" style="flex:1;margin-bottom:0"><label>N. tempi</label><input class="js-periods" type="number" min="1" value="${cs.periods}" ${dis} /></div>
+      <div class="pf-field" style="flex:1;margin-bottom:0"><label>Durata tempo (min)</label><input class="js-periodMinutes" type="number" min="1" value="${cs.periodMinutes}" ${dis} /></div>
+      <div class="pf-field" style="flex:1;margin-bottom:0"><label>Pausa (min)</label><input class="js-breakMinutes" type="number" min="0" value="${cs.breakMinutes}" ${dis} /></div>
+    </div>`
+}
+function readCat(scope: HTMLElement): CategorySchedule {
+  return {
+    fields: (scope.querySelector('.js-fields') as HTMLInputElement).value.split(',').map(s => s.trim()).filter(Boolean),
+    periods: Number((scope.querySelector('.js-periods') as HTMLInputElement).value),
+    periodMinutes: Number((scope.querySelector('.js-periodMinutes') as HTMLInputElement).value),
+    breakMinutes: Number((scope.querySelector('.js-breakMinutes') as HTMLInputElement).value),
+  }
+}
+
+function buildConfig(): ScheduleConfig {
+  const dailyStart = (document.getElementById('dailyStart') as HTMLInputElement).value
+  const slotsPerDay = Number((document.getElementById('slotsPerDay') as HTMLInputElement).value)
+  const byCategory: Record<string, CategorySchedule> = {}
+  if (uniform) {
+    const cs = readCat(document.getElementById('shared')!)
+    for (const c of cats) byCategory[c.id] = cs
+  } else {
+    document.querySelectorAll<HTMLElement>('.js-catcfg').forEach(el => { byCategory[el.dataset.cat!] = readCat(el) })
+  }
+  return { dailyStart, slotsPerDay, byCategory }
+}
+
+function renderWindow(): void {
   const cfg = schedule().config
   const dis = locked() ? 'disabled' : ''
-  const fieldRows = fields.map((f, i) =>
-    `<div class="pf-row" style="gap:var(--space-2);margin-bottom:var(--space-2)">
-       <input class="js-field" data-i="${i}" value="${f}" ${dis} style="flex:1;padding:11px var(--space-3);border:1px solid var(--color-border-strong);border-radius:var(--radius-2);font:inherit" />
-       ${locked() ? '' : `<button type="button" class="pf-btn js-rmfield" data-i="${i}">×</button>`}
-     </div>`).join('')
-  document.getElementById('config')!.innerHTML = `
-    <h2>Configurazione</h2>
-    <label class="pf-field"><span>Campi</span></label>
-    <div id="fieldlist">${fieldRows}</div>
-    ${locked() ? '' : `<button type="button" class="pf-btn" id="addfield">+ Aggiungi campo</button>`}
-    <div class="pf-row" style="align-items:flex-end;gap:var(--space-3);margin-top:var(--space-4)">
-      <div class="pf-field" style="flex:1;margin-bottom:0"><label>N. tempi</label><input id="periods" type="number" min="1" value="${cfg.periods}" ${dis} /></div>
-      <div class="pf-field" style="flex:1;margin-bottom:0"><label>Durata tempo (min)</label><input id="periodMinutes" type="number" min="1" value="${cfg.periodMinutes}" ${dis} /></div>
-      <div class="pf-field" style="flex:1;margin-bottom:0"><label>Pausa (min)</label><input id="breakMinutes" type="number" min="0" value="${cfg.breakMinutes}" ${dis} /></div>
-    </div>
+  document.getElementById('window')!.innerHTML = `
+    <h2>Finestra oraria</h2>
     <div class="pf-row" style="align-items:flex-end;gap:var(--space-3)">
       <div class="pf-field" style="flex:1;margin-bottom:0"><label>Inizio giornata</label><input id="dailyStart" type="time" value="${cfg.dailyStart}" ${dis} /></div>
       <div class="pf-field" style="flex:1;margin-bottom:0"><label>Slot per giornata</label><input id="slotsPerDay" type="number" min="1" value="${cfg.slotsPerDay}" ${dis} /></div>
-    </div>
-    ${locked() ? '<p class="pf-muted">Calendario approvato: configurazione bloccata.</p>'
-      : '<button class="pf-btn pf-btn--primary" id="generate" style="margin-top:var(--space-3)">Genera calendario</button>'}`
+    </div>`
+}
 
-  if (!locked()) {
-    document.querySelectorAll<HTMLInputElement>('.js-field').forEach(inp =>
-      inp.addEventListener('change', () => { fields[Number(inp.dataset.i)] = inp.value.trim() }))
-    document.querySelectorAll<HTMLButtonElement>('.js-rmfield').forEach(btn =>
-      btn.addEventListener('click', () => { fields.splice(Number(btn.dataset.i), 1); renderConfig() }))
-    document.getElementById('addfield')!.addEventListener('click', () => { fields.push(`Campo ${fields.length + 1}`); renderConfig() })
-    document.getElementById('generate')!.addEventListener('click', () => {
-      const cfgNew: ScheduleConfig = {
-        fields: fields.filter(Boolean),
-        periods: Number((document.getElementById('periods') as HTMLInputElement).value),
-        periodMinutes: Number((document.getElementById('periodMinutes') as HTMLInputElement).value),
-        breakMinutes: Number((document.getElementById('breakMinutes') as HTMLInputElement).value),
-        dailyStart: (document.getElementById('dailyStart') as HTMLInputElement).value,
-        slotsPerDay: Number((document.getElementById('slotsPerDay') as HTMLInputElement).value),
-      }
-      generateSchedule(id, cfgNew)
-      render()
-    })
+function renderConfigArea(): void {
+  const area = document.getElementById('configarea')!
+  if (locked()) { area.innerHTML = `<div class="pf-card pf-muted">Calendario approvato: configurazione bloccata.</div>`; return }
+  if (uniform) {
+    area.innerHTML = `<div class="pf-card" id="shared"><h2>Config di gioco (tutte le categorie)</h2>${catConfigForm(catCfg(cats[0].id), '')}</div>
+      <button class="pf-btn pf-btn--primary" id="generate">Genera calendario</button>`
+  } else {
+    area.innerHTML = cats.map(c =>
+      `<div class="pf-card js-catcfg" data-cat="${c.id}"><div class="pf-cat__label" style="margin-bottom:var(--space-3)">${c.name}</div>${catConfigForm(catCfg(c.id), '')}</div>`).join('')
+      + `<button class="pf-btn pf-btn--primary" id="generate">Genera calendario</button>`
   }
+  document.getElementById('generate')!.addEventListener('click', () => { generateSchedule(id, buildConfig()); render(); flash('Calendario generato') })
 }
 
 function renderActions(): void {
@@ -73,16 +92,27 @@ function renderActions(): void {
         <button class="pf-btn pf-btn--primary" id="publish" ${s === 'APPROVED' ? '' : 'disabled'}>Pubblica</button>
       </div>
     </div>`
-  const approve = document.getElementById('approve') as HTMLButtonElement
-  const publish = document.getElementById('publish') as HTMLButtonElement
-  if (!approve.disabled) approve.addEventListener('click', () => { approveSchedule(id); render() })
-  if (!publish.disabled) publish.addEventListener('click', () => { publishSchedule(id); render() })
+  const ap = document.getElementById('approve') as HTMLButtonElement
+  const pb = document.getElementById('publish') as HTMLButtonElement
+  if (!ap.disabled) ap.addEventListener('click', () => { approveSchedule(id); render(); flash('Calendario approvato') })
+  if (!pb.disabled) pb.addEventListener('click', () => { publishSchedule(id); render(); flash('Calendario pubblicato') })
 }
 
 function render(): void {
-  renderConfig()
+  document.getElementById('flash')!.innerHTML = ''
+  if (cats.length === 0) {
+    document.getElementById('window')!.innerHTML = ''
+    document.getElementById('configarea')!.innerHTML = `<div class="pf-card pf-muted">Nessuna categoria. Aggiungile prima nello step Categorie.</div>`
+    document.getElementById('actions')!.innerHTML = ''
+    return
+  }
+  renderWindow()
+  renderConfigArea()
   renderActions()
-  document.getElementById('calendar')!.innerHTML =
-    schedule().status === 'NONE' ? '' : renderCalendar(getScheduledMatches(id), catName)
+  document.getElementById('calendar')!.innerHTML = schedule().status === 'NONE' ? '' : renderCalendar(getScheduledMatches(id), catName)
 }
+
+const toggle = document.getElementById('uniform') as HTMLInputElement
+toggle.checked = uniform
+toggle.addEventListener('change', () => { uniform = toggle.checked; render() })
 render()
