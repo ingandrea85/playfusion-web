@@ -8,7 +8,9 @@ const KEY = 'playfusion-mock-v1'
 function load(): State {
   const raw = localStorage.getItem(KEY)
   if (!raw) { const seed = buildSeed(); localStorage.setItem(KEY, JSON.stringify(seed)); return seed }
-  return JSON.parse(raw) as State
+  // Merge over a fresh seed so a stale cache from an older version (missing newer
+  // top-level collections) defaults those keys instead of crashing on undefined.
+  return { ...buildSeed(), ...(JSON.parse(raw) as Partial<State>) } as State
 }
 function save(state: State): void { localStorage.setItem(KEY, JSON.stringify(state)) }
 
