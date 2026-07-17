@@ -39,13 +39,23 @@ export function renderCalendar(matches: ScheduledMatch[], catName: (id: string) 
   return days.map(day => {
     const rows = matches.filter(m => m.day === day)
       .sort((a, b) => a.time.localeCompare(b.time) || a.field.localeCompare(b.field))
-      .map(m => `<li class="pf-match">
-        <span class="pf-match__time">${m.time}</span>
-        <span class="pf-match__field">${m.field}</span>
-        <span class="pf-match__cat">${catName(m.categoryId)} · ${m.groupLabel}</span>
-        <span class="pf-match__teams">${m.home} <b>vs</b> ${m.away}</span>
-        ${editable ? `<button class="pf-btn js-editmatch" data-match="${m.id}" style="margin-top:6px">Modifica</button>` : ''}
-      </li>`).join('')
+      .map(m => {
+        const played = m.homeScore !== null && m.awayScore !== null
+        const teams = played
+          ? `${m.home} <b>${m.homeScore}–${m.awayScore}</b> ${m.away}`
+          : `${m.home} <b>vs</b> ${m.away}`
+        const actions = editable
+          ? `<button class="pf-btn js-editmatch" data-match="${m.id}" style="margin-top:6px">Modifica</button>
+             <button class="pf-btn js-resultmatch" data-match="${m.id}" style="margin-top:6px">Risultato</button>`
+          : ''
+        return `<li class="pf-match">
+          <span class="pf-match__time">${m.time}</span>
+          <span class="pf-match__field">${m.field}</span>
+          <span class="pf-match__cat">${catName(m.categoryId)} · ${m.groupLabel}</span>
+          <span class="pf-match__teams">${teams}</span>
+          ${actions}
+        </li>`
+      }).join('')
     return `<div class="pf-calday"><div class="pf-calday__head">${day}</div><ul class="pf-callist">${rows}</ul></div>`
   }).join('')
 }
@@ -61,6 +71,10 @@ export function renderStandings(rows: StandingRow[], catName: (id: string) => st
     for (const r of catRows) if (!groups.includes(r.groupLabel)) groups.push(r.groupLabel)
     return groups.map(g => {
       const gr = catRows.filter(r => r.groupLabel === g)
+        .sort((a, b) => b.points - a.points
+          || (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst)
+          || b.goalsFor - a.goalsFor
+          || a.team.localeCompare(b.team))
       const body = gr.map((r, i) => `<tr>
         <td>${i + 1}</td><td class="pf-stand__team">${r.team}</td>
         <td>${r.played}</td><td>${r.won}</td><td>${r.drawn}</td><td>${r.lost}</td>

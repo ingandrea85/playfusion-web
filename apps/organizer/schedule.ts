@@ -1,5 +1,5 @@
 import { renderOrganizerTopbar, renderCalendar, renderStandings, renderTabs, renderBracket } from '../../shared/chrome'
-import { getCategories, getSchedule, getScheduledMatches, getStandings, getFinals, generateSchedule, approveSchedule, publishSchedule, rescheduleMatch } from '../../shared/mock/store'
+import { getCategories, getSchedule, getScheduledMatches, getStandings, getFinals, generateSchedule, approveSchedule, publishSchedule, rescheduleMatch, recordResult } from '../../shared/mock/store'
 import type { CategorySchedule, ScheduleConfig } from '../../shared/mock/types'
 
 document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
@@ -142,6 +142,26 @@ function openEditPanel(matchId: string): void {
   document.getElementById('em-cancel')!.addEventListener('click', () => { panel.innerHTML = '' })
 }
 
+function openResultPanel(matchId: string): void {
+  const m = getScheduledMatches(id).find(x => x.id === matchId)
+  if (!m) return
+  const panel = document.getElementById('editmatch')!
+  panel.innerHTML = `<div class="pf-card">
+    <h2>Risultato</h2>
+    <p class="pf-muted">${m.home} vs ${m.away}</p>
+    <div class="pf-row" style="align-items:flex-end;gap:var(--space-3)">
+      <div class="pf-field" style="flex:1;margin-bottom:0"><label>${m.home}</label><input id="rs-home" type="number" min="0" value="${m.homeScore ?? 0}" /></div>
+      <div class="pf-field" style="flex:1;margin-bottom:0"><label>${m.away}</label><input id="rs-away" type="number" min="0" value="${m.awayScore ?? 0}" /></div>
+    </div>
+    <div class="pf-row" style="gap:var(--space-2)"><button class="pf-btn pf-btn--primary" id="rs-save">Salva</button><button class="pf-btn" id="rs-cancel">Annulla</button></div>
+  </div>`
+  document.getElementById('rs-save')!.addEventListener('click', () => {
+    recordResult(matchId, Number((document.getElementById('rs-home') as HTMLInputElement).value), Number((document.getElementById('rs-away') as HTMLInputElement).value))
+    renderViews()
+  })
+  document.getElementById('rs-cancel')!.addEventListener('click', () => { panel.innerHTML = '' })
+}
+
 function renderViews(): void {
   document.getElementById('editmatch')!.innerHTML = ''
   const catsPresent = presentCats()
@@ -167,6 +187,8 @@ function renderViews(): void {
   document.getElementById('calendar')!.innerHTML = renderCalendar(getScheduledMatches(id).filter(m => inSel(m.categoryId, m.groupLabel)), catName, true)
   document.querySelectorAll<HTMLButtonElement>('#calendar .js-editmatch').forEach(b =>
     b.addEventListener('click', () => openEditPanel(b.dataset.match!)))
+  document.querySelectorAll<HTMLButtonElement>('#calendar .js-resultmatch').forEach(b =>
+    b.addEventListener('click', () => openResultPanel(b.dataset.match!)))
   document.getElementById('standings')!.innerHTML =
     `<div class="pf-pagehead" style="margin:var(--space-6) 0 var(--space-4)"><div class="pf-eyebrow">Classifiche</div><h2>Classifiche di girone</h2></div>`
     + `<p class="pf-muted" style="margin-top:calc(-1*var(--space-2));margin-bottom:var(--space-4)">Classifica iniziale · nessuna partita giocata.</p>`
