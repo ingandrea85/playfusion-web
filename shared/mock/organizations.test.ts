@@ -25,7 +25,8 @@ describe('organizations', () => {
   })
 
   it('the seed event belongs to org-1 (others have no events)', () => {
-    expect(getEvents().filter(e => e.organizationId === 'org-1')).toHaveLength(1)
+    // evt-1 + 5 tie-break demo events all belong to org-1.
+    expect(getEvents().filter(e => e.organizationId === 'org-1')).toHaveLength(6)
     expect(getEvents().filter(e => e.organizationId === 'org-2')).toHaveLength(0)
   })
 })

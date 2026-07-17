@@ -1,7 +1,62 @@
-import type { State } from './types'
+import type { State, ScheduledMatch, StandingRow, FinalMatch, Competition, Schedule, GroupSlot, Category, TournamentEvent } from './types'
+import { recomputeStandings, resolveFinals } from './derive'
+
+// One demo event: single category, single girone "Girone A", SINGLE_GROUP_CROSSOVER
+// final (1ª vs 2ª). `results` are [homeIdx, homeScore, awayIdx, awayScore] over `teams`.
+function demoEvent(id: string, name: string, teams: string[], results: [number, number, number, number][]): {
+  event: TournamentEvent; category: Category; competition: Competition; schedule: Schedule;
+  groupSlots: GroupSlot[]; matches: ScheduledMatch[]; standings: StandingRow[]; finals: FinalMatch[]
+} {
+  const catId = `${id}-cat`
+  const event: TournamentEvent = {
+    id, organizationId: 'org-1', name, sport: 'Calcio', location: 'Campo Demo',
+    startDate: '2026-09-01', startTime: '09:00', endDate: '2026-09-01', template: 'PB-1',
+    registrationsOpen: false, tieBreak: ['HEAD_TO_HEAD', 'GOAL_DIFFERENCE', 'GOALS_FOR'],
+  }
+  const category: Category = { id: catId, eventId: id, name: 'Unica', maxTeams: teams.length }
+  const competition: Competition = {
+    id: `${id}-comp`, eventId: id, categoryId: catId, format: 'GROUPS_KNOCKOUT', legs: 'SINGLE',
+    groupsCount: 1, qualifiersPerGroup: 2, finalsType: 'SINGLE_GROUP_CROSSOVER', groupsLocked: true,
+  }
+  const schedule: Schedule = {
+    eventId: id, status: 'PUBLISHED', config: {
+      dailyStart: '09:00', slotsPerDay: 4, finalsDate: '2026-09-01',
+      byCategory: { [catId]: { fields: ['Campo 1'], periods: 2, periodMinutes: 20, breakMinutes: 10 } },
+    },
+  }
+  const groupSlots: GroupSlot[] = teams.map(t => ({ eventId: id, categoryId: catId, team: t, groupLabel: 'Girone A' }))
+  const matches: ScheduledMatch[] = results.map((r, i) => ({
+    id: `${id}-m${i + 1}`, eventId: id, categoryId: catId, groupLabel: 'Girone A',
+    day: '2026-09-01', time: '09:00', field: 'Campo 1',
+    home: teams[r[0]], away: teams[r[2]], homeScore: r[1], awayScore: r[3],
+  }))
+  const standings: StandingRow[] = teams.map(t => ({
+    eventId: id, categoryId: catId, groupLabel: 'Girone A', team: t,
+    played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0,
+  }))
+  const finals: FinalMatch[] = [{
+    id: `${id}-f1`, eventId: id, categoryId: catId, bracketLabel: 'Tabellone', round: 'Finale', order: 1,
+    home: '1ª Girone A', away: '2ª Girone A', day: '2026-09-01', time: '11:00', field: 'Campo 1',
+    homeResolved: null, awayResolved: null,
+  }]
+  return { event, category, competition, schedule, groupSlots, matches, standings, finals }
+}
+
+const DEMOS = [
+  demoEvent('evt-tie-h2h', 'Demo · Scontri diretti', ['Alfa', 'Bravo', 'Charlie', 'Delta'],
+    [[0, 1, 1, 0], [0, 1, 2, 0], [3, 1, 0, 0], [1, 1, 2, 0], [1, 1, 3, 0], [2, 1, 3, 0]]),
+  demoEvent('evt-tie-avulsa', 'Demo · Classifica avulsa', ['Alfa', 'Bravo', 'Charlie', 'Delta'],
+    [[0, 3, 1, 0], [1, 1, 2, 0], [2, 1, 0, 0], [0, 1, 3, 0], [1, 5, 3, 0], [2, 3, 3, 0]]),
+  demoEvent('evt-tie-dr', 'Demo · Differenza reti', ['Alfa', 'Bravo', 'Charlie'],
+    [[0, 1, 1, 1], [0, 3, 2, 0], [1, 1, 2, 0]]),
+  demoEvent('evt-tie-gf', 'Demo · Reti fatte', ['Alfa', 'Bravo', 'Charlie'],
+    [[0, 2, 1, 2], [0, 3, 2, 1], [1, 2, 2, 0]]),
+  demoEvent('evt-tie-open', 'Demo · Parità irrisolta', ['Alfa', 'Bravo', 'Charlie'],
+    [[0, 1, 1, 1], [0, 2, 2, 0], [1, 2, 2, 0]]),
+]
 
 export function buildSeed(): State {
-  return {
+  const state: State = {
     events: [{
       id: 'evt-1', organizationId: 'org-1', name: 'Torneo Estivo Memorial', sport: 'Calcio',
       location: 'Centro Sportivo Comunale · Rivalta (TO)',
@@ -72,4 +127,16 @@ export function buildSeed(): State {
       { organizationId: 'org-4', plan: 'BUSINESS', status: 'ACTIVE', renewsOn: '2027-03-20' },
     ],
   }
+  for (const d of DEMOS) {
+    state.events.push(d.event)
+    state.categories.push(d.category)
+    state.competitions.push(d.competition)
+    state.schedules.push(d.schedule)
+    state.groupSlots.push(...d.groupSlots)
+    state.scheduledMatches.push(...d.matches)
+    state.standings.push(...d.standings)
+    state.finals.push(...d.finals)
+  }
+  for (const d of DEMOS) { recomputeStandings(state, d.event.id); resolveFinals(state, d.event.id) }
+  return state
 }
