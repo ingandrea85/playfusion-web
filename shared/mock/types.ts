@@ -1,6 +1,8 @@
 export type RegStatus = 'PENDING' | 'CONFIRMED'
 export type PayStatus = 'UNPAID' | 'PAID'
 
+export type TieBreakCriterion = 'HEAD_TO_HEAD' | 'GOAL_DIFFERENCE' | 'GOALS_FOR'
+
 export interface TournamentEvent {
   id: string
   organizationId: string
@@ -12,6 +14,7 @@ export interface TournamentEvent {
   endDate: string
   template: string
   registrationsOpen: boolean
+  tieBreak: TieBreakCriterion[]
 }
 
 export interface Category { id: string; eventId: string; name: string; maxTeams: number }

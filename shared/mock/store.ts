@@ -1,8 +1,9 @@
-import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus, Subscription, PlanKey, SubStatus } from './types'
+import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus, Subscription, PlanKey, SubStatus, TieBreakCriterion } from './types'
 import { buildSeed } from './seed'
 import { buildFixtures, splitIntoGroups, addMinutes } from './fixtures'
 import { buildFinals } from './finals'
 import { rankStanding } from './ranking'
+import { defaultTieBreak } from './tiebreak'
 
 const KEY = 'playfusion-mock-v1'
 
@@ -20,11 +21,13 @@ export function resetDemo(): void { save(buildSeed()) }
 export function getEvents(): TournamentEvent[] { return load().events }
 export function getEvent(id: string): TournamentEvent | undefined { return load().events.find(e => e.id === id) }
 
-export function createEvent(input: { name: string; sport: string; location: string; startDate: string; startTime: string; endDate: string }): TournamentEvent {
+export function createEvent(input: { name: string; sport: string; location: string; startDate: string; startTime: string; endDate: string; tieBreak?: TieBreakCriterion[] }): TournamentEvent {
   const state = load()
+  const nextNum = Math.max(1, ...state.events.map(e => Number(e.id.replace('evt-', '')) || 0)) + 1
   const event: TournamentEvent = {
-    id: `evt-${state.events.length + 1}`, organizationId: 'org-1', name: input.name, sport: input.sport, location: input.location,
+    id: `evt-${nextNum}`, organizationId: 'org-1', name: input.name, sport: input.sport, location: input.location,
     startDate: input.startDate, startTime: input.startTime, endDate: input.endDate, template: 'PB-1', registrationsOpen: false,
+    tieBreak: input.tieBreak ?? defaultTieBreak(input.sport),
   }
   state.events.push(event); save(state); return event
 }

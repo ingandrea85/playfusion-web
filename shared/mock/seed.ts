@@ -7,6 +7,7 @@ export function buildSeed(): State {
       location: 'Centro Sportivo Comunale · Rivalta (TO)',
       startDate: '2026-08-29', startTime: '09:00', endDate: '2026-08-30', template: 'PB-1',
       registrationsOpen: true,
+      tieBreak: ['HEAD_TO_HEAD', 'GOAL_DIFFERENCE', 'GOALS_FOR'],
     }],
     categories: [
       { id: 'cat-1', eventId: 'evt-1', name: 'U10', maxTeams: 8 },
