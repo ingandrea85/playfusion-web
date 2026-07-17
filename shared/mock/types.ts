@@ -30,6 +30,7 @@ export interface CompetitionConfig {
   groupsCount: number
   qualifiersPerGroup: number
   finalsType: FinalsType
+  thirdPlace?: boolean
 }
 
 export interface Competition extends CompetitionConfig {
@@ -108,6 +109,8 @@ export interface FinalMatch extends FinalDraw {
   awayResolved: string | null
   homeScore: number | null
   awayScore: number | null
+  homeShootout: number | null
+  awayShootout: number | null
 }
 
 export interface FixtureCategory {

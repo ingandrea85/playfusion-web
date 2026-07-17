@@ -12,6 +12,7 @@ const DEFAULT: CompetitionConfig = { format: 'GROUPS_KNOCKOUT', legs: 'SINGLE', 
 function sameConfig(a: CompetitionConfig, b: CompetitionConfig): boolean {
   return a.format === b.format && a.legs === b.legs && a.groupsCount === b.groupsCount
     && a.qualifiersPerGroup === b.qualifiersPerGroup && a.finalsType === b.finalsType
+    && (a.thirdPlace ?? false) === (b.thirdPlace ?? false)
 }
 function allSame(): boolean {
   const comps = cats.map(c => getCompetition(c.id))
@@ -44,6 +45,7 @@ function configFields(cfg: CompetitionConfig): string {
           ${opt('SINGLE_GROUP_CROSSOVER', cfg.finalsType, 'Crossover girone unico')}
           ${opt('SPLIT_GROUP_FINALS', cfg.finalsType, 'Split-group')}
         </select></div>
+      <div class="pf-field"><label><input type="checkbox" name="thirdPlace" ${cfg.thirdPlace ? 'checked' : ''} /> Finale 3º/4º</label></div>
     </div>`
 }
 
@@ -55,6 +57,7 @@ function readConfig(form: HTMLFormElement): CompetitionConfig {
     groupsCount: Number(d.get('groupsCount')),
     qualifiersPerGroup: Number(d.get('qualifiersPerGroup')),
     finalsType: d.get('finalsType') as CompetitionConfig['finalsType'],
+    thirdPlace: (form.querySelector('input[name=thirdPlace]') as HTMLInputElement | null)?.checked ?? false,
   }
 }
 

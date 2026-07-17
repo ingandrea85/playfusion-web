@@ -179,13 +179,13 @@ export function generateSchedule(eventId: string, config: ScheduleConfig): void 
   for (const { cat, groups } of resolved) {
     const comp = state.competitions.find(k => k.categoryId === cat.id)
     if (!comp) continue
-    const draws = buildFinals(groups.map(g => g.groupLabel), comp.qualifiersPerGroup, comp.finalsType)
+    const draws = buildFinals(groups.map(g => g.groupLabel), comp.qualifiersPerGroup, comp.finalsType, comp.thirdPlace ?? false)
     if (!draws.length) continue
     const fields = cat.fields.length ? cat.fields : ['Campo 1']
     const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes
     let fi = 0, si = 0
     for (const d of draws) {
-      finalsOut.push({ id: `fm-${++fseq}`, eventId, categoryId: cat.id, bracketLabel: d.bracketLabel, round: d.round, order: d.order, home: d.home, away: d.away, day: config.finalsDate, time: addMinutes(config.dailyStart, si * slotMinutes), field: fields[fi], homeResolved: null, awayResolved: null, homeScore: null, awayScore: null })
+      finalsOut.push({ id: `fm-${++fseq}`, eventId, categoryId: cat.id, bracketLabel: d.bracketLabel, round: d.round, order: d.order, home: d.home, away: d.away, day: config.finalsDate, time: addMinutes(config.dailyStart, si * slotMinutes), field: fields[fi], homeResolved: null, awayResolved: null, homeScore: null, awayScore: null, homeShootout: null, awayShootout: null })
       fi++; if (fi >= fields.length) { fi = 0; si++ }
     }
   }

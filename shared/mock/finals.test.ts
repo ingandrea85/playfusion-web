@@ -32,3 +32,19 @@ describe('buildFinals', () => {
     ])
   })
 })
+
+describe('buildFinals — third place', () => {
+  it('emits a Finale 3º/4º between the semifinal losers when thirdPlace is on (crossover Q4)', () => {
+    const draws = buildFinals(['Girone A'], 4, 'SINGLE_GROUP_CROSSOVER', true)
+    const tp = draws.find(d => d.round === 'Finale 3º/4º')
+    expect(tp).toBeDefined()
+    expect(tp!.home).toBe('Perdente SF1')
+    expect(tp!.away).toBe('Perdente SF2')
+  })
+  it('emits no third place when thirdPlace is off', () => {
+    expect(buildFinals(['Girone A'], 4, 'SINGLE_GROUP_CROSSOVER', false).some(d => d.round === 'Finale 3º/4º')).toBe(false)
+  })
+  it('emits no third place for a single final (Q2) even with thirdPlace on', () => {
+    expect(buildFinals(['Girone A'], 2, 'SINGLE_GROUP_CROSSOVER', true).some(d => d.round === 'Finale 3º/4º')).toBe(false)
+  })
+})

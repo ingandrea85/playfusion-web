@@ -29,6 +29,15 @@ describe('finals bracket — demo fixture', () => {
     expect(f[0].home).toBe('1ª Girone A')
     expect(f[0].away).toBe('2ª Girone A')
   })
+
+  it('evt-finals includes a Finale 3º/4º (thirdPlace on)', () => {
+    const f = getFinals('evt-finals')
+    const tp = f.find(x => x.round === 'Finale 3º/4º')
+    expect(tp).toBeDefined()
+    expect(tp!.home).toBe('Perdente SF1')
+    expect(tp!.away).toBe('Perdente SF2')
+    expect(tp!.homeShootout).toBeNull()
+  })
 })
 
 describe('finals bracket — winner propagation', () => {

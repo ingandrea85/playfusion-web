@@ -9,7 +9,7 @@ export function roundShort(round: string): string {
   return round === 'Finale' ? 'F' : round === 'Semifinali' ? 'SF' : round === 'Quarti' ? 'QF' : round === 'Ottavi' ? 'OF' : 'T'
 }
 
-function singleElim(slots: string[], bracketLabel: string): FinalDraw[] {
+function singleElim(slots: string[], bracketLabel: string, thirdPlace = false): FinalDraw[] {
   const draws: FinalDraw[] = []
   let current = [...slots]
   while (current.length >= 2) {
@@ -23,17 +23,20 @@ function singleElim(slots: string[], bracketLabel: string): FinalDraw[] {
       order++
     }
     if (current.length % 2 === 1) winners.push(current[current.length - 1])
+    if (thirdPlace && current.length === 4) {
+      draws.push({ bracketLabel, round: 'Finale 3º/4º', order: 1, home: `Perdente ${rs}1`, away: `Perdente ${rs}2` })
+    }
     current = winners
   }
   return draws
 }
 
-export function buildFinals(gironi: string[], qualifiersPerGroup: number, finalsType: FinalsType): FinalDraw[] {
+export function buildFinals(gironi: string[], qualifiersPerGroup: number, finalsType: FinalsType, thirdPlace = false): FinalDraw[] {
   const Q = Math.max(0, qualifiersPerGroup)
   if (!gironi.length || Q < 1) return []
   if (finalsType === 'SINGLE_GROUP_CROSSOVER') {
     const g = gironi[0]
-    if (Q >= 4) return singleElim([slot(1, g), slot(4, g), slot(2, g), slot(3, g)], 'Tabellone')
+    if (Q >= 4) return singleElim([slot(1, g), slot(4, g), slot(2, g), slot(3, g)], 'Tabellone', thirdPlace)
     if (Q >= 2) return [{ bracketLabel: 'Tabellone', round: 'Finale', order: 1, home: slot(1, g), away: slot(2, g) }]
     return []
   }
@@ -41,7 +44,7 @@ export function buildFinals(gironi: string[], qualifiersPerGroup: number, finals
     const out: FinalDraw[] = []
     for (let p = 1; p <= Q; p++) {
       const label = p === 1 ? 'Tabellone Oro' : p === 2 ? 'Tabellone Argento' : `Tabellone ${p}`
-      out.push(...singleElim(gironi.map(g => slot(p, g)), label))
+      out.push(...singleElim(gironi.map(g => slot(p, g)), label, thirdPlace))
     }
     return out
   }
