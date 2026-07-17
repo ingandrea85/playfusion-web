@@ -8,6 +8,7 @@ Navigable mid-fidelity mockups for PlayFusion 2.0 web experiences.
 - **E1 Organizer** calendar (`apps/organizer/schedule.html`) — O7: configure fields + match params, generate a plausible calendar from confirmed teams and the O6 structure, approve, publish.
 - **E3 Public** (`apps/public/`) — public landing + team enrollment.
 - **E3 Public** calendar (`apps/public/calendar.html`) — read-only match calendar, shown once the schedule is published.
+- **Standings** — generating the calendar also creates zero-point group standings (O6 `Standing`), shown in E1 under the calendar and on the public E3 `standings.html` once published.
 
 State is fake: seed data + `localStorage` (`shared/mock/`). No backend, no framework.
 
@@ -26,4 +27,4 @@ the confirmed team appears on the public participants page. "Reset demo" (hub) r
 
 ## Not included
 E2 Referee (separate mobile repo), E4 Admin, real backend wiring, Auth0, deploy,
-PB-1 steps after "quota pagata" (shown disabled).
+live Operations (real results/points, O8), finals brackets with placeholders (next slice).
