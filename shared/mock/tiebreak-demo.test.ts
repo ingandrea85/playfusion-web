@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { resetDemo, getEvents, getStandings, getFinals } from './store'
+import { resetDemo, getEvents, getStandings, getFinals, getScheduledMatches, getTieOverrides, setTieOverride } from './store'
 import { rankStanding } from './ranking'
 import { defaultTieBreak } from './tiebreak'
-import { getScheduledMatches } from './store'
 
 const rankOf = (eventId: string) => {
   const rows = getStandings(eventId)
@@ -53,5 +52,22 @@ describe('tie-break demo events', () => {
     const f = getFinals('evt-tie-h2h')[0]
     expect(f.homeResolved).toBe('Alfa')
     expect(f.awayResolved).toBe('Bravo')
+  })
+
+  it('a manual override resolves the open event finals slots in the chosen order', () => {
+    const cat = 'evt-tie-open-cat'
+    setTieOverride('evt-tie-open', cat, 'Girone A', ['Bravo', 'Alfa'])
+    const f = getFinals('evt-tie-open')[0]
+    expect(f.homeResolved).toBe('Bravo') // 1ª Girone A
+    expect(f.awayResolved).toBe('Alfa')  // 2ª Girone A
+    expect(getTieOverrides('evt-tie-open')).toHaveLength(1)
+  })
+
+  it('a non-matching override is ignored (slots stay placeholders)', () => {
+    const cat = 'evt-tie-open-cat'
+    setTieOverride('evt-tie-open', cat, 'Girone A', ['Alfa', 'Charlie']) // wrong set
+    const f = getFinals('evt-tie-open')[0]
+    expect(f.homeResolved).toBeNull()
+    expect(f.awayResolved).toBeNull()
   })
 })

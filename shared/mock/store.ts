@@ -1,4 +1,4 @@
-import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus, Subscription, PlanKey, SubStatus, TieBreakCriterion } from './types'
+import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus, Subscription, PlanKey, SubStatus, TieBreakCriterion, TieOverride } from './types'
 import { buildSeed } from './seed'
 import { buildFixtures, splitIntoGroups, addMinutes } from './fixtures'
 import { buildFinals } from './finals'
@@ -187,6 +187,17 @@ export function getFinals(eventId: string): FinalMatch[] {
 }
 export function getGroupSlots(eventId: string): GroupSlot[] {
   return load().groupSlots.filter(s => s.eventId === eventId)
+}
+export function getTieOverrides(eventId: string): TieOverride[] {
+  return load().tieOverrides.filter(o => o.eventId === eventId)
+}
+export function setTieOverride(eventId: string, categoryId: string, groupLabel: string, order: string[]): void {
+  const state = load()
+  const existing = state.tieOverrides.find(o => o.eventId === eventId && o.categoryId === categoryId && o.groupLabel === groupLabel)
+  if (existing) existing.order = order
+  else state.tieOverrides.push({ eventId, categoryId, groupLabel, order })
+  resolveFinals(state, eventId)
+  save(state)
 }
 export function drawGroups(eventId: string, categoryId: string): void {
   const state = load()

@@ -34,7 +34,8 @@ function resolveSlot(state: State, eventId: string, categoryId: string, placehol
   const policy = state.events.find(e => e.id === eventId)?.tieBreak ?? []
   const rows = state.standings.filter(s => s.eventId === eventId && s.categoryId === categoryId && s.groupLabel === group)
   const matches = state.scheduledMatches.filter(m => m.eventId === eventId && m.categoryId === categoryId && m.groupLabel === group)
-  const res = rankStanding(rows, matches, policy)
+  const overrides = state.tieOverrides.filter(o => o.eventId === eventId && o.categoryId === categoryId && o.groupLabel === group).map(o => o.order)
+  const res = rankStanding(rows, matches, policy, overrides)
   const team = res.rows[pos - 1]?.team ?? null
   if (team === null) return null
   // Do not qualify a team whose exact position is still undecided.
