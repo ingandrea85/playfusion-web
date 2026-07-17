@@ -1,6 +1,6 @@
-import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, FixtureCategory, State, TournamentEvent } from './types'
+import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory } from './types'
 import { buildSeed } from './seed'
-import { buildFixtures, buildGroups, addMinutes } from './fixtures'
+import { buildFixtures, splitIntoGroups, addMinutes } from './fixtures'
 import { buildFinals } from './finals'
 
 const KEY = 'playfusion-mock-v1'
@@ -102,6 +102,14 @@ function ensureSchedule(state: State, eventId: string): Schedule {
   }
   return s
 }
+function resolveGroups(state: State, eventId: string, cat: FixtureCategory): Array<{ groupLabel: string; teams: string[] }> {
+  const slots = state.groupSlots.filter(s => s.eventId === eventId && s.categoryId === cat.id)
+  if (slots.length) {
+    const labels = [...new Set(slots.map(s => s.groupLabel))].sort()
+    return labels.map(lb => ({ groupLabel: lb, teams: slots.filter(s => s.groupLabel === lb).map(s => s.team) }))
+  }
+  return splitIntoGroups(cat)
+}
 export function generateSchedule(eventId: string, config: ScheduleConfig): void {
   const state = load()
   const sched = ensureSchedule(state, eventId)
@@ -121,21 +129,24 @@ export function generateSchedule(eventId: string, config: ScheduleConfig): void 
       fields: cs.fields, periods: cs.periods, periodMinutes: cs.periodMinutes, breakMinutes: cs.breakMinutes,
     }
   })
-  const matches = buildFixtures(eventId, event.startDate, event.endDate, config.dailyStart, config.slotsPerDay, cats)
+  const resolved = cats.map(cat => ({ cat, groups: resolveGroups(state, eventId, cat) }))
+  const schedCats: ScheduledCategory[] = resolved.map(({ cat, groups }) => ({
+    id: cat.id, legs: cat.legs, fields: cat.fields, periods: cat.periods, periodMinutes: cat.periodMinutes, breakMinutes: cat.breakMinutes, groups,
+  }))
+  const matches = buildFixtures(eventId, event.startDate, event.endDate, config.dailyStart, config.slotsPerDay, schedCats)
   state.scheduledMatches = state.scheduledMatches.filter(m => m.eventId !== eventId).concat(matches)
-  const groups = buildGroups(cats)
+
   state.standings = state.standings.filter(s => s.eventId !== eventId)
-  for (const g of groups) for (const team of g.teams) {
-    state.standings.push({ eventId, categoryId: g.categoryId, groupLabel: g.groupLabel, team,
-      played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 })
+  for (const { cat, groups } of resolved) for (const g of groups) for (const team of g.teams) {
+    state.standings.push({ eventId, categoryId: cat.id, groupLabel: g.groupLabel, team, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 })
   }
+
   const finalsOut: FinalMatch[] = []
   let fseq = 0
-  for (const cat of cats) {
+  for (const { cat, groups } of resolved) {
     const comp = state.competitions.find(k => k.categoryId === cat.id)
     if (!comp) continue
-    const gironi = buildGroups([cat]).map(g => g.groupLabel)
-    const draws = buildFinals(gironi, comp.qualifiersPerGroup, comp.finalsType)
+    const draws = buildFinals(groups.map(g => g.groupLabel), comp.qualifiersPerGroup, comp.finalsType)
     if (!draws.length) continue
     const fields = cat.fields.length ? cat.fields : ['Campo 1']
     const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes
@@ -166,4 +177,31 @@ export function getStandings(eventId: string): StandingRow[] {
 }
 export function getFinals(eventId: string): FinalMatch[] {
   return load().finals.filter(f => f.eventId === eventId)
+}
+export function getGroupSlots(eventId: string): GroupSlot[] {
+  return load().groupSlots.filter(s => s.eventId === eventId)
+}
+export function drawGroups(eventId: string, categoryId: string): void {
+  const state = load()
+  const comp = state.competitions.find(k => k.categoryId === categoryId)
+  if (!comp || comp.groupsLocked) { save(state); return }
+  const teams = state.registrations.filter(r => r.eventId === eventId && r.categoryId === categoryId && r.status === 'CONFIRMED').map(r => r.teamName)
+  const groups = splitIntoGroups({ format: comp.format, groupsCount: comp.groupsCount, teams })
+  state.groupSlots = state.groupSlots.filter(s => !(s.eventId === eventId && s.categoryId === categoryId))
+  for (const g of groups) for (const team of g.teams) state.groupSlots.push({ eventId, categoryId, team, groupLabel: g.groupLabel })
+  save(state)
+}
+export function moveTeam(eventId: string, categoryId: string, team: string, toGroupLabel: string): void {
+  const state = load()
+  const comp = state.competitions.find(k => k.categoryId === categoryId)
+  if (comp?.groupsLocked) { save(state); return }
+  const s = state.groupSlots.find(x => x.eventId === eventId && x.categoryId === categoryId && x.team === team)
+  if (s) s.groupLabel = toGroupLabel
+  save(state)
+}
+export function setGroupsLocked(categoryId: string, locked: boolean): void {
+  const state = load()
+  const comp = state.competitions.find(k => k.categoryId === categoryId)
+  if (comp) comp.groupsLocked = locked
+  save(state)
 }
