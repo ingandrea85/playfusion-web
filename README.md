@@ -9,6 +9,8 @@ Navigable mid-fidelity mockups for PlayFusion 2.0 web experiences.
 - **E3 Public** (`apps/public/`) — public landing + team enrollment.
 - **E3 Public** calendar (`apps/public/calendar.html`) — read-only match calendar, shown once the schedule is published.
 - **Standings** — generating the calendar also creates zero-point group standings (O6 `Standing`), shown in E1 under the calendar and on the public E3 `standings.html` once published.
+- **Finals** — generating also builds per-category finals brackets with placeholders (by `finalsType`, O6), scheduled on a global finals date; shown in E1 under standings and on the public E3 `bracket.html` once published.
+- **Tabs** — calendar/standings/finals filter by category + girone.
 
 State is fake: seed data + `localStorage` (`shared/mock/`). No backend, no framework.
 
