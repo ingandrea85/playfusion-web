@@ -2,7 +2,14 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { resetDemo, getSchedule, getScheduledMatches, generateSchedule, approveSchedule, publishSchedule } from './store'
 import type { ScheduleConfig } from './types'
 
-const config: ScheduleConfig = { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', slotsPerDay: 8 }
+const config: ScheduleConfig = {
+  dailyStart: '09:00', slotsPerDay: 8,
+  byCategory: {
+    'cat-1': { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10 },
+    'cat-2': { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10 },
+    'cat-3': { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10 },
+  },
+}
 
 beforeEach(() => { localStorage.clear(); resetDemo() })
 
@@ -29,7 +36,7 @@ describe('schedule store', () => {
     generateSchedule('evt-1', config)
     approveSchedule('evt-1')
     expect(getSchedule('evt-1')?.status).toBe('APPROVED')
-    generateSchedule('evt-1', { ...config, fields: ['X'] })
+    generateSchedule('evt-1', { ...config, dailyStart: '08:00' })
     expect(getSchedule('evt-1')?.status).toBe('APPROVED')
     publishSchedule('evt-1')
     expect(getSchedule('evt-1')?.status).toBe('PUBLISHED')

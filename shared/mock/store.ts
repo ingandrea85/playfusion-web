@@ -96,7 +96,7 @@ export function getScheduledMatches(eventId: string): ScheduledMatch[] {
 function ensureSchedule(state: State, eventId: string): Schedule {
   let s = state.schedules.find(x => x.eventId === eventId)
   if (!s) {
-    s = { eventId, status: 'NONE', config: { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', slotsPerDay: 8 } }
+    s = { eventId, status: 'NONE', config: { dailyStart: '09:00', slotsPerDay: 8, byCategory: {} } }
     state.schedules.push(s)
   }
   return s
@@ -108,14 +108,19 @@ export function generateSchedule(eventId: string, config: ScheduleConfig): void 
   const event = state.events.find(e => e.id === eventId)
   if (!event) { save(state); return }
   sched.config = config
+  const DEF = { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10 }
   const cats: FixtureCategory[] = state.categories.filter(c => c.eventId === eventId).map(c => {
     const comp = state.competitions.find(k => k.categoryId === c.id)
     const teams = state.registrations
       .filter(r => r.eventId === eventId && r.categoryId === c.id && r.status === 'CONFIRMED')
       .map(r => r.teamName)
-    return { id: c.id, name: c.name, format: comp?.format ?? 'ROUND_ROBIN', groupsCount: comp?.groupsCount ?? 1, legs: comp?.legs ?? 'SINGLE', teams }
+    const cs = config.byCategory[c.id] ?? DEF
+    return {
+      id: c.id, name: c.name, format: comp?.format ?? 'ROUND_ROBIN', groupsCount: comp?.groupsCount ?? 1, legs: comp?.legs ?? 'SINGLE', teams,
+      fields: cs.fields, periods: cs.periods, periodMinutes: cs.periodMinutes, breakMinutes: cs.breakMinutes,
+    }
   })
-  const matches = buildFixtures(eventId, event.startDate, event.endDate, config, cats)
+  const matches = buildFixtures(eventId, event.startDate, event.endDate, config.dailyStart, config.slotsPerDay, cats)
   state.scheduledMatches = state.scheduledMatches.filter(m => m.eventId !== eventId).concat(matches)
   sched.status = 'GENERATED'
   save(state)
