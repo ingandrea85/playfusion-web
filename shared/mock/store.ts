@@ -1,6 +1,6 @@
-import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, FixtureCategory, State, TournamentEvent } from './types'
+import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FixtureCategory, State, TournamentEvent } from './types'
 import { buildSeed } from './seed'
-import { buildFixtures } from './fixtures'
+import { buildFixtures, buildGroups } from './fixtures'
 
 const KEY = 'playfusion-mock-v1'
 
@@ -122,6 +122,12 @@ export function generateSchedule(eventId: string, config: ScheduleConfig): void 
   })
   const matches = buildFixtures(eventId, event.startDate, event.endDate, config.dailyStart, config.slotsPerDay, cats)
   state.scheduledMatches = state.scheduledMatches.filter(m => m.eventId !== eventId).concat(matches)
+  const groups = buildGroups(cats)
+  state.standings = state.standings.filter(s => s.eventId !== eventId)
+  for (const g of groups) for (const team of g.teams) {
+    state.standings.push({ eventId, categoryId: g.categoryId, groupLabel: g.groupLabel, team,
+      played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 })
+  }
   sched.status = 'GENERATED'
   save(state)
 }
@@ -136,4 +142,7 @@ export function publishSchedule(eventId: string): void {
   const s = state.schedules.find(x => x.eventId === eventId)
   if (s && s.status === 'APPROVED') s.status = 'PUBLISHED'
   save(state)
+}
+export function getStandings(eventId: string): StandingRow[] {
+  return load().standings.filter(s => s.eventId === eventId)
 }

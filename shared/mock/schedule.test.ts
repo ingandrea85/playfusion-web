@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { resetDemo, getSchedule, getScheduledMatches, generateSchedule, approveSchedule, publishSchedule } from './store'
+import { resetDemo, getSchedule, getScheduledMatches, getStandings, generateSchedule, approveSchedule, publishSchedule } from './store'
 import type { ScheduleConfig } from './types'
 
 const config: ScheduleConfig = {
@@ -40,5 +40,15 @@ describe('schedule store', () => {
     expect(getSchedule('evt-1')?.status).toBe('APPROVED')
     publishSchedule('evt-1')
     expect(getSchedule('evt-1')?.status).toBe('PUBLISHED')
+  })
+
+  it('generate initializes zero-point standings per group; reset clears them', () => {
+    expect(getStandings('evt-1')).toHaveLength(0)
+    generateSchedule('evt-1', config)
+    const s = getStandings('evt-1')
+    expect(s.length).toBeGreaterThan(0)
+    expect(s.every(r => r.points === 0 && r.played === 0)).toBe(true)
+    resetDemo()
+    expect(getStandings('evt-1')).toHaveLength(0)
   })
 })
