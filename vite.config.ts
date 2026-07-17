@@ -23,6 +23,7 @@ export default defineConfig({
         participants: r('apps/public/participants.html'),
         calendar: r('apps/public/calendar.html'),
         standings: r('apps/public/standings.html'),
+        bracket: r('apps/public/bracket.html'),
       },
     },
   },
