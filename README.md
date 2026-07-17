@@ -16,6 +16,7 @@ Navigable mid-fidelity mockups for PlayFusion 2.0 web experiences.
 - **Live results** — record group-match scores in E1 (O8); standings recompute (points 3/1/0, tie-break) and re-rank; scores show in the calendar (E1 + public).
 - **Tie-break** — the standings order is a per-event policy (default per sport, editable in create-event): points → scontri diretti/avulsa → differenza reti → reti fatte. Teams left perfectly tied are flagged "parità da definire" and their finals qualification is withheld. A tied group can be ordered manually by the organizer in E1 ("Risolvi parità"); the manual order unblocks qualification and self-invalidates if a later result changes who is tied. Five **demo events** (dashboard) show each case: scontri diretti, classifica avulsa, differenza reti, reti fatte, parità irrisolta.
 - **Tabs** — calendar/standings/finals filter by category + girone.
+- **Playbooks** — events are created with a playbook: **PB-1** (invite enrollment, the default: open registrations → shareable link → team enrolls in E3 → confirm) or **PB-2** (direct roster: the organizer enters teams in the E1 **Squadre** editor; no invites/link, teams are confirmed on entry). A demo event "Iscrizione diretta" shows PB-2.
 
 State is fake: seed data + `localStorage` (`shared/mock/`). No backend, no framework.
 
