@@ -1,4 +1,4 @@
-import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory } from './types'
+import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus } from './types'
 import { buildSeed } from './seed'
 import { buildFixtures, splitIntoGroups, addMinutes } from './fixtures'
 import { buildFinals } from './finals'
@@ -20,7 +20,7 @@ export function getEvent(id: string): TournamentEvent | undefined { return load(
 export function createEvent(input: { name: string; sport: string; location: string; startDate: string; startTime: string; endDate: string }): TournamentEvent {
   const state = load()
   const event: TournamentEvent = {
-    id: `evt-${state.events.length + 1}`, name: input.name, sport: input.sport, location: input.location,
+    id: `evt-${state.events.length + 1}`, organizationId: 'org-1', name: input.name, sport: input.sport, location: input.location,
     startDate: input.startDate, startTime: input.startTime, endDate: input.endDate, template: 'PB-1', registrationsOpen: false,
   }
   state.events.push(event); save(state); return event
@@ -209,5 +209,21 @@ export function rescheduleMatch(matchId: string, patch: { day: string; time: str
   const state = load()
   const m = state.scheduledMatches.find(x => x.id === matchId)
   if (m) { m.day = patch.day; m.time = patch.time; m.field = patch.field }
+  save(state)
+}
+
+export function getOrganizations(): Organization[] { return load().organizations }
+export function getOrganization(id: string): Organization | undefined { return load().organizations.find(o => o.id === id) }
+export function setOrgStatus(id: string, status: OrgStatus): void {
+  const state = load()
+  const o = state.organizations.find(x => x.id === id); if (o) o.status = status
+  save(state)
+}
+export function setOrgModule(id: string, moduleKey: string, active: boolean): void {
+  const state = load()
+  const o = state.organizations.find(x => x.id === id)
+  if (!o || moduleKey === 'M-Core') { save(state); return }
+  if (active) { if (!o.modules.includes(moduleKey)) o.modules.push(moduleKey) }
+  else o.modules = o.modules.filter(m => m !== moduleKey)
   save(state)
 }

@@ -3,6 +3,7 @@ export type PayStatus = 'UNPAID' | 'PAID'
 
 export interface TournamentEvent {
   id: string
+  organizationId: string
   name: string
   sport: string
   location: string
@@ -142,6 +143,14 @@ export interface Registration {
   createdAt: string
 }
 
+export type OrgStatus = 'ACTIVE' | 'SUSPENDED'
+export interface Organization {
+  id: string
+  name: string
+  status: OrgStatus
+  modules: string[]
+}
+
 export interface State {
   events: TournamentEvent[]
   categories: Category[]
@@ -152,4 +161,5 @@ export interface State {
   standings: StandingRow[]
   finals: FinalMatch[]
   groupSlots: GroupSlot[]
+  organizations: Organization[]
 }

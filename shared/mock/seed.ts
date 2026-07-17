@@ -3,7 +3,7 @@ import type { State } from './types'
 export function buildSeed(): State {
   return {
     events: [{
-      id: 'evt-1', name: 'Torneo Estivo Memorial', sport: 'Calcio',
+      id: 'evt-1', organizationId: 'org-1', name: 'Torneo Estivo Memorial', sport: 'Calcio',
       location: 'Centro Sportivo Comunale · Rivalta (TO)',
       startDate: '2026-08-29', startTime: '09:00', endDate: '2026-08-30', template: 'PB-1',
       registrationsOpen: true,
@@ -58,5 +58,11 @@ export function buildSeed(): State {
     standings: [],
     finals: [],
     groupSlots: [],
+    organizations: [
+      { id: 'org-1', name: 'ASD Memorial Rivalta', status: 'ACTIVE', modules: ['M-Core', 'M-Compete', 'M-Broadcast', 'M-Payments'] },
+      { id: 'org-2', name: 'Polisportiva Chierese', status: 'ACTIVE', modules: ['M-Core', 'M-Compete'] },
+      { id: 'org-3', name: 'US Basse Valle', status: 'SUSPENDED', modules: ['M-Core', 'M-Compete', 'M-Broadcast'] },
+      { id: 'org-4', name: 'GS Collina Padel', status: 'ACTIVE', modules: ['M-Core', 'M-Compete', 'M-Payments', 'M-Billing'] },
+    ],
   }
 }
