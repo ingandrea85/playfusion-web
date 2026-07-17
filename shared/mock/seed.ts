@@ -56,5 +56,6 @@ export function buildSeed(): State {
     ],
     scheduledMatches: [],
     standings: [],
+    finals: [],
   }
 }

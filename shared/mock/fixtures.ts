@@ -28,7 +28,7 @@ function dateRange(start: string, end: string): string[] {
   return out
 }
 
-function addMinutes(hhmm: string, mins: number): string {
+export function addMinutes(hhmm: string, mins: number): string {
   const [h, m] = hhmm.split(':').map(Number)
   const total = h * 60 + m + mins
   const hh = Math.floor(total / 60) % 24

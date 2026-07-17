@@ -80,6 +80,23 @@ export interface StandingRow {
   points: number
 }
 
+export interface FinalDraw {
+  bracketLabel: string
+  round: string
+  order: number
+  home: string
+  away: string
+}
+
+export interface FinalMatch extends FinalDraw {
+  id: string
+  eventId: string
+  categoryId: string
+  day: string
+  time: string
+  field: string
+}
+
 export interface FixtureCategory {
   id: string
   name: string
@@ -114,4 +131,5 @@ export interface State {
   schedules: Schedule[]
   scheduledMatches: ScheduledMatch[]
   standings: StandingRow[]
+  finals: FinalMatch[]
 }
