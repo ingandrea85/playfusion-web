@@ -1,5 +1,5 @@
 import { renderOrganizerTopbar, renderCalendar, renderStandings, renderTabs, renderBracket } from '../../shared/chrome'
-import { getCategories, getSchedule, getScheduledMatches, getStandings, getFinals, getEvent, generateSchedule, approveSchedule, publishSchedule, rescheduleMatch, recordResult, getTieOverrides, setTieOverride } from '../../shared/mock/store'
+import { getCategories, getSchedule, getScheduledMatches, getStandings, getFinals, getEvent, generateSchedule, approveSchedule, publishSchedule, rescheduleMatch, recordResult, recordFinalResult, getTieOverrides, setTieOverride } from '../../shared/mock/store'
 import { rankStanding } from '../../shared/mock/ranking'
 import type { CategorySchedule, ScheduleConfig } from '../../shared/mock/types'
 
@@ -163,6 +163,29 @@ function openResultPanel(matchId: string): void {
   document.getElementById('rs-cancel')!.addEventListener('click', () => { panel.innerHTML = '' })
 }
 
+function openFinalResultPanel(finalMatchId: string): void {
+  const f = getFinals(id).find(x => x.id === finalMatchId)
+  if (!f) return
+  const home = f.homeResolved ?? f.home
+  const away = f.awayResolved ?? f.away
+  const panel = document.getElementById('editmatch')!
+  panel.innerHTML = `<div class="pf-card">
+    <h2>Risultato · ${f.round}</h2>
+    <p class="pf-muted">${home} vs ${away}</p>
+    <div class="pf-row" style="align-items:flex-end;gap:var(--space-3)">
+      <div class="pf-field" style="flex:1;margin-bottom:0"><label>${home}</label><input id="ff-home" type="number" min="0" value="${f.homeScore ?? 0}" /></div>
+      <div class="pf-field" style="flex:1;margin-bottom:0"><label>${away}</label><input id="ff-away" type="number" min="0" value="${f.awayScore ?? 0}" /></div>
+    </div>
+    <div class="pf-row" style="gap:var(--space-2)"><button class="pf-btn pf-btn--primary" id="ff-save">Salva</button><button class="pf-btn" id="ff-cancel">Annulla</button></div>
+  </div>`
+  document.getElementById('ff-save')!.addEventListener('click', () => {
+    recordFinalResult(finalMatchId, Number((document.getElementById('ff-home') as HTMLInputElement).value), Number((document.getElementById('ff-away') as HTMLInputElement).value))
+    panel.innerHTML = ''
+    renderViews()
+  })
+  document.getElementById('ff-cancel')!.addEventListener('click', () => { panel.innerHTML = '' })
+}
+
 function openTiePanel(categoryId: string, groupLabel: string, teams: string[]): void {
   const panel = document.getElementById('editmatch')!
   const order = [...teams]
@@ -239,8 +262,10 @@ function renderViews(): void {
     b.addEventListener('click', () => { const u = tieGroups[Number(b.dataset.tie)]; openTiePanel(u.cat, u.g, u.teams) }))
   document.getElementById('finals')!.innerHTML = getFinals(id).some(f => f.categoryId === selCat)
     ? `<div class="pf-pagehead" style="margin:var(--space-6) 0 var(--space-4)"><div class="pf-eyebrow">Finali</div><h2>Fase finale</h2></div>`
-      + renderBracket(getFinals(id).filter(f => f.categoryId === selCat))
+      + renderBracket(getFinals(id).filter(f => f.categoryId === selCat), true)
     : ''
+  document.querySelectorAll<HTMLButtonElement>('#finals button[data-final]').forEach(b =>
+    b.addEventListener('click', () => openFinalResultPanel(b.dataset.final!)))
 }
 
 function render(): void {

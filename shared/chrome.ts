@@ -100,8 +100,9 @@ export function renderTabs(items: Array<{ key: string; label: string }>, activeK
   ).join('')}</div>`
 }
 
-// Finals bracket — grouped by bracketLabel → round; placeholder matchups. Shared by E1 and E3.
-export function renderBracket(finals: FinalMatch[]): string {
+// Finals bracket — grouped by bracketLabel → round. Shows resolved teams, scores,
+// a champion line, and (when editable) a result button per playable match.
+export function renderBracket(finals: FinalMatch[], editable = false): string {
   if (!finals.length) return `<p class="pf-muted">Nessuna fase finale.</p>`
   const labels: string[] = []
   for (const f of finals) if (!labels.includes(f.bracketLabel)) labels.push(f.bracketLabel)
@@ -110,13 +111,28 @@ export function renderBracket(finals: FinalMatch[]): string {
     const rounds: string[] = []
     for (const f of lf) if (!rounds.includes(f.round)) rounds.push(f.round)
     const roundsHtml = rounds.map(r => {
-      const rows = lf.filter(f => f.round === r).sort((a, b) => a.order - b.order).map(m => `<li class="pf-final">
-        <span class="pf-final__meta pf-mono">${m.day} · ${m.time} · ${m.field}</span>
-        <span class="pf-final__teams">${m.homeResolved ?? m.home} <b>vs</b> ${m.awayResolved ?? m.away}</span>
-      </li>`).join('')
+      const rows = lf.filter(f => f.round === r).sort((a, b) => a.order - b.order).map(m => {
+        const home = m.homeResolved ?? m.home
+        const away = m.awayResolved ?? m.away
+        const played = m.homeScore !== null && m.awayScore !== null
+        const score = played ? `<span class="pf-final__score pf-mono">${m.homeScore} – ${m.awayScore}</span>` : `<b>vs</b>`
+        const canPlay = editable && m.homeResolved !== null && m.awayResolved !== null
+        const btn = canPlay ? `<button class="pf-btn pf-btn--ghost" data-final="${m.id}">Risultato</button>` : ''
+        return `<li class="pf-final">
+          <span class="pf-final__meta pf-mono">${m.day} · ${m.time} · ${m.field}</span>
+          <span class="pf-final__teams">${home} ${score} ${away}</span>
+          ${btn}
+        </li>`
+      }).join('')
       return `<div class="pf-final-round"><div class="pf-final-round__head pf-mono">${r}</div><ul class="pf-finallist">${rows}</ul></div>`
     }).join('')
-    return `<div class="pf-bracket"><div class="pf-bracket__head"><span class="pf-cat__label">${lb}</span></div>${roundsHtml}</div>`
+    const fin = lf.find(f => f.round === 'Finale')
+    let champ = ''
+    if (fin && fin.homeResolved !== null && fin.awayResolved !== null && fin.homeScore !== null && fin.awayScore !== null && fin.homeScore !== fin.awayScore) {
+      const winner = fin.homeScore > fin.awayScore ? fin.homeResolved : fin.awayResolved
+      champ = `<div class="pf-champion">🏆 Campione: <b>${winner}</b></div>`
+    }
+    return `<div class="pf-bracket"><div class="pf-bracket__head"><span class="pf-cat__label">${lb}</span></div>${roundsHtml}${champ}</div>`
   }).join('')
 }
 
