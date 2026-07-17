@@ -1,5 +1,5 @@
 import { renderOrganizerTopbar, renderCalendar, renderStandings, renderTabs, renderBracket } from '../../shared/chrome'
-import { getCategories, getSchedule, getScheduledMatches, getStandings, getFinals, generateSchedule, approveSchedule, publishSchedule } from '../../shared/mock/store'
+import { getCategories, getSchedule, getScheduledMatches, getStandings, getFinals, generateSchedule, approveSchedule, publishSchedule, rescheduleMatch } from '../../shared/mock/store'
 import type { CategorySchedule, ScheduleConfig } from '../../shared/mock/types'
 
 document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
@@ -115,7 +115,35 @@ function gironiOf(catId: string): string[] {
   for (const s of getStandings(id)) if (s.categoryId === catId && !seen.includes(s.groupLabel)) seen.push(s.groupLabel)
   return seen
 }
+
+function openEditPanel(matchId: string): void {
+  const m = getScheduledMatches(id).find(x => x.id === matchId)
+  if (!m) return
+  const fields = schedule().config.byCategory[m.categoryId]?.fields ?? [...new Set(getScheduledMatches(id).map(x => x.field))]
+  const panel = document.getElementById('editmatch')!
+  panel.innerHTML = `<div class="pf-card">
+    <h2>Sposta partita</h2>
+    <p class="pf-muted">${m.home} vs ${m.away}</p>
+    <div class="pf-field"><label>Campo</label><select id="em-field">${fields.map(f => `<option value="${f}"${f === m.field ? ' selected' : ''}>${f}</option>`).join('')}</select></div>
+    <div class="pf-row" style="align-items:flex-end;gap:var(--space-3)">
+      <div class="pf-field" style="flex:1;margin-bottom:0"><label>Giorno</label><input id="em-day" type="date" value="${m.day}" /></div>
+      <div class="pf-field" style="flex:1;margin-bottom:0"><label>Ora</label><input id="em-time" type="time" value="${m.time}" /></div>
+    </div>
+    <div class="pf-row" style="gap:var(--space-2)"><button class="pf-btn pf-btn--primary" id="em-save">Salva</button><button class="pf-btn" id="em-cancel">Annulla</button></div>
+  </div>`
+  document.getElementById('em-save')!.addEventListener('click', () => {
+    rescheduleMatch(matchId, {
+      day: (document.getElementById('em-day') as HTMLInputElement).value,
+      time: (document.getElementById('em-time') as HTMLInputElement).value,
+      field: (document.getElementById('em-field') as HTMLSelectElement).value,
+    })
+    renderViews()
+  })
+  document.getElementById('em-cancel')!.addEventListener('click', () => { panel.innerHTML = '' })
+}
+
 function renderViews(): void {
+  document.getElementById('editmatch')!.innerHTML = ''
   const catsPresent = presentCats()
   if (!catsPresent.length) {
     document.getElementById('viewtabs')!.innerHTML = ''
@@ -136,7 +164,9 @@ function renderViews(): void {
   bars[1].querySelectorAll<HTMLButtonElement>('.pf-tab').forEach(b =>
     b.addEventListener('click', () => { selGir = b.dataset.key!; renderViews() }))
   const inSel = (categoryId: string, groupLabel: string) => categoryId === selCat && (selGir === 'ALL' || groupLabel === selGir)
-  document.getElementById('calendar')!.innerHTML = renderCalendar(getScheduledMatches(id).filter(m => inSel(m.categoryId, m.groupLabel)), catName)
+  document.getElementById('calendar')!.innerHTML = renderCalendar(getScheduledMatches(id).filter(m => inSel(m.categoryId, m.groupLabel)), catName, true)
+  document.querySelectorAll<HTMLButtonElement>('#calendar .js-editmatch').forEach(b =>
+    b.addEventListener('click', () => openEditPanel(b.dataset.match!)))
   document.getElementById('standings')!.innerHTML =
     `<div class="pf-pagehead" style="margin:var(--space-6) 0 var(--space-4)"><div class="pf-eyebrow">Classifiche</div><h2>Classifiche di girone</h2></div>`
     + `<p class="pf-muted" style="margin-top:calc(-1*var(--space-2));margin-bottom:var(--space-4)">Classifica iniziale · nessuna partita giocata.</p>`
@@ -154,6 +184,7 @@ function render(): void {
     document.getElementById('configarea')!.innerHTML = `<div class="pf-card pf-muted">Nessuna categoria. Aggiungile prima nello step Categorie.</div>`
     document.getElementById('actions')!.innerHTML = ''
     document.getElementById('viewtabs')!.innerHTML = ''
+    document.getElementById('editmatch')!.innerHTML = ''
     document.getElementById('calendar')!.innerHTML = ''
     document.getElementById('standings')!.innerHTML = ''
     document.getElementById('finals')!.innerHTML = ''
@@ -164,6 +195,7 @@ function render(): void {
   renderActions()
   if (schedule().status === 'NONE') {
     document.getElementById('viewtabs')!.innerHTML = ''
+    document.getElementById('editmatch')!.innerHTML = ''
     document.getElementById('calendar')!.innerHTML = ''
     document.getElementById('standings')!.innerHTML = ''
     document.getElementById('finals')!.innerHTML = ''

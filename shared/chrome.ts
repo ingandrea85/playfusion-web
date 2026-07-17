@@ -33,7 +33,7 @@ export function renderCategoryTag(name: string, count: number, maxTeams: number)
 }
 
 // Calendar rendering — grouped by day, matches sorted by time then field. Shared by E1 and E3.
-export function renderCalendar(matches: ScheduledMatch[], catName: (id: string) => string): string {
+export function renderCalendar(matches: ScheduledMatch[], catName: (id: string) => string, editable = false): string {
   if (!matches.length) return `<p class="pf-muted">Nessuna partita in calendario.</p>`
   const days = [...new Set(matches.map(m => m.day))].sort()
   return days.map(day => {
@@ -44,6 +44,7 @@ export function renderCalendar(matches: ScheduledMatch[], catName: (id: string) 
         <span class="pf-match__field">${m.field}</span>
         <span class="pf-match__cat">${catName(m.categoryId)} · ${m.groupLabel}</span>
         <span class="pf-match__teams">${m.home} <b>vs</b> ${m.away}</span>
+        ${editable ? `<button class="pf-btn js-editmatch" data-match="${m.id}" style="margin-top:6px">Modifica</button>` : ''}
       </li>`).join('')
     return `<div class="pf-calday"><div class="pf-calday__head">${day}</div><ul class="pf-callist">${rows}</ul></div>`
   }).join('')
