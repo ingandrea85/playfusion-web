@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { resetDemo, getSchedule, getScheduledMatches, getStandings, generateSchedule, approveSchedule, publishSchedule } from './store'
+import { resetDemo, getSchedule, getScheduledMatches, getStandings, generateSchedule, approveSchedule, publishSchedule, getFinals } from './store'
 import type { ScheduleConfig } from './types'
 
 const config: ScheduleConfig = {
-  dailyStart: '09:00', slotsPerDay: 8,
+  dailyStart: '09:00', slotsPerDay: 8, finalsDate: '2026-08-30',
   byCategory: {
     'cat-1': { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10 },
     'cat-2': { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10 },
@@ -50,5 +50,15 @@ describe('schedule store', () => {
     expect(s.every(r => r.points === 0 && r.played === 0)).toBe(true)
     resetDemo()
     expect(getStandings('evt-1')).toHaveLength(0)
+  })
+
+  it('generate also creates finals on the finals date; reset clears them', () => {
+    expect(getFinals('evt-1')).toHaveLength(0)
+    generateSchedule('evt-1', config)
+    const f = getFinals('evt-1')
+    expect(f.length).toBeGreaterThan(0)
+    expect(f.every(m => m.day === '2026-08-30')).toBe(true)
+    resetDemo()
+    expect(getFinals('evt-1')).toHaveLength(0)
   })
 })

@@ -1,6 +1,7 @@
-import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FixtureCategory, State, TournamentEvent } from './types'
+import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, FixtureCategory, State, TournamentEvent } from './types'
 import { buildSeed } from './seed'
-import { buildFixtures, buildGroups } from './fixtures'
+import { buildFixtures, buildGroups, addMinutes } from './fixtures'
+import { buildFinals } from './finals'
 
 const KEY = 'playfusion-mock-v1'
 
@@ -96,7 +97,7 @@ export function getScheduledMatches(eventId: string): ScheduledMatch[] {
 function ensureSchedule(state: State, eventId: string): Schedule {
   let s = state.schedules.find(x => x.eventId === eventId)
   if (!s) {
-    s = { eventId, status: 'NONE', config: { dailyStart: '09:00', slotsPerDay: 8, byCategory: {} } }
+    s = { eventId, status: 'NONE', config: { dailyStart: '09:00', slotsPerDay: 8, finalsDate: '', byCategory: {} } }
     state.schedules.push(s)
   }
   return s
@@ -128,6 +129,23 @@ export function generateSchedule(eventId: string, config: ScheduleConfig): void 
     state.standings.push({ eventId, categoryId: g.categoryId, groupLabel: g.groupLabel, team,
       played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 })
   }
+  const finalsOut: FinalMatch[] = []
+  let fseq = 0
+  for (const cat of cats) {
+    const comp = state.competitions.find(k => k.categoryId === cat.id)
+    if (!comp) continue
+    const gironi = buildGroups([cat]).map(g => g.groupLabel)
+    const draws = buildFinals(gironi, comp.qualifiersPerGroup, comp.finalsType)
+    if (!draws.length) continue
+    const fields = cat.fields.length ? cat.fields : ['Campo 1']
+    const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes
+    let fi = 0, si = 0
+    for (const d of draws) {
+      finalsOut.push({ id: `fm-${++fseq}`, eventId, categoryId: cat.id, bracketLabel: d.bracketLabel, round: d.round, order: d.order, home: d.home, away: d.away, day: config.finalsDate, time: addMinutes(config.dailyStart, si * slotMinutes), field: fields[fi] })
+      fi++; if (fi >= fields.length) { fi = 0; si++ }
+    }
+  }
+  state.finals = state.finals.filter(f => f.eventId !== eventId).concat(finalsOut)
   sched.status = 'GENERATED'
   save(state)
 }
@@ -145,4 +163,7 @@ export function publishSchedule(eventId: string): void {
 }
 export function getStandings(eventId: string): StandingRow[] {
   return load().standings.filter(s => s.eventId === eventId)
+}
+export function getFinals(eventId: string): FinalMatch[] {
+  return load().finals.filter(f => f.eventId === eventId)
 }

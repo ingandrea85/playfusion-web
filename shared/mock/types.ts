@@ -45,6 +45,7 @@ export interface CategorySchedule {
 export interface ScheduleConfig {
   dailyStart: string
   slotsPerDay: number
+  finalsDate: string
   byCategory: Record<string, CategorySchedule>
 }
 

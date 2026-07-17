@@ -46,7 +46,7 @@ export function buildSeed(): State {
     ],
     schedules: [
       { eventId: 'evt-1', status: 'NONE', config: {
-        dailyStart: '09:00', slotsPerDay: 8,
+        dailyStart: '09:00', slotsPerDay: 8, finalsDate: '2026-08-30',
         byCategory: {
           'cat-1': { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10 },
           'cat-2': { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10 },
