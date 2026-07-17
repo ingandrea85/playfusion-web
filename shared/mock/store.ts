@@ -205,3 +205,9 @@ export function setGroupsLocked(categoryId: string, locked: boolean): void {
   if (comp) comp.groupsLocked = locked
   save(state)
 }
+export function rescheduleMatch(matchId: string, patch: { day: string; time: string; field: string }): void {
+  const state = load()
+  const m = state.scheduledMatches.find(x => x.id === matchId)
+  if (m) { m.day = patch.day; m.time = patch.time; m.field = patch.field }
+  save(state)
+}

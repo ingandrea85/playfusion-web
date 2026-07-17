@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { resetDemo, getSchedule, getScheduledMatches, getStandings, generateSchedule, approveSchedule, publishSchedule, getFinals } from './store'
+import { resetDemo, getSchedule, getScheduledMatches, getStandings, generateSchedule, approveSchedule, publishSchedule, getFinals, rescheduleMatch } from './store'
 import type { ScheduleConfig } from './types'
 
 const config: ScheduleConfig = {
@@ -60,5 +60,15 @@ describe('schedule store', () => {
     expect(f.every(m => m.day === '2026-08-30')).toBe(true)
     resetDemo()
     expect(getFinals('evt-1')).toHaveLength(0)
+  })
+
+  it('rescheduleMatch updates a match day/time/field in place', () => {
+    generateSchedule('evt-1', config)
+    const m = getScheduledMatches('evt-1')[0]
+    rescheduleMatch(m.id, { day: '2026-08-31', time: '15:30', field: 'Campo Z' })
+    const after = getScheduledMatches('evt-1').find(x => x.id === m.id)!
+    expect(after).toMatchObject({ day: '2026-08-31', time: '15:30', field: 'Campo Z' })
+    // other matches untouched
+    expect(getScheduledMatches('evt-1').filter(x => x.field === 'Campo Z')).toHaveLength(1)
   })
 })
