@@ -49,4 +49,20 @@ describe('finals qualifier resolution', () => {
       check(f.away, f.awayResolved)
     }
   })
+
+  it('does not qualify a team whose position depends on an unresolved tie', () => {
+    // A group completed entirely with 1-1 draws leaves its teams tied on every
+    // criterion → their positions are undecided → the qualifier slots stay null.
+    generateSchedule('evt-1', config)
+    const cat1 = getScheduledMatches('evt-1').filter(x => x.categoryId === 'cat-1')
+    const gA = cat1[0].groupLabel
+    const gAmatches = cat1.filter(x => x.groupLabel === gA)
+    // Record every Girone A match as a 1-1 draw → all its teams tie on everything.
+    for (const m of gAmatches) recordResult(m.id, 1, 1)
+    // Every finals slot referencing Girone A must stay a placeholder (positions undecided).
+    for (const f of getFinals('evt-1').filter(f => f.categoryId === 'cat-1')) {
+      if (f.home === `1ª ${gA}` || f.home === `2ª ${gA}`) expect(f.homeResolved).toBeNull()
+      if (f.away === `1ª ${gA}` || f.away === `2ª ${gA}`) expect(f.awayResolved).toBeNull()
+    }
+  })
 })
