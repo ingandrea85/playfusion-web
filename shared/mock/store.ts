@@ -75,7 +75,7 @@ export function upsertCompetition(input: { eventId: string; categoryId: string }
   const state = load()
   const existing = state.competitions.find(c => c.categoryId === input.categoryId)
   if (existing) { Object.assign(existing, input); save(state); return existing }
-  const comp: Competition = { id: `comp-${state.competitions.length + 1}`, ...input }
+  const comp: Competition = { id: `comp-${state.competitions.length + 1}`, groupsLocked: false, ...input }
   state.competitions.push(comp); save(state); return comp
 }
 export function applyToAllCategories(eventId: string, config: CompetitionConfig): void {
@@ -83,7 +83,7 @@ export function applyToAllCategories(eventId: string, config: CompetitionConfig)
   for (const cat of state.categories.filter(c => c.eventId === eventId)) {
     const existing = state.competitions.find(c => c.categoryId === cat.id)
     if (existing) Object.assign(existing, config)
-    else state.competitions.push({ id: `comp-${state.competitions.length + 1}`, eventId, categoryId: cat.id, ...config })
+    else state.competitions.push({ id: `comp-${state.competitions.length + 1}`, eventId, categoryId: cat.id, groupsLocked: false, ...config })
   }
   save(state)
 }
