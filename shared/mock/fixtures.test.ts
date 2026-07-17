@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildFixtures } from './fixtures'
+import { buildFixtures, buildGroups } from './fixtures'
 import type { FixtureCategory } from './types'
 
 function cat(over: Partial<FixtureCategory>): FixtureCategory {
@@ -42,5 +42,17 @@ describe('buildFixtures', () => {
     expect(m).toHaveLength(2)
     expect(m[0]).toMatchObject({ categoryId: 'c1', field: 'Campo Nord', time: '09:00' })
     expect(m[1]).toMatchObject({ categoryId: 'c2', field: 'Campo Sud', time: '09:00' })
+  })
+
+  it('buildGroups splits each category into labelled groups (single source of grouping)', () => {
+    const groups = buildGroups([
+      cat({ id: 'c1', groupsCount: 2, teams: ['A', 'B', 'C', 'D'] }),
+      cat({ id: 'c2', format: 'ROUND_ROBIN', groupsCount: 9, teams: ['X', 'Y', 'Z'] }),
+    ])
+    expect(groups).toEqual([
+      { categoryId: 'c1', groupLabel: 'Girone A', teams: ['A', 'C'] },
+      { categoryId: 'c1', groupLabel: 'Girone B', teams: ['B', 'D'] },
+      { categoryId: 'c2', groupLabel: 'Girone A', teams: ['X', 'Y', 'Z'] },
+    ])
   })
 })

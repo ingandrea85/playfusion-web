@@ -9,6 +9,17 @@ function pairs(teams: string[]): Array<[string, string]> {
 
 function groupLabel(i: number): string { return `Girone ${String.fromCharCode(65 + i)}` }
 
+function splitIntoGroups(cat: FixtureCategory): Array<{ groupLabel: string; teams: string[] }> {
+  const groups = cat.format === 'ROUND_ROBIN' ? 1 : Math.max(1, cat.groupsCount)
+  const buckets: string[][] = Array.from({ length: groups }, () => [])
+  cat.teams.forEach((t, i) => buckets[i % groups].push(t))
+  return buckets.map((teams, gi) => ({ groupLabel: groupLabel(gi), teams }))
+}
+
+export function buildGroups(cats: FixtureCategory[]): Array<{ categoryId: string; groupLabel: string; teams: string[] }> {
+  return cats.flatMap(cat => splitIntoGroups(cat).map(g => ({ categoryId: cat.id, groupLabel: g.groupLabel, teams: g.teams })))
+}
+
 function dateRange(start: string, end: string): string[] {
   const out: string[] = []
   const d = new Date(`${start}T00:00:00Z`)
@@ -32,16 +43,13 @@ export function buildFixtures(
   const out: ScheduledMatch[] = []
   let seq = 0
   for (const cat of cats) {
-    const groups = cat.format === 'ROUND_ROBIN' ? 1 : Math.max(1, cat.groupsCount)
-    const buckets: string[][] = Array.from({ length: groups }, () => [])
-    cat.teams.forEach((t, i) => buckets[i % groups].push(t))
     const raw: Array<{ groupLabel: string; home: string; away: string }> = []
-    buckets.forEach((bucket, gi) => {
-      for (const [home, away] of pairs(bucket)) {
-        raw.push({ groupLabel: groupLabel(gi), home, away })
-        if (cat.legs === 'HOME_AWAY') raw.push({ groupLabel: groupLabel(gi), home: away, away: home })
+    for (const g of splitIntoGroups(cat)) {
+      for (const [home, away] of pairs(g.teams)) {
+        raw.push({ groupLabel: g.groupLabel, home, away })
+        if (cat.legs === 'HOME_AWAY') raw.push({ groupLabel: g.groupLabel, home: away, away: home })
       }
-    })
+    }
     const fields = cat.fields.length ? cat.fields : ['Campo 1']
     const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes
     let field = 0, slot = 0, day = 0

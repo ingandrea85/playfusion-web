@@ -66,6 +66,20 @@ export interface ScheduledMatch {
   away: string
 }
 
+export interface StandingRow {
+  eventId: string
+  categoryId: string
+  groupLabel: string
+  team: string
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goalsFor: number
+  goalsAgainst: number
+  points: number
+}
+
 export interface FixtureCategory {
   id: string
   name: string
@@ -99,4 +113,5 @@ export interface State {
   competitions: Competition[]
   schedules: Schedule[]
   scheduledMatches: ScheduledMatch[]
+  standings: StandingRow[]
 }
