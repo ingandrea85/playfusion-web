@@ -75,3 +75,10 @@ export function renderStandings(rows: StandingRow[], catName: (id: string) => st
     }).join('')
   }).join('')
 }
+
+// Pill tab bar. Screens read data-key on click and re-render. Shared by calendar + standings views.
+export function renderTabs(items: Array<{ key: string; label: string }>, activeKey: string): string {
+  return `<div class="pf-tabs">${items.map(t =>
+    `<button class="pf-tab" type="button" data-key="${t.key}"${t.key === activeKey ? ' aria-selected="true"' : ''}>${t.label}</button>`,
+  ).join('')}</div>`
+}

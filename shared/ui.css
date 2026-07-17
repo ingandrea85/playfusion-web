@@ -208,6 +208,14 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-standings td:first-child { color: var(--color-text-muted); }
 .pf-standings tr:last-child td { border-bottom: none; }
 
+/* ---------- Tabs ---------- */
+.pf-tabs { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-2); margin-bottom: var(--space-3); -webkit-overflow-scrolling: touch; }
+.pf-tab { flex: none; padding: 8px var(--space-4); border-radius: var(--radius-pill); border: 1px solid var(--color-border);
+  background: var(--color-surface); color: var(--color-text-muted); font-family: var(--font-sans); font-weight: 700; font-size: 13px;
+  cursor: pointer; white-space: nowrap; }
+.pf-tab:hover { border-color: var(--color-border-strong); }
+.pf-tab[aria-selected="true"] { background: var(--color-action-primary); color: #fff; border-color: transparent; }
+
 /* ---------- Responsive ---------- */
 @media (max-width: 640px) {
   .pf-container { padding: var(--space-5) var(--space-4) var(--space-6); }
