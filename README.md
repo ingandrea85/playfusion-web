@@ -13,6 +13,7 @@ Navigable mid-fidelity mockups for PlayFusion 2.0 web experiences.
 - **Gironi editor** (`apps/organizer/gironi.html`) — explicit group composition (O6): draw, move teams between gironi (select controls), lock; fixtures/standings/finals derive from it.
 - **Calendar editor** — reschedule a single match (campo/giorno/ora) from the E1 calendar (O7), allowed even after publish; public calendar reflects it, stays read-only.
 - **E4 Admin** (`apps/admin/`) — Playfusion back-office: organizations (tenants) list + detail with status (suspend/reactivate) and module activation (O1). Introduces multi-tenancy (`Organization`, `event.organizationId`). Includes per-tenant subscription (plan/status/renewal, O11).
+- **Live results** — record group-match scores in E1 (O8); standings recompute (points 3/1/0, tie-break) and re-rank; scores show in the calendar (E1 + public).
 - **Tabs** — calendar/standings/finals filter by category + girone.
 
 State is fake: seed data + `localStorage` (`shared/mock/`). No backend, no framework.
