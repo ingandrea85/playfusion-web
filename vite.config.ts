@@ -20,6 +20,7 @@ export default defineConfig({
         schedule: r('apps/organizer/schedule.html'),
         classifiche: r('apps/organizer/classifiche.html'),
         tabellone: r('apps/organizer/tabellone.html'),
+        abbonamento: r('apps/organizer/abbonamento.html'),
         gironi: r('apps/organizer/gironi.html'),
         teams: r('apps/organizer/teams.html'),
         avvisiOrg: r('apps/organizer/avvisi.html'),
