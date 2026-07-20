@@ -21,7 +21,7 @@ function render(): void {
   const el = document.getElementById('list')!
   if (!rows.length) { el.innerHTML = `<p class="pf-muted">Nessun avviso pubblicato.</p>`; return }
   el.innerHTML = rows.map(a => `<div class="pf-card">
-    <div class="pf-cat__label" style="margin-bottom:var(--space-2)">${a.pinned ? '<span class="pf-badge pf-badge--paid">In evidenza</span> ' : ''}${a.title}
+    <div class="pf-cat__label" style="margin-bottom:var(--space-2)">${a.source === 'SYSTEM' ? '<span class="pf-mono pf-muted">Automatico</span> ' : ''}${a.pinned ? '<span class="pf-badge pf-badge--paid">In evidenza</span> ' : ''}${a.title}
       <span class="pf-mono pf-muted"> · ${catName(a.categoryId)}</span></div>
     <p>${a.body}</p>
   </div>`).join('')

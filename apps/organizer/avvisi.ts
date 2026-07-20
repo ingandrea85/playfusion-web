@@ -46,7 +46,7 @@ function render(): void {
   if (!list.length) { el.innerHTML = `<p class="pf-muted">Nessun avviso pubblicato.</p>`; return }
   el.innerHTML = `<div class="pf-card"><ul class="pf-roster">` + list.map(a => `
     <li class="pf-rosterrow">
-      <span class="pf-rosterrow__name">${a.pinned ? '<span class="pf-badge pf-badge--paid">In evidenza</span> ' : ''}${a.title}
+      <span class="pf-rosterrow__name">${a.source === 'SYSTEM' ? '<span class="pf-mono pf-muted">Automatico</span> ' : ''}${a.pinned ? '<span class="pf-badge pf-badge--paid">In evidenza</span> ' : ''}${a.title}
         <span class="pf-mono pf-muted"> · ${catName(a.categoryId)}</span>
         <br><span class="pf-muted">${a.body}</span></span>
       <span class="pf-rosterrow__act">
