@@ -1,8 +1,9 @@
 import { renderOrganizerWorkspace } from '../../shared/chrome'
-import { getCurrentOrgId, getSubscription, getEvents, planOf, activatePro } from '../../shared/mock/store'
+import { getCurrentOrgId, getSubscription, getEvents, planOf, activatePro, expireTrial } from '../../shared/mock/store'
 import { PLANS, planLabel } from '../../shared/mock/plans'
 
 const orgId = getCurrentOrgId()
+if (new URLSearchParams(location.search).get('expire') === '1') expireTrial(getCurrentOrgId())
 // The shell needs an event; use the org's first event if any, else a synthetic header-less fallback.
 const anyEvent = getEvents().find(e => e.organizationId === orgId)
 if (anyEvent) document.getElementById('shell')!.innerHTML = renderOrganizerWorkspace(anyEvent, 'settings')

@@ -6,7 +6,7 @@ import '@fontsource-variable/spline-sans-mono'
 import type { ScheduledMatch, StandingRow, FinalMatch, TieBreakCriterion, TieOverride, TournamentEvent } from './mock/types'
 import { rankStanding } from './mock/ranking'
 import { decideMatch } from './mock/derive'
-import { getEventPhase } from './mock/store'
+import { getEventPhase, getSubscription, trialDaysLeft } from './mock/store'
 
 export function renderOrganizerTopbar(active: string): string {
   const link = (href: string, label: string, key: string) =>
@@ -35,6 +35,10 @@ export function renderOrganizerWorkspace(event: TournamentEvent, activeKey: stri
     { key: 'settings', label: '⚙ Impostazioni', href: `/apps/organizer/competition.html?event=${id}` },
   ]
   const nav = tabs.map(t => `<a class="pf-wtab${t.key === activeKey ? ' pf-wtab--active' : ''}" href="${t.href}">${t.label}</a>`).join('')
+  const sub = getSubscription(event.organizationId)
+  let banner = ''
+  if (sub?.status === 'TRIAL') banner = `<div class="pf-subbanner pf-subbanner--trial">✨ Pro in prova · <b>${trialDaysLeft(event.organizationId)} giorni</b> rimasti — <a href="/apps/organizer/abbonamento.html">Attiva Pro</a> · <a href="/apps/organizer/abbonamento.html?expire=1">Simula scadenza</a></div>`
+  else if (sub?.plan === 'FREE') banner = `<div class="pf-subbanner pf-subbanner--free">Sei su Free — <a href="/apps/organizer/abbonamento.html">Passa a Pro</a></div>`
   return `
     <div class="pf-topbar"><a class="pf-brand" href="/apps/organizer/dashboard.html">play<b>fusion</b><small>Organizer</small></a>
       <nav><a href="/apps/organizer/dashboard.html">Eventi</a><a href="/index.html">Esci demo</a></nav></div>
@@ -44,6 +48,7 @@ export function renderOrganizerWorkspace(event: TournamentEvent, activeKey: stri
         <h1>${event.name}</h1>
         <div class="pf-mono pf-muted">${event.sport} · ${event.location} · ${event.startDate}→${event.endDate}</div>
       </div>
+      ${banner}
       <nav class="pf-wtabs">${nav}</nav>
     </div>`
 }
