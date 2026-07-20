@@ -6,18 +6,8 @@
   <link rel="stylesheet" href="/shared/tokens.css" /><link rel="stylesheet" href="/shared/ui.css" />
 </head>
 <body>
-  <header class="pf-topbar" id="topbar"></header>
-  <main class="pf-container">
-    <a class="pf-back" href="/apps/organizer/dashboard.html">← Tutti gli eventi</a>
-    <div class="pf-pagehead">
-      <div class="pf-eyebrow" id="meta"></div>
-      <h1 id="title"></h1>
-    </div>
-    <div class="pf-card">
-      <h2 id="setup-title">Setup</h2>
-      <ol class="pf-steplist" id="steps"></ol>
-    </div>
-  </main>
+  <header id="shell"></header>
+  <main class="pf-container" id="body"></main>
   <script type="module" src="./event-hub.ts"></script>
 </body>
 </html>
