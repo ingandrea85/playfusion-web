@@ -1,8 +1,9 @@
-import { renderPublicTopbar, renderCategoryTag } from '../../shared/chrome'
+import { renderPublicTopbar, renderCategoryTag, applyOrgBrand } from '../../shared/chrome'
 import { getCategories, getEvent, getRegistrations, getSchedule, getAnnouncements } from '../../shared/mock/store'
 
-document.getElementById('topbar')!.innerHTML = renderPublicTopbar()
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
+const brandLogo = applyOrgBrand(getEvent(id)?.organizationId ?? 'org-1')
+document.getElementById('topbar')!.innerHTML = renderPublicTopbar(brandLogo ?? undefined)
 const event = getEvent(id)
 const direct = event?.playbook === 'PB-2'
 

@@ -1,8 +1,9 @@
-import { renderPublicTopbar } from '../../shared/chrome'
+import { renderPublicTopbar, applyOrgBrand } from '../../shared/chrome'
 import { getCategories, getEvent, getRegistrations } from '../../shared/mock/store'
 
-document.getElementById('topbar')!.innerHTML = renderPublicTopbar()
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
+const brandLogo = applyOrgBrand(getEvent(id)?.organizationId ?? 'org-1')
+document.getElementById('topbar')!.innerHTML = renderPublicTopbar(brandLogo ?? undefined)
 document.getElementById('back')!.setAttribute('href', `/apps/public/landing.html?event=${id}`)
 document.getElementById('eyebrow')!.textContent = getEvent(id)?.name ?? 'Torneo'
 
