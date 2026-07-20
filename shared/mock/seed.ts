@@ -133,6 +133,17 @@ export function buildSeed(): State {
       { organizationId: 'org-3', plan: 'PRO', status: 'PAST_DUE', renewsOn: '2026-07-01' },
       { organizationId: 'org-4', plan: 'BUSINESS', status: 'ACTIVE', renewsOn: '2027-03-20' },
     ],
+    announcements: [
+      { id: 'ann-1', eventId: 'evt-1', categoryId: null, pinned: true,
+        title: 'Iscrizioni in chiusura', body: 'Ultimi giorni per iscriversi: gironi in pubblicazione a breve.',
+        createdAt: '2026-07-14T09:00:00.000Z' },
+      { id: 'ann-2', eventId: 'evt-1', categoryId: 'cat-1', pinned: false,
+        title: 'U10 · cambio campo', body: 'Le gare U10 di sabato si giocano su Campo B.',
+        createdAt: '2026-07-13T15:30:00.000Z' },
+      { id: 'ann-3', eventId: 'evt-1', categoryId: null, pinned: false,
+        title: 'Ritrovo squadre', body: 'Presentarsi 30 minuti prima della prima gara per il ritiro pettorine.',
+        createdAt: '2026-07-12T08:00:00.000Z' },
+    ],
   }
   for (const d of DEMOS) {
     state.events.push(d.event)

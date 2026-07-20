@@ -1,4 +1,4 @@
-import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus, Subscription, PlanKey, SubStatus, TieBreakCriterion, TieOverride } from './types'
+import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus, Subscription, PlanKey, SubStatus, TieBreakCriterion, TieOverride, Announcement } from './types'
 import { buildSeed } from './seed'
 import { buildFixtures, splitIntoGroups, addMinutes } from './fixtures'
 import { buildFinals } from './finals'
@@ -306,4 +306,34 @@ export function recordFinalResult(finalMatchId: string, homeScore: number, awayS
   else { f.homeShootout = null; f.awayShootout = null }
   resolveFinals(state, f.eventId)
   save(state)
+}
+
+export function getAnnouncements(eventId: string): Announcement[] {
+  return load().announcements
+    .filter(a => a.eventId === eventId)
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.createdAt.localeCompare(a.createdAt))
+}
+// Max-based id so a remove-then-add sequence never reuses a live id.
+function nextAnnId(state: State): string {
+  return `ann-${Math.max(0, ...state.announcements.map(a => Number(a.id.replace('ann-', '')) || 0)) + 1}`
+}
+export function addAnnouncement(input: { eventId: string; categoryId: string | null; title: string; body: string; pinned: boolean }): Announcement {
+  const state = load()
+  const ann: Announcement = { id: nextAnnId(state), ...input, createdAt: new Date().toISOString() }
+  state.announcements.push(ann); save(state); return ann
+}
+export function removeAnnouncement(id: string): void {
+  const state = load()
+  state.announcements = state.announcements.filter(a => a.id !== id)
+  save(state)
+}
+export function togglePin(id: string): void {
+  const state = load()
+  const a = state.announcements.find(x => x.id === id); if (a) a.pinned = !a.pinned
+  save(state)
+}
+export function announcementReach(eventId: string, categoryId: string | null): number {
+  return load().registrations.filter(r =>
+    r.eventId === eventId && r.status === 'CONFIRMED' && (categoryId === null || r.categoryId === categoryId),
+  ).length
 }

@@ -180,6 +180,16 @@ export interface Subscription {
   renewsOn: string
 }
 
+export interface Announcement {
+  id: string
+  eventId: string
+  categoryId: string | null   // null = tutto l'evento
+  title: string
+  body: string
+  pinned: boolean
+  createdAt: string
+}
+
 export interface State {
   events: TournamentEvent[]
   categories: Category[]
@@ -193,4 +203,5 @@ export interface State {
   tieOverrides: TieOverride[]
   organizations: Organization[]
   subscriptions: Subscription[]
+  announcements: Announcement[]
 }
