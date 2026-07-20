@@ -32,6 +32,7 @@ export default defineConfig({
         avvisiPub: r('apps/public/avvisi.html'),
         adminOrgs: r('apps/admin/organizations.html'),
         adminOrg: r('apps/admin/organization.html'),
+        signup: r('apps/account/signup.html'),
       },
     },
   },
