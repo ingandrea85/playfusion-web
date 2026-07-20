@@ -1,10 +1,15 @@
 import { renderPublicTopbar, renderCalendar, renderTabs } from '../../shared/chrome'
-import { getCategories, getEvent, getSchedule, getScheduledMatches } from '../../shared/mock/store'
+import { getCategories, getEvent, getSchedule, getScheduledMatches, getAnnouncements } from '../../shared/mock/store'
 
 document.getElementById('topbar')!.innerHTML = renderPublicTopbar()
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
 document.getElementById('back')!.setAttribute('href', `/apps/public/landing.html?event=${id}`)
 document.getElementById('eyebrow')!.textContent = getEvent(id)?.name ?? 'Torneo'
+
+const featured = getAnnouncements(id)[0]
+if (featured) document.querySelector('.pf-pagehead')!.insertAdjacentHTML('afterend',
+  `<div class="pf-card"><span class="pf-mono pf-muted">📣 Avviso</span> <b>${featured.title}</b> — ${featured.body}
+   <a href="/apps/public/avvisi.html?event=${id}">Tutti gli avvisi →</a></div>`)
 
 const catName = (catId: string) => getCategories(id).find(c => c.id === catId)?.name ?? '—'
 const published = getSchedule(id)?.status === 'PUBLISHED'

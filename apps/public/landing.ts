@@ -1,5 +1,5 @@
 import { renderPublicTopbar, renderCategoryTag } from '../../shared/chrome'
-import { getCategories, getEvent, getRegistrations, getSchedule } from '../../shared/mock/store'
+import { getCategories, getEvent, getRegistrations, getSchedule, getAnnouncements } from '../../shared/mock/store'
 
 document.getElementById('topbar')!.innerHTML = renderPublicTopbar()
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
@@ -28,3 +28,10 @@ document.getElementById('cta')!.innerHTML = `
   ${published ? `<a class="pf-btn pf-btn--lg" style="margin-left:var(--space-2)" href="/apps/public/calendar.html?event=${id}">Calendario</a>
     <a class="pf-btn pf-btn--lg" style="margin-left:var(--space-2)" href="/apps/public/standings.html?event=${id}">Classifiche</a>
     <a class="pf-btn pf-btn--lg" style="margin-left:var(--space-2)" href="/apps/public/bracket.html?event=${id}">Tabellone</a>` : ''}`
+
+document.getElementById('avvisi')!.setAttribute('href', `/apps/public/avvisi.html?event=${id}`)
+const featured = getAnnouncements(id)[0]
+document.getElementById('notice')!.innerHTML = featured
+  ? `<div class="pf-card"><div class="pf-cat__label" style="margin-bottom:var(--space-2)">📣 ${featured.title}</div><p>${featured.body}</p>
+     <a class="pf-btn" href="/apps/public/avvisi.html?event=${id}">Tutti gli avvisi →</a></div>`
+  : ''
