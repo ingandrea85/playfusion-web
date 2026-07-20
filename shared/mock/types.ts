@@ -3,6 +3,8 @@ export type PayStatus = 'UNPAID' | 'PAID'
 
 export type TieBreakCriterion = 'HEAD_TO_HEAD' | 'GOAL_DIFFERENCE' | 'GOALS_FOR'
 
+export type EventPhase = 'PREP' | 'LIVE' | 'DONE'
+
 export interface TournamentEvent {
   id: string
   organizationId: string

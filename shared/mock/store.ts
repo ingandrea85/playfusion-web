@@ -4,6 +4,8 @@ import { buildFixtures, splitIntoGroups, addMinutes } from './fixtures'
 import { buildFinals } from './finals'
 import { defaultTieBreak } from './tiebreak'
 import { recomputeStandings, resolveFinals, decideMatch } from './derive'
+import { eventPhase, pendingActions, nextMatches, lastResults, groupLeaders } from './overview'
+import type { EventPhase } from './types'
 
 const KEY = 'playfusion-mock-v1'
 
@@ -359,3 +361,9 @@ function upsertSystemAnnouncement(state: State, input: { eventId: string; catego
 function removeSystemAnnouncement(state: State, eventId: string, dedupeKey: string): void {
   state.announcements = state.announcements.filter(a => !(a.eventId === eventId && a.dedupeKey === dedupeKey))
 }
+
+export function getEventPhase(eventId: string): EventPhase { return eventPhase(load(), eventId) }
+export function getPendingActions(eventId: string) { return pendingActions(load(), eventId) }
+export function getNextMatches(eventId: string, n: number) { return nextMatches(load(), eventId, n) }
+export function getLastResults(eventId: string, n: number) { return lastResults(load(), eventId, n) }
+export function getGroupLeaders(eventId: string) { return groupLeaders(load(), eventId) }
