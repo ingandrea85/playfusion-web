@@ -1,5 +1,5 @@
 import { renderOrganizerTopbar } from '../../shared/chrome'
-import { createEvent } from '../../shared/mock/store'
+import { createEvent, canCreateEvent, getCurrentOrgId } from '../../shared/mock/store'
 import { defaultTieBreak, criterionLabel } from '../../shared/mock/tiebreak'
 import type { TieBreakCriterion } from '../../shared/mock/types'
 
@@ -46,6 +46,11 @@ renderEditor()
 
 document.getElementById('form')!.addEventListener('submit', (ev) => {
   ev.preventDefault()
+  if (!canCreateEvent(getCurrentOrgId())) {
+    alert('Il piano Free consente 1 solo evento attivo. Passa a Pro per crearne altri.')
+    location.href = '/apps/organizer/abbonamento.html'
+    return
+  }
   const f = ev.target as HTMLFormElement
   const data = new FormData(f)
   const event = createEvent({
