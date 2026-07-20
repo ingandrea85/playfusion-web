@@ -144,6 +144,8 @@ export function buildSeed(): State {
         title: 'Ritrovo squadre', body: 'Presentarsi 30 minuti prima della prima gara per il ritiro pettorine.',
         createdAt: '2026-07-12T08:00:00.000Z' },
     ],
+    users: [],
+    session: null,
   }
   for (const d of DEMOS) {
     state.events.push(d.event)

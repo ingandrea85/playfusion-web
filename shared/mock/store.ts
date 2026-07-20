@@ -1,4 +1,4 @@
-import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus, Subscription, PlanKey, SubStatus, TieBreakCriterion, TieOverride, Announcement } from './types'
+import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus, Subscription, PlanKey, SubStatus, TieBreakCriterion, TieOverride, Announcement, User, Session } from './types'
 import { buildSeed } from './seed'
 import { buildFixtures, splitIntoGroups, addMinutes } from './fixtures'
 import { buildFinals } from './finals'
@@ -27,7 +27,7 @@ export function createEvent(input: { name: string; sport: string; location: stri
   const state = load()
   const nextNum = Math.max(1, ...state.events.map(e => Number(e.id.replace('evt-', '')) || 0)) + 1
   const event: TournamentEvent = {
-    id: `evt-${nextNum}`, organizationId: 'org-1', name: input.name, sport: input.sport, location: input.location,
+    id: `evt-${nextNum}`, organizationId: state.session?.organizationId ?? 'org-1', name: input.name, sport: input.sport, location: input.location,
     startDate: input.startDate, startTime: input.startTime, endDate: input.endDate, template: 'PB-1', registrationsOpen: false,
     tieBreak: input.tieBreak ?? defaultTieBreak(input.sport),
     playbook: input.playbook ?? 'PB-1',
@@ -367,3 +367,48 @@ export function getPendingActions(eventId: string) { return pendingActions(load(
 export function getNextMatches(eventId: string, n: number) { return nextMatches(load(), eventId, n) }
 export function getLastResults(eventId: string, n: number) { return lastResults(load(), eventId, n) }
 export function getGroupLeaders(eventId: string) { return groupLeaders(load(), eventId) }
+
+export function getSession(): Session | null { return load().session }
+export function getCurrentOrgId(): string { return load().session?.organizationId ?? 'org-1' }
+export function logout(): void { const s = load(); s.session = null; save(s) }
+
+export function signUp(input: { name: string; email: string; orgName: string }): { user: User; organization: Organization } {
+  const state = load()
+  const orgNum = Math.max(0, ...state.organizations.map(o => Number(o.id.replace('org-', '')) || 0)) + 1
+  const usrNum = Math.max(0, ...state.users.map(u => Number(u.id.replace('usr-', '')) || 0)) + 1
+  const orgId = `org-${orgNum}`
+  const organization: Organization = { id: orgId, name: input.orgName, status: 'ACTIVE', modules: ['M-Core', 'M-Compete', 'M-Broadcast', 'M-Payments'] }
+  const user: User = { id: `usr-${usrNum}`, name: input.name, email: input.email, organizationId: orgId, role: 'ADMIN' }
+  const renewsOn = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)
+  const sub: Subscription = { organizationId: orgId, plan: 'PRO', status: 'TRIAL', renewsOn }
+  state.organizations.push(organization); state.users.push(user); state.subscriptions.push(sub)
+  state.session = { userId: user.id, organizationId: orgId }
+  save(state); return { user, organization }
+}
+
+export function planOf(orgId: string): PlanKey { return load().subscriptions.find(s => s.organizationId === orgId)?.plan ?? 'FREE' }
+export function hasModule(orgId: string, key: string): boolean { return load().organizations.find(o => o.id === orgId)?.modules.includes(key) ?? false }
+export function trialDaysLeft(orgId: string): number {
+  const sub = load().subscriptions.find(s => s.organizationId === orgId)
+  if (!sub) return 0
+  const ms = new Date(sub.renewsOn).getTime() - Date.now()
+  return Math.max(0, Math.floor(ms / 86400000))
+}
+export function activatePro(orgId: string): void {
+  const state = load()
+  const sub = state.subscriptions.find(s => s.organizationId === orgId); if (sub) { sub.plan = 'PRO'; sub.status = 'ACTIVE' }
+  const org = state.organizations.find(o => o.id === orgId)
+  if (org) for (const m of ['M-Broadcast', 'M-Payments']) if (!org.modules.includes(m)) org.modules.push(m)
+  save(state)
+}
+export function expireTrial(orgId: string): void {
+  const state = load()
+  const sub = state.subscriptions.find(s => s.organizationId === orgId); if (sub) { sub.plan = 'FREE'; sub.status = 'ACTIVE'; sub.renewsOn = new Date(Date.now() - 86400000).toISOString().slice(0, 10) }
+  const org = state.organizations.find(o => o.id === orgId); if (org) org.modules = ['M-Core', 'M-Compete']
+  save(state)
+}
+export function canCreateEvent(orgId: string): boolean {
+  if (planOf(orgId) !== 'FREE') return true
+  const active = load().events.filter(e => e.organizationId === orgId && getEventPhase(e.id) !== 'DONE').length
+  return active < 1
+}

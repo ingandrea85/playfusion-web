@@ -194,6 +194,18 @@ export interface Announcement {
   createdAt: string
 }
 
+export interface User {
+  id: string
+  name: string
+  email: string
+  organizationId: string
+  role: 'ADMIN'
+}
+export interface Session {
+  userId: string
+  organizationId: string
+}
+
 export interface State {
   events: TournamentEvent[]
   categories: Category[]
@@ -208,4 +220,6 @@ export interface State {
   organizations: Organization[]
   subscriptions: Subscription[]
   announcements: Announcement[]
+  users: User[]
+  session: Session | null
 }
