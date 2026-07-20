@@ -3,9 +3,10 @@
 import '@fontsource-variable/archivo'
 import '@fontsource-variable/hanken-grotesk'
 import '@fontsource-variable/spline-sans-mono'
-import type { ScheduledMatch, StandingRow, FinalMatch, TieBreakCriterion, TieOverride } from './mock/types'
+import type { ScheduledMatch, StandingRow, FinalMatch, TieBreakCriterion, TieOverride, TournamentEvent } from './mock/types'
 import { rankStanding } from './mock/ranking'
 import { decideMatch } from './mock/derive'
+import { getEventPhase } from './mock/store'
 
 export function renderOrganizerTopbar(active: string): string {
   const link = (href: string, label: string, key: string) =>
@@ -15,6 +16,36 @@ export function renderOrganizerTopbar(active: string): string {
       ${link('/apps/organizer/dashboard.html', 'Eventi', 'dashboard')}
       <a href="/index.html">Esci demo</a>
     </nav>`
+}
+
+// Organizer event workspace: sticky hero (name + phase badge) + tab bar. Shared by every event page.
+export function renderOrganizerWorkspace(event: TournamentEvent, activeKey: string): string {
+  const id = event.id
+  const phase = getEventPhase(id)
+  const phaseLabel = { PREP: 'In preparazione', LIVE: 'In corso', DONE: 'Concluso' }[phase]
+  const phaseMod = { PREP: 'prep', LIVE: 'live', DONE: 'done' }[phase]
+  const enroll = event.playbook === 'PB-2' ? 'teams' : 'registrations'
+  const tabs: Array<{ key: string; label: string; href: string }> = [
+    { key: 'overview', label: 'Panoramica', href: `/apps/organizer/event-hub.html?event=${id}` },
+    { key: 'enroll', label: 'Iscrizioni', href: `/apps/organizer/${enroll}.html?event=${id}` },
+    { key: 'calendar', label: 'Calendario', href: `/apps/organizer/schedule.html?event=${id}` },
+    { key: 'standings', label: 'Classifiche', href: `/apps/organizer/classifiche.html?event=${id}` },
+    { key: 'bracket', label: 'Tabellone', href: `/apps/organizer/tabellone.html?event=${id}` },
+    { key: 'announcements', label: 'Avvisi', href: `/apps/organizer/avvisi.html?event=${id}` },
+    { key: 'settings', label: '⚙ Impostazioni', href: `/apps/organizer/competition.html?event=${id}` },
+  ]
+  const nav = tabs.map(t => `<a class="pf-wtab${t.key === activeKey ? ' pf-wtab--active' : ''}" href="${t.href}">${t.label}</a>`).join('')
+  return `
+    <div class="pf-topbar"><a class="pf-brand" href="/apps/organizer/dashboard.html">play<b>fusion</b><small>Organizer</small></a>
+      <nav><a href="/apps/organizer/dashboard.html">Eventi</a><a href="/index.html">Esci demo</a></nav></div>
+    <div class="pf-whero">
+      <div class="pf-whero__inner">
+        <span class="pf-wphase pf-wphase--${phaseMod}">${phaseLabel}</span>
+        <h1>${event.name}</h1>
+        <div class="pf-mono pf-muted">${event.sport} · ${event.location} · ${event.startDate}→${event.endDate}</div>
+      </div>
+      <nav class="pf-wtabs">${nav}</nav>
+    </div>`
 }
 
 export function renderPublicTopbar(): string {
