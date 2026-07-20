@@ -32,8 +32,8 @@ if (!hasModule(orgId, 'M-Broadcast')) {
   function preview(): void {
     document.getElementById('preview')!.innerHTML = `<div class="pf-eyebrow">Anteprima</div>
       <div style="font-family:var(--font-display);font-weight:800;font-size:22px;margin:6px 0">${logo()}</div>
-      <button class="pf-btn" style="background:${accent()};color:#fff;border-color:transparent">Bottone primario</button>
-      <span class="pf-badge" style="background:${primary()};color:#fff">Accent</span>`
+      <span class="pf-badge" style="background:${primary()};color:#fff">Primario</span>
+      <span class="pf-badge" style="background:${accent()};color:#fff;margin-left:6px">Accent</span>`
   }
   preview()
   ;['b-logo', 'b-primary', 'b-accent'].forEach(idp => document.getElementById(idp)!.addEventListener('input', preview))
