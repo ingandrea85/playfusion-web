@@ -3,7 +3,8 @@ import { getCurrentOrgId, getSubscription, getEvents, planOf, activatePro, expir
 import { PLANS, planLabel } from '../../shared/mock/plans'
 
 const orgId = getCurrentOrgId()
-if (new URLSearchParams(location.search).get('expire') === '1') expireTrial(getCurrentOrgId())
+// Demo lever: only expire an actual trial (idempotent, no-op otherwise).
+if (new URLSearchParams(location.search).get('expire') === '1' && getSubscription(orgId)?.status === 'TRIAL') expireTrial(orgId)
 // The shell needs an event; use the org's first event if any, else a synthetic header-less fallback.
 const anyEvent = getEvents().find(e => e.organizationId === orgId)
 if (anyEvent) document.getElementById('shell')!.innerHTML = renderOrganizerWorkspace(anyEvent, 'settings')

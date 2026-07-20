@@ -38,7 +38,7 @@ limitato → schermo piani/acquisto.
 ## Schermi
 
 ### Sign-up — `apps/account/signup.html` + `signup.ts` (nuovo)
-- Landing sobria "Prova gratis · nessuna carta richiesta" + form **3 campi** (nome, email, nome organizzazione) → `signUp` → redirect a `event-hub.html` (dashboard/workspace della nuova org).
+- Landing sobria "Prova gratis · nessuna carta richiesta" + form **3 campi** (nome, email, nome organizzazione) → `signUp` → redirect a `dashboard.html` (dashboard org-scoped della nuova org, con empty-state "crea il primo torneo"). Nota: non `event-hub.html`, che senza `?event=` ricadrebbe su `evt-1` mostrando un evento di un'altra org.
 - Auth **finta** (niente password, niente Auth0). Validazione minima (campi non vuoti, email con `@`).
 - Entry "Prova gratis" aggiunta nell'hub `index.html`.
 - Registrata in `vite.config.ts`.
