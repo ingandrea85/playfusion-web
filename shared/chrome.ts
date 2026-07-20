@@ -6,7 +6,17 @@ import '@fontsource-variable/spline-sans-mono'
 import type { ScheduledMatch, StandingRow, FinalMatch, TieBreakCriterion, TieOverride, TournamentEvent } from './mock/types'
 import { rankStanding } from './mock/ranking'
 import { decideMatch } from './mock/derive'
-import { getEventPhase, getSubscription, trialDaysLeft } from './mock/store'
+import { getEventPhase, getSubscription, trialDaysLeft, resolveBrand } from './mock/store'
+
+// Apply the tenant brand (colors) to the document and return its wordmark, when M-Broadcast-gated brand resolves. No-op otherwise.
+export function applyOrgBrand(orgId: string): string | null {
+  const b = resolveBrand(orgId)
+  if (!b) return null
+  const root = document.documentElement.style
+  root.setProperty('--color-action-primary', b.primaryColor)
+  root.setProperty('--color-action-accent', b.accentColor)
+  return b.logoText
+}
 
 export function renderOrganizerTopbar(active: string): string {
   const link = (href: string, label: string, key: string) =>
@@ -39,8 +49,10 @@ export function renderOrganizerWorkspace(event: TournamentEvent, activeKey: stri
   let banner = ''
   if (sub?.status === 'TRIAL') banner = `<div class="pf-subbanner pf-subbanner--trial">✨ Pro in prova · <b>${trialDaysLeft(event.organizationId)} giorni</b> rimasti — <a href="/apps/organizer/abbonamento.html">Attiva Pro</a> · <a href="/apps/organizer/abbonamento.html?expire=1">Simula scadenza</a></div>`
   else if (sub?.plan === 'FREE') banner = `<div class="pf-subbanner pf-subbanner--free">Sei su Free — <a href="/apps/organizer/abbonamento.html">Passa a Pro</a></div>`
+  const brandLogo = applyOrgBrand(event.organizationId)
+  const wordmark = brandLogo ? brandLogo : 'play<b>fusion</b>'
   return `
-    <div class="pf-topbar"><a class="pf-brand" href="/apps/organizer/dashboard.html">play<b>fusion</b><small>Organizer</small></a>
+    <div class="pf-topbar"><a class="pf-brand" href="/apps/organizer/dashboard.html">${wordmark}<small>Organizer</small></a>
       <nav><a href="/apps/organizer/dashboard.html">Eventi</a><a href="/index.html">Esci demo</a></nav></div>
     <div class="pf-whero">
       <div class="pf-whero__inner">
@@ -53,8 +65,8 @@ export function renderOrganizerWorkspace(event: TournamentEvent, activeKey: stri
     </div>`
 }
 
-export function renderPublicTopbar(): string {
-  return `<a class="pf-brand" href="/index.html">play<b>fusion</b></a>`
+export function renderPublicTopbar(brandText?: string): string {
+  return `<a class="pf-brand" href="/index.html">${brandText ?? 'play<b>fusion</b>'}</a>`
 }
 
 // Category tag: age bracket + registration capacity meter. Shared by E1 and E3.

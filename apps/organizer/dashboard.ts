@@ -1,10 +1,11 @@
 import '../../shared/mock/store'
-import { renderOrganizerTopbar } from '../../shared/chrome'
+import { renderOrganizerTopbar, applyOrgBrand } from '../../shared/chrome'
 import { getEvents, getRegistrations, getCurrentOrgId } from '../../shared/mock/store'
 
 document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
 
 const orgId = getCurrentOrgId()
+applyOrgBrand(orgId)
 const events = getEvents().filter(e => e.organizationId === orgId)
 const eventsEl = document.getElementById('events')!
 if (!events.length) {
