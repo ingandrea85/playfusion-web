@@ -1,11 +1,11 @@
-import { renderOrganizerTopbar, renderCalendar, renderStandings, renderTabs, renderBracket } from '../../shared/chrome'
-import { getCategories, getSchedule, getScheduledMatches, getStandings, getFinals, getEvent, generateSchedule, approveSchedule, publishSchedule, rescheduleMatch, recordResult, recordFinalResult, getTieOverrides, setTieOverride } from '../../shared/mock/store'
-import { rankStanding } from '../../shared/mock/ranking'
+import { renderOrganizerWorkspace, renderCalendar, renderTabs } from '../../shared/chrome'
+import { getCategories, getSchedule, getScheduledMatches, getEvent, generateSchedule, approveSchedule, publishSchedule } from '../../shared/mock/store'
+import { openEditPanel, openResultPanel } from './panels'
 import type { CategorySchedule, ScheduleConfig } from '../../shared/mock/types'
 
-document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
-document.getElementById('back')!.setAttribute('href', `/apps/organizer/event-hub.html?event=${id}`)
+const ev = getEvent(id)
+if (ev) document.getElementById('shell')!.innerHTML = renderOrganizerWorkspace(ev, 'calendar')
 
 const cats = getCategories(id)
 const catName = (catId: string) => cats.find(c => c.id === catId)?.name ?? '—'
@@ -104,119 +104,15 @@ function renderActions(): void {
 let selCat = ''
 let selGir = 'ALL'
 
-// Derive tabs from standings (the superset: every group has standing rows even
-// when it has <2 teams and thus no matches), so no girone/category is unreachable.
 function presentCats(): string[] {
   const seen: string[] = []
-  for (const s of getStandings(id)) if (!seen.includes(s.categoryId)) seen.push(s.categoryId)
+  for (const m of getScheduledMatches(id)) if (!seen.includes(m.categoryId)) seen.push(m.categoryId)
   return seen
 }
 function gironiOf(catId: string): string[] {
   const seen: string[] = []
-  for (const s of getStandings(id)) if (s.categoryId === catId && !seen.includes(s.groupLabel)) seen.push(s.groupLabel)
+  for (const m of getScheduledMatches(id)) if (m.categoryId === catId && !seen.includes(m.groupLabel)) seen.push(m.groupLabel)
   return seen
-}
-
-function openEditPanel(matchId: string): void {
-  const m = getScheduledMatches(id).find(x => x.id === matchId)
-  if (!m) return
-  const fields = schedule().config.byCategory[m.categoryId]?.fields ?? [...new Set(getScheduledMatches(id).map(x => x.field))]
-  const panel = document.getElementById('editmatch')!
-  panel.innerHTML = `<div class="pf-card">
-    <h2>Sposta partita</h2>
-    <p class="pf-muted">${m.home} vs ${m.away}</p>
-    <div class="pf-field"><label>Campo</label><select id="em-field">${fields.map(f => `<option value="${f}"${f === m.field ? ' selected' : ''}>${f}</option>`).join('')}</select></div>
-    <div class="pf-row" style="align-items:flex-end;gap:var(--space-3)">
-      <div class="pf-field" style="flex:1;margin-bottom:0"><label>Giorno</label><input id="em-day" type="date" value="${m.day}" /></div>
-      <div class="pf-field" style="flex:1;margin-bottom:0"><label>Ora</label><input id="em-time" type="time" value="${m.time}" /></div>
-    </div>
-    <div class="pf-row" style="gap:var(--space-2)"><button class="pf-btn pf-btn--primary" id="em-save">Salva</button><button class="pf-btn" id="em-cancel">Annulla</button></div>
-  </div>`
-  document.getElementById('em-save')!.addEventListener('click', () => {
-    rescheduleMatch(matchId, {
-      day: (document.getElementById('em-day') as HTMLInputElement).value,
-      time: (document.getElementById('em-time') as HTMLInputElement).value,
-      field: (document.getElementById('em-field') as HTMLSelectElement).value,
-    })
-    renderViews()
-  })
-  document.getElementById('em-cancel')!.addEventListener('click', () => { panel.innerHTML = '' })
-}
-
-function openResultPanel(matchId: string): void {
-  const m = getScheduledMatches(id).find(x => x.id === matchId)
-  if (!m) return
-  const panel = document.getElementById('editmatch')!
-  panel.innerHTML = `<div class="pf-card">
-    <h2>Risultato</h2>
-    <p class="pf-muted">${m.home} vs ${m.away}</p>
-    <div class="pf-row" style="align-items:flex-end;gap:var(--space-3)">
-      <div class="pf-field" style="flex:1;margin-bottom:0"><label>${m.home}</label><input id="rs-home" type="number" min="0" value="${m.homeScore ?? 0}" /></div>
-      <div class="pf-field" style="flex:1;margin-bottom:0"><label>${m.away}</label><input id="rs-away" type="number" min="0" value="${m.awayScore ?? 0}" /></div>
-    </div>
-    <div class="pf-row" style="gap:var(--space-2)"><button class="pf-btn pf-btn--primary" id="rs-save">Salva</button><button class="pf-btn" id="rs-cancel">Annulla</button></div>
-  </div>`
-  document.getElementById('rs-save')!.addEventListener('click', () => {
-    recordResult(matchId, Number((document.getElementById('rs-home') as HTMLInputElement).value), Number((document.getElementById('rs-away') as HTMLInputElement).value))
-    renderViews()
-  })
-  document.getElementById('rs-cancel')!.addEventListener('click', () => { panel.innerHTML = '' })
-}
-
-function openFinalResultPanel(finalMatchId: string): void {
-  const f = getFinals(id).find(x => x.id === finalMatchId)
-  if (!f) return
-  const home = f.homeResolved ?? f.home
-  const away = f.awayResolved ?? f.away
-  const panel = document.getElementById('editmatch')!
-  panel.innerHTML = `<div class="pf-card">
-    <h2>Risultato · ${f.round}</h2>
-    <p class="pf-muted">${home} vs ${away}</p>
-    <div class="pf-row" style="align-items:flex-end;gap:var(--space-3)">
-      <div class="pf-field" style="flex:1;margin-bottom:0"><label>${home}</label><input id="ff-home" type="number" min="0" value="${f.homeScore ?? 0}" /></div>
-      <div class="pf-field" style="flex:1;margin-bottom:0"><label>${away}</label><input id="ff-away" type="number" min="0" value="${f.awayScore ?? 0}" /></div>
-    </div>
-    <p class="pf-muted" style="margin:var(--space-3) 0 4px">Rigori — solo in caso di parità</p>
-    <div class="pf-row" style="align-items:flex-end;gap:var(--space-3)">
-      <div class="pf-field" style="flex:1;margin-bottom:0"><label>${home} (d.c.r.)</label><input id="ff-sh-home" type="number" min="0" value="${f.homeShootout ?? ''}" /></div>
-      <div class="pf-field" style="flex:1;margin-bottom:0"><label>${away} (d.c.r.)</label><input id="ff-sh-away" type="number" min="0" value="${f.awayShootout ?? ''}" /></div>
-    </div>
-    <div class="pf-row" style="gap:var(--space-2)"><button class="pf-btn pf-btn--primary" id="ff-save">Salva</button><button class="pf-btn" id="ff-cancel">Annulla</button></div>
-  </div>`
-  document.getElementById('ff-save')!.addEventListener('click', () => {
-    const hs = (document.getElementById('ff-sh-home') as HTMLInputElement).value
-    const as = (document.getElementById('ff-sh-away') as HTMLInputElement).value
-    const shootout = hs !== '' && as !== '' ? { home: Number(hs), away: Number(as) } : undefined
-    recordFinalResult(finalMatchId, Number((document.getElementById('ff-home') as HTMLInputElement).value), Number((document.getElementById('ff-away') as HTMLInputElement).value), shootout)
-    panel.innerHTML = ''
-    renderViews()
-  })
-  document.getElementById('ff-cancel')!.addEventListener('click', () => { panel.innerHTML = '' })
-}
-
-function openTiePanel(categoryId: string, groupLabel: string, teams: string[]): void {
-  const panel = document.getElementById('editmatch')!
-  const order = [...teams]
-  const draw = (): void => {
-    panel.innerHTML = `<div class="pf-card">
-      <h2>Risolvi parità</h2>
-      <p class="pf-muted">${groupLabel} · ordina le squadre a pari merito</p>
-      <ol class="pf-tblist">${order.map((t, i) => `<li class="pf-tbrow">
-        <span>${i + 1}. ${t}</span>
-        <span class="pf-tbmove">
-          <button type="button" class="pf-btn pf-btn--ghost" data-up="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
-          <button type="button" class="pf-btn pf-btn--ghost" data-down="${i}" ${i === order.length - 1 ? 'disabled' : ''}>↓</button>
-        </span></li>`).join('')}</ol>
-      <div class="pf-row" style="gap:var(--space-2)"><button class="pf-btn pf-btn--primary" id="tie-save">Salva</button><button class="pf-btn" id="tie-cancel">Annulla</button></div>
-    </div>`
-    panel.querySelectorAll<HTMLButtonElement>('button[data-up]').forEach(b =>
-      b.addEventListener('click', () => { const i = Number(b.dataset.up); [order[i - 1], order[i]] = [order[i], order[i - 1]]; draw() }))
-    panel.querySelectorAll<HTMLButtonElement>('button[data-down]').forEach(b =>
-      b.addEventListener('click', () => { const i = Number(b.dataset.down); [order[i + 1], order[i]] = [order[i], order[i + 1]]; draw() }))
-    document.getElementById('tie-save')!.addEventListener('click', () => { setTieOverride(id, categoryId, groupLabel, order); panel.innerHTML = ''; renderViews() })
-    document.getElementById('tie-cancel')!.addEventListener('click', () => { panel.innerHTML = '' })
-  }
-  draw()
 }
 
 function renderViews(): void {
@@ -225,17 +121,14 @@ function renderViews(): void {
   if (!catsPresent.length) {
     document.getElementById('viewtabs')!.innerHTML = ''
     document.getElementById('calendar')!.innerHTML = ''
-    document.getElementById('standings')!.innerHTML = ''
-    document.getElementById('tieactions')!.innerHTML = ''
-    document.getElementById('finals')!.innerHTML = ''
     return
   }
   if (!catsPresent.includes(selCat)) selCat = catsPresent[0]
   const gironi = gironiOf(selCat)
   if (selGir !== 'ALL' && !gironi.includes(selGir)) selGir = 'ALL'
-  const catTabs = renderTabs(catsPresent.map(c => ({ key: c, label: catName(c) })), selCat)
-  const girTabs = renderTabs([{ key: 'ALL', label: 'Tutti i gironi' }, ...gironi.map(g => ({ key: g, label: g }))], selGir)
-  document.getElementById('viewtabs')!.innerHTML = catTabs + girTabs
+  document.getElementById('viewtabs')!.innerHTML =
+    renderTabs(catsPresent.map(c => ({ key: c, label: catName(c) })), selCat) +
+    renderTabs([{ key: 'ALL', label: 'Tutti i gironi' }, ...gironi.map(g => ({ key: g, label: g }))], selGir)
   const bars = document.querySelectorAll<HTMLElement>('#viewtabs .pf-tabs')
   bars[0].querySelectorAll<HTMLButtonElement>('.pf-tab').forEach(b =>
     b.addEventListener('click', () => { selCat = b.dataset.key!; selGir = 'ALL'; renderViews() }))
@@ -244,36 +137,9 @@ function renderViews(): void {
   const inSel = (categoryId: string, groupLabel: string) => categoryId === selCat && (selGir === 'ALL' || groupLabel === selGir)
   document.getElementById('calendar')!.innerHTML = renderCalendar(getScheduledMatches(id).filter(m => inSel(m.categoryId, m.groupLabel)), catName, true)
   document.querySelectorAll<HTMLButtonElement>('#calendar .js-editmatch').forEach(b =>
-    b.addEventListener('click', () => openEditPanel(b.dataset.match!)))
+    b.addEventListener('click', () => openEditPanel(id, b.dataset.match!, renderViews)))
   document.querySelectorAll<HTMLButtonElement>('#calendar .js-resultmatch').forEach(b =>
-    b.addEventListener('click', () => openResultPanel(b.dataset.match!)))
-  document.getElementById('standings')!.innerHTML =
-    `<div class="pf-pagehead" style="margin:var(--space-6) 0 var(--space-4)"><div class="pf-eyebrow">Classifiche</div><h2>Classifiche di girone</h2></div>`
-    + `<p class="pf-muted" style="margin-top:calc(-1*var(--space-2));margin-bottom:var(--space-4)">Classifica iniziale · nessuna partita giocata.</p>`
-    + renderStandings(getStandings(id).filter(s => inSel(s.categoryId, s.groupLabel)), getScheduledMatches(id), getEvent(id)?.tieBreak ?? [], getTieOverrides(id), catName)
-  // Manual tie resolution (E1 only): a button per still-unresolved group in view.
-  const tieEl = document.getElementById('tieactions')!
-  const visRows = getStandings(id).filter(s => inSel(s.categoryId, s.groupLabel))
-  const ovAll = getTieOverrides(id)
-  const seenG: Array<{ cat: string; g: string }> = []
-  for (const s of visRows) if (!seenG.some(x => x.cat === s.categoryId && x.g === s.groupLabel)) seenG.push({ cat: s.categoryId, g: s.groupLabel })
-  const tieGroups: Array<{ cat: string; g: string; teams: string[] }> = []
-  for (const { cat, g } of seenG) {
-    const grows = visRows.filter(s => s.categoryId === cat && s.groupLabel === g)
-    const gms = getScheduledMatches(id).filter(m => m.categoryId === cat && m.groupLabel === g)
-    const ov = ovAll.filter(o => o.categoryId === cat && o.groupLabel === g).map(o => o.order)
-    const res = rankStanding(grows, gms, getEvent(id)?.tieBreak ?? [], ov)
-    for (const grp of res.unresolved) tieGroups.push({ cat, g, teams: grp })
-  }
-  tieEl.innerHTML = tieGroups.map((u, i) => `<button class="pf-btn" data-tie="${i}">Risolvi parità · ${u.g}: ${u.teams.join(', ')}</button>`).join('')
-  tieEl.querySelectorAll<HTMLButtonElement>('button[data-tie]').forEach(b =>
-    b.addEventListener('click', () => { const u = tieGroups[Number(b.dataset.tie)]; openTiePanel(u.cat, u.g, u.teams) }))
-  document.getElementById('finals')!.innerHTML = getFinals(id).some(f => f.categoryId === selCat)
-    ? `<div class="pf-pagehead" style="margin:var(--space-6) 0 var(--space-4)"><div class="pf-eyebrow">Finali</div><h2>Fase finale</h2></div>`
-      + renderBracket(getFinals(id).filter(f => f.categoryId === selCat), true)
-    : ''
-  document.querySelectorAll<HTMLButtonElement>('#finals button[data-final]').forEach(b =>
-    b.addEventListener('click', () => openFinalResultPanel(b.dataset.final!)))
+    b.addEventListener('click', () => openResultPanel(id, b.dataset.match!, renderViews)))
 }
 
 function render(): void {
@@ -285,9 +151,6 @@ function render(): void {
     document.getElementById('viewtabs')!.innerHTML = ''
     document.getElementById('editmatch')!.innerHTML = ''
     document.getElementById('calendar')!.innerHTML = ''
-    document.getElementById('standings')!.innerHTML = ''
-    document.getElementById('tieactions')!.innerHTML = ''
-    document.getElementById('finals')!.innerHTML = ''
     return
   }
   renderWindow()
@@ -297,9 +160,6 @@ function render(): void {
     document.getElementById('viewtabs')!.innerHTML = ''
     document.getElementById('editmatch')!.innerHTML = ''
     document.getElementById('calendar')!.innerHTML = ''
-    document.getElementById('standings')!.innerHTML = ''
-    document.getElementById('tieactions')!.innerHTML = ''
-    document.getElementById('finals')!.innerHTML = ''
   } else {
     renderViews()
   }
