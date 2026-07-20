@@ -3,7 +3,7 @@ import { buildSeed } from './seed'
 import { buildFixtures, splitIntoGroups, addMinutes } from './fixtures'
 import { buildFinals } from './finals'
 import { defaultTieBreak } from './tiebreak'
-import { recomputeStandings, resolveFinals } from './derive'
+import { recomputeStandings, resolveFinals, decideMatch } from './derive'
 
 const KEY = 'playfusion-mock-v1'
 
@@ -45,6 +45,7 @@ export function addCategory(eventId: string, name: string, maxTeams: number): Ca
 export function setRegistrationsOpen(eventId: string, open: boolean): void {
   const state = load()
   const e = state.events.find(x => x.id === eventId); if (e) e.registrationsOpen = open
+  if (open && e && e.playbook !== 'PB-2') upsertSystemAnnouncement(state, { eventId, categoryId: null, title: 'Iscrizioni aperte', body: 'Le iscrizioni al torneo sono aperte.', dedupeKey: 'registrations-open' })
   save(state)
 }
 
@@ -203,7 +204,10 @@ export function approveSchedule(eventId: string): void {
 export function publishSchedule(eventId: string): void {
   const state = load()
   const s = state.schedules.find(x => x.eventId === eventId)
-  if (s && s.status === 'APPROVED') s.status = 'PUBLISHED'
+  if (s && s.status === 'APPROVED') {
+    s.status = 'PUBLISHED'
+    upsertSystemAnnouncement(state, { eventId, categoryId: null, title: 'Calendario pubblicato', body: 'Il calendario delle gare è online.', dedupeKey: 'schedule-published' })
+  }
   save(state)
 }
 export function getStandings(eventId: string): StandingRow[] {
@@ -253,7 +257,10 @@ export function setGroupsLocked(categoryId: string, locked: boolean): void {
 export function rescheduleMatch(matchId: string, patch: { day: string; time: string; field: string }): void {
   const state = load()
   const m = state.scheduledMatches.find(x => x.id === matchId)
-  if (m) { m.day = patch.day; m.time = patch.time; m.field = patch.field }
+  if (m) {
+    m.day = patch.day; m.time = patch.time; m.field = patch.field
+    upsertSystemAnnouncement(state, { eventId: m.eventId, categoryId: m.categoryId, title: 'Gara riprogrammata', body: `${m.home} vs ${m.away}: ${m.day} ${m.time} · ${m.field}`, dedupeKey: `reschedule:${m.id}` })
+  }
   save(state)
 }
 
@@ -305,6 +312,12 @@ export function recordFinalResult(finalMatchId: string, homeScore: number, awayS
   if (shootout && homeScore === awayScore) { f.homeShootout = shootout.home; f.awayShootout = shootout.away }
   else { f.homeShootout = null; f.awayShootout = null }
   resolveFinals(state, f.eventId)
+  for (const fin of state.finals.filter(x => x.eventId === f.eventId && x.round === 'Finale')) {
+    const key = `champion:${fin.categoryId}:${fin.bracketLabel}`
+    const d = decideMatch(fin)
+    if (d) upsertSystemAnnouncement(state, { eventId: f.eventId, categoryId: fin.categoryId, title: 'Campione', body: `${d.winner} ha vinto ${fin.bracketLabel}.`, dedupeKey: key })
+    else removeSystemAnnouncement(state, f.eventId, key)
+  }
   save(state)
 }
 
@@ -319,7 +332,7 @@ function nextAnnId(state: State): string {
 }
 export function addAnnouncement(input: { eventId: string; categoryId: string | null; title: string; body: string; pinned: boolean }): Announcement {
   const state = load()
-  const ann: Announcement = { id: nextAnnId(state), ...input, createdAt: new Date().toISOString() }
+  const ann: Announcement = { id: nextAnnId(state), ...input, source: 'ORGANIZER', createdAt: new Date().toISOString() }
   state.announcements.push(ann); save(state); return ann
 }
 export function removeAnnouncement(id: string): void {
@@ -336,4 +349,13 @@ export function announcementReach(eventId: string, categoryId: string | null): n
   return load().registrations.filter(r =>
     r.eventId === eventId && r.status === 'CONFIRMED' && (categoryId === null || r.categoryId === categoryId),
   ).length
+}
+// System (auto) announcements: unique per eventId+dedupeKey; upsert replaces text in place.
+function upsertSystemAnnouncement(state: State, input: { eventId: string; categoryId: string | null; title: string; body: string; dedupeKey: string }): void {
+  const existing = state.announcements.find(a => a.eventId === input.eventId && a.dedupeKey === input.dedupeKey)
+  if (existing) { existing.title = input.title; existing.body = input.body; existing.categoryId = input.categoryId; existing.createdAt = new Date().toISOString(); return }
+  state.announcements.push({ id: nextAnnId(state), source: 'SYSTEM', pinned: false, createdAt: new Date().toISOString(), ...input })
+}
+function removeSystemAnnouncement(state: State, eventId: string, dedupeKey: string): void {
+  state.announcements = state.announcements.filter(a => !(a.eventId === eventId && a.dedupeKey === dedupeKey))
 }

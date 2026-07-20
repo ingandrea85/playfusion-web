@@ -187,6 +187,8 @@ export interface Announcement {
   title: string
   body: string
   pinned: boolean
+  source: 'ORGANIZER' | 'SYSTEM'
+  dedupeKey?: string
   createdAt: string
 }
 
