@@ -95,9 +95,10 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 /* ---------- Form fields ---------- */
 .pf-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-4); }
 .pf-field label { font-weight: 700; font-size: 13px; color: var(--color-text-soft); }
-.pf-field input, .pf-field select { padding: 11px var(--space-3); border: 1px solid var(--color-border-strong);
+.pf-field input, .pf-field select, .pf-field textarea { padding: 11px var(--space-3); border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-2); font-family: var(--font-sans); font-size: 15px; background: var(--color-surface); color: var(--color-text); }
-.pf-field input:focus, .pf-field select:focus { outline: none; border-color: var(--color-action-primary);
+.pf-field textarea { resize: vertical; }
+.pf-field input:focus, .pf-field select:focus, .pf-field textarea:focus { outline: none; border-color: var(--color-action-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-action-primary) 18%, transparent); }
 
 /* ---------- Chips (categories / gironi) ---------- */

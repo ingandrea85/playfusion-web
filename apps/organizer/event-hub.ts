@@ -37,6 +37,7 @@ const steps: Step[] = [
   { label: 'Genera calendario', href: `/apps/organizer/schedule.html?event=${id}`, done: schedStatus !== 'NONE' },
   { label: 'Approva calendario', href: `/apps/organizer/schedule.html?event=${id}`, done: schedStatus === 'APPROVED' || schedStatus === 'PUBLISHED' },
   { label: 'Pubblica evento', href: `/apps/organizer/schedule.html?event=${id}`, done: schedStatus === 'PUBLISHED' },
+  { label: 'Comunica avvisi', href: `/apps/organizer/avvisi.html?event=${id}`, done: false },
 ]
 
 document.getElementById('steps')!.innerHTML = steps.map(s => {
