@@ -18,6 +18,8 @@ export default defineConfig({
         payments: r('apps/organizer/payments.html'),
         competition: r('apps/organizer/competition.html'),
         schedule: r('apps/organizer/schedule.html'),
+        classifiche: r('apps/organizer/classifiche.html'),
+        tabellone: r('apps/organizer/tabellone.html'),
         gironi: r('apps/organizer/gironi.html'),
         teams: r('apps/organizer/teams.html'),
         avvisiOrg: r('apps/organizer/avvisi.html'),
