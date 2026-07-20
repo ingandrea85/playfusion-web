@@ -1,9 +1,9 @@
-import { renderOrganizerTopbar } from '../../shared/chrome'
+import { renderOrganizerWorkspace } from '../../shared/chrome'
 import { getEvent, getCategories, getAnnouncements, addAnnouncement, removeAnnouncement, togglePin, announcementReach } from '../../shared/mock/store'
 
-document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
-document.getElementById('back')!.setAttribute('href', `/apps/organizer/event-hub.html?event=${id}`)
+const ev = getEvent(id)
+if (ev) document.getElementById('shell')!.innerHTML = renderOrganizerWorkspace(ev, 'announcements')
 
 const cats = () => getCategories(id)
 const catName = (catId: string | null) => catId === null ? 'Tutte le categorie' : (cats().find(c => c.id === catId)?.name ?? '—')

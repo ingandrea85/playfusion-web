@@ -1,9 +1,9 @@
-import { renderOrganizerTopbar, renderCategoryTag } from '../../shared/chrome'
-import { addCategory, getCategories, getRegistrations } from '../../shared/mock/store'
+import { renderOrganizerWorkspace, renderCategoryTag } from '../../shared/chrome'
+import { addCategory, getCategories, getRegistrations, getEvent } from '../../shared/mock/store'
 
-document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
-document.getElementById('back')!.setAttribute('href', `/apps/organizer/event-hub.html?event=${id}`)
+const ev = getEvent(id)
+if (ev) document.getElementById('shell')!.innerHTML = renderOrganizerWorkspace(ev, 'settings')
 
 function countsByCategory(): Record<string, number> {
   const map: Record<string, number> = {}

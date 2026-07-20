@@ -1,10 +1,10 @@
-import { renderOrganizerTopbar } from '../../shared/chrome'
-import { getCategories, getCompetition, applyToAllCategories, upsertCompetition } from '../../shared/mock/store'
+import { renderOrganizerWorkspace } from '../../shared/chrome'
+import { getCategories, getCompetition, applyToAllCategories, upsertCompetition, getEvent } from '../../shared/mock/store'
 import type { CompetitionConfig } from '../../shared/mock/types'
 
-document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
-document.getElementById('back')!.setAttribute('href', `/apps/organizer/event-hub.html?event=${id}`)
+const ev = getEvent(id)
+if (ev) document.getElementById('shell')!.innerHTML = renderOrganizerWorkspace(ev, 'settings')
 
 const cats = getCategories(id)
 const DEFAULT: CompetitionConfig = { format: 'GROUPS_KNOCKOUT', legs: 'SINGLE', groupsCount: 2, qualifiersPerGroup: 2, finalsType: 'PLACEMENT' }

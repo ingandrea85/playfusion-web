@@ -1,9 +1,9 @@
-import { renderOrganizerTopbar } from '../../shared/chrome'
-import { confirmTeam, getCategories, getRegistrations } from '../../shared/mock/store'
+import { renderOrganizerWorkspace } from '../../shared/chrome'
+import { confirmTeam, getCategories, getRegistrations, getEvent } from '../../shared/mock/store'
 
-document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
-document.getElementById('back')!.setAttribute('href', `/apps/organizer/event-hub.html?event=${id}`)
+const ev = getEvent(id)
+if (ev) document.getElementById('shell')!.innerHTML = renderOrganizerWorkspace(ev, 'enroll')
 
 function catName(catId: string) { return getCategories(id).find(c => c.id === catId)?.name ?? '—' }
 

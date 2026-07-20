@@ -1,9 +1,9 @@
-import { renderOrganizerTopbar, renderTabs } from '../../shared/chrome'
-import { getCategories, getCompetition, getGroupSlots, drawGroups, moveTeam, setGroupsLocked } from '../../shared/mock/store'
+import { renderOrganizerWorkspace, renderTabs } from '../../shared/chrome'
+import { getCategories, getCompetition, getGroupSlots, drawGroups, moveTeam, setGroupsLocked, getEvent } from '../../shared/mock/store'
 
-document.getElementById('topbar')!.innerHTML = renderOrganizerTopbar('dashboard')
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
-document.getElementById('back')!.setAttribute('href', `/apps/organizer/event-hub.html?event=${id}`)
+const ev = getEvent(id)
+if (ev) document.getElementById('shell')!.innerHTML = renderOrganizerWorkspace(ev, 'settings')
 
 const cats = getCategories(id)
 let selCat = cats[0]?.id ?? ''
