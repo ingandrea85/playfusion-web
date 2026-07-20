@@ -42,7 +42,7 @@ export function renderOrganizerWorkspace(event: TournamentEvent, activeKey: stri
     { key: 'standings', label: 'Classifiche', href: `/apps/organizer/classifiche.html?event=${id}` },
     { key: 'bracket', label: 'Tabellone', href: `/apps/organizer/tabellone.html?event=${id}` },
     { key: 'announcements', label: 'Avvisi', href: `/apps/organizer/avvisi.html?event=${id}` },
-    { key: 'settings', label: '⚙ Impostazioni', href: `/apps/organizer/competition.html?event=${id}` },
+    { key: 'settings', label: '⚙ Impostazioni', href: `/apps/organizer/impostazioni.html?event=${id}` },
   ]
   const nav = tabs.map(t => `<a class="pf-wtab${t.key === activeKey ? ' pf-wtab--active' : ''}" href="${t.href}">${t.label}</a>`).join('')
   const sub = getSubscription(event.organizationId)

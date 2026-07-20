@@ -21,6 +21,8 @@ export default defineConfig({
         classifiche: r('apps/organizer/classifiche.html'),
         tabellone: r('apps/organizer/tabellone.html'),
         abbonamento: r('apps/organizer/abbonamento.html'),
+        organizzazione: r('apps/organizer/organizzazione.html'),
+        impostazioni: r('apps/organizer/impostazioni.html'),
         gironi: r('apps/organizer/gironi.html'),
         teams: r('apps/organizer/teams.html'),
         avvisiOrg: r('apps/organizer/avvisi.html'),
