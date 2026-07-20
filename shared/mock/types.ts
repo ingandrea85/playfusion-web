@@ -171,6 +171,7 @@ export interface Organization {
   name: string
   status: OrgStatus
   modules: string[]
+  brand?: { logoText: string; primaryColor: string; accentColor: string }
 }
 
 export type PlanKey = 'FREE' | 'PRO' | 'BUSINESS'

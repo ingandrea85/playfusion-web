@@ -412,3 +412,16 @@ export function canCreateEvent(orgId: string): boolean {
   const active = load().events.filter(e => e.organizationId === orgId && getEventPhase(e.id) !== 'DONE').length
   return active < 1
 }
+
+export function getBrand(orgId: string): Organization['brand'] {
+  return load().organizations.find(o => o.id === orgId)?.brand
+}
+export function setBrand(orgId: string, brand: { logoText: string; primaryColor: string; accentColor: string }): void {
+  const state = load()
+  const o = state.organizations.find(x => x.id === orgId); if (o) o.brand = brand
+  save(state)
+}
+export function resolveBrand(orgId: string): { logoText: string; primaryColor: string; accentColor: string } | null {
+  if (!hasModule(orgId, 'M-Broadcast')) return null
+  return load().organizations.find(o => o.id === orgId)?.brand ?? null
+}
