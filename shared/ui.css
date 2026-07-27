@@ -281,3 +281,95 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 /* ---------- Panoramica "Da fare ora" ---------- */
 .pf-todo { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .pf-todo li { padding: 8px 12px; background: #fff8f8; border: 1px solid #fde0e0; border-radius: var(--radius-2); }
+
+/* ---------- Membership & roles (slice mb) ---------- */
+.pf-actas { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-muted);
+  background: var(--color-surface-sunken); border: 1px dashed var(--color-border-strong); border-radius: var(--radius-pill); padding: 3px 10px; }
+.pf-actas select { font-size: 12px; border: 1px solid var(--color-border); border-radius: var(--radius-2); padding: 2px 6px;
+  background: var(--color-surface); color: var(--color-text); }
+.pf-rolechip { display: inline-block; margin: 4px 0; padding: 3px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 700; }
+.pf-rolechip--director { background: #fff1e6; color: #9a3412; }
+.pf-rolechip--organizer { background: #eef2f7; color: var(--color-text-soft); }
+
+.pf-memberrow { display: flex; align-items: center; gap: var(--space-3); padding: 10px 12px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-2); margin-bottom: var(--space-2); }
+.pf-memberrow--invite { border-style: dashed; background: var(--color-surface-sunken); }
+.pf-member__id { flex: 1 1 auto; min-width: 0; font-size: 14px; }
+.pf-member__act { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pf-avatar { width: 34px; height: 34px; border-radius: 50%; flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; color: #fff; }
+.pf-avatar--own { background: var(--color-action-primary); }
+.pf-avatar--org { background: #475569; }
+.pf-avatar--dir { background: var(--color-action-accent); }
+.pf-avatar--pending { background: #94a3b8; }
+.pf-rolebadge { padding: 3px 9px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+.pf-rolebadge--own { background: #dbeafe; color: #1e40af; }
+.pf-rolebadge--org { background: #eef2f7; color: #334155; }
+.pf-rolebadge--dir { background: #ffedd5; color: #9a3412; }
+.pf-rolesel { font-size: 13px; border: 1px solid var(--color-border); border-radius: var(--radius-2); padding: 5px 8px; background: var(--color-surface); }
+
+/* ---------- Event dashboard (slice db) ---------- */
+:root { --pf-chart-track: #e6eaf0; --pf-chart-green: #16a34a; --pf-chart-amber: #d97706; }
+.pf-dashgrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+@media (max-width: 640px) { .pf-dashgrid { grid-template-columns: 1fr; } }
+.pf-charh { margin: 0 0 var(--space-3); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); }
+.pf-charlegend { display: flex; gap: var(--space-4); margin-top: 10px; font-size: 12px; color: var(--color-text-muted); flex-wrap: wrap; }
+.pf-charlegend b { color: var(--color-text); }
+.pf-dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+.pf-dot--blue { background: var(--color-action-primary); }
+.pf-dot--track { background: var(--pf-chart-track); }
+.pf-dot--green { background: var(--pf-chart-green); }
+.pf-dot--amber { background: var(--pf-chart-amber); }
+
+.pf-donut { display: flex; align-items: center; gap: var(--space-4); }
+.pf-donut svg { flex: 0 0 auto; }
+.pf-donut__big { font-size: 30px; font-weight: 800; line-height: 1; color: var(--color-text); font-variant-numeric: tabular-nums; }
+.pf-donut__sub { font-size: 12px; color: var(--color-text-muted); margin-top: 3px; }
+
+.pf-capbars { display: flex; flex-direction: column; gap: 11px; }
+.pf-capbar { display: grid; grid-template-columns: 70px 1fr auto; align-items: center; gap: 10px; font-size: 13px; }
+.pf-capbar__lab { font-weight: 700; color: var(--color-text); }
+.pf-capbar__track { height: 12px; background: var(--pf-chart-track); border-radius: 999px; overflow: hidden; }
+.pf-capbar__fill { height: 100%; background: var(--color-action-primary); border-radius: 999px; }
+.pf-capbar__fill--full { background: var(--color-action-accent); }
+.pf-capbar__fill--behind { background: var(--pf-chart-amber); }
+.pf-capbar__n { font-variant-numeric: tabular-nums; color: var(--color-text-muted); font-size: 12px; white-space: nowrap; }
+
+.pf-statusbar { height: 22px; border-radius: 6px; overflow: hidden; display: flex; }
+.pf-statusbar i { display: block; height: 100%; }
+.pf-statusbar i + i { box-shadow: inset 2px 0 0 var(--color-surface); }
+.pf-statusbar--paid { background: var(--pf-chart-green); }
+.pf-statusbar--unpaid { background: var(--pf-chart-amber); }
+
+.pf-daycols { display: flex; gap: 18px; align-items: flex-end; padding-top: 6px; }
+.pf-daycol { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pf-daycol__track { width: 34px; height: 96px; display: flex; flex-direction: column; justify-content: flex-end; border-radius: 6px 6px 0 0; overflow: hidden; background: var(--pf-chart-track); }
+.pf-daycol__fill { background: var(--color-action-primary); }
+.pf-daycol__lab { font-size: 12px; color: var(--color-text-muted); text-align: center; }
+
+.pf-stattiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
+.pf-stattile { border: 1px solid var(--color-border); border-radius: var(--radius-2); padding: 12px; text-align: center; }
+.pf-stattile b { display: block; font-size: 24px; color: var(--color-text); }
+.pf-stattile span { font-size: 11px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ---------- Resources & logistics (slice rs) ---------- */
+.pf-restable { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pf-restable th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--color-border); }
+.pf-restable td { padding: 8px; border-bottom: 1px solid var(--color-border); }
+.pf-sizein { width: 72px; border: 1px solid var(--color-border); border-radius: var(--radius-2); padding: 5px 8px; font-size: 14px; background: var(--color-surface); }
+
+.pf-slot { display: flex; align-items: center; gap: var(--space-3); padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-2); margin-bottom: var(--space-2); }
+.pf-slot--over { border-color: #fca5a5; background: #fef2f2; }
+.pf-slot__time { font-weight: 800; font-variant-numeric: tabular-nums; color: var(--color-text); width: 64px; flex: 0 0 auto; }
+.pf-slot__teams { flex: 1 1 auto; display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.pf-slotteam { display: inline-flex; align-items: center; gap: 6px; background: var(--color-surface-sunken); border: 1px solid var(--color-border); border-radius: var(--radius-pill); padding: 3px 10px; font-size: 13px; }
+.pf-slotteam small { color: var(--color-text-muted); }
+.pf-slotcat { font-size: 10px; background: #eef2f7; color: #334155; border-radius: 4px; padding: 0 4px; }
+.pf-move { font-size: 11px; border: 1px solid var(--color-border); border-radius: 6px; padding: 1px 4px; background: var(--color-surface); }
+.pf-slot__gauge { width: 130px; flex: 0 0 auto; }
+.pf-gauge { height: 8px; background: var(--pf-chart-track); border-radius: 999px; overflow: hidden; }
+.pf-gauge__fill { height: 100%; border-radius: 999px; background: var(--pf-chart-green); }
+.pf-gauge__fill--warn { background: var(--pf-chart-amber); }
+.pf-gauge__fill--over { background: #dc2626; }
+.pf-gauge__n { font-size: 11px; color: var(--color-text-muted); margin-top: 3px; text-align: right; }
+.pf-over { color: #dc2626; font-weight: 700; }

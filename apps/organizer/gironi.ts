@@ -1,5 +1,7 @@
-import { renderOrganizerWorkspace, renderTabs } from '../../shared/chrome'
+import { renderOrganizerWorkspace, renderTabs, requireRole } from '../../shared/chrome'
 import { getCategories, getCompetition, getGroupSlots, drawGroups, moveTeam, setGroupsLocked, getEvent } from '../../shared/mock/store'
+
+requireRole(['OWNER', 'ORGANIZER'])  // setup is not for the director
 
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
 const ev = getEvent(id)

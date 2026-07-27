@@ -3,10 +3,27 @@
 import '@fontsource-variable/archivo'
 import '@fontsource-variable/hanken-grotesk'
 import '@fontsource-variable/spline-sans-mono'
-import type { ScheduledMatch, StandingRow, FinalMatch, TieBreakCriterion, TieOverride, TournamentEvent } from './mock/types'
+import type { ScheduledMatch, StandingRow, FinalMatch, TieBreakCriterion, TieOverride, TournamentEvent, OrgRole } from './mock/types'
 import { rankStanding } from './mock/ranking'
 import { decideMatch } from './mock/derive'
-import { getEventPhase, getSubscription, trialDaysLeft, resolveBrand } from './mock/store'
+import { getEventPhase, getSubscription, trialDaysLeft, resolveBrand, currentRole, listMembers, getSession, actAs, logout } from './mock/store'
+import { canSeeTab, roleLabel } from './mock/roles'
+
+// Demo "Agisci come…" lever handler (exposed globally so the shell HTML can call it
+// via inline onchange, without every page having to wire a listener).
+if (typeof window !== 'undefined') {
+  ;(window as unknown as { __pfActAs: (id: string) => void }).__pfActAs = (userId: string) => {
+    if (userId) actAs(userId); else logout()
+    location.reload()
+  }
+}
+
+// Redirect away from a page the current role may not see. Returns false when it redirected.
+export function requireRole(allowed: OrgRole[], fallbackHref = '/apps/organizer/dashboard.html'): boolean {
+  if (allowed.includes(currentRole())) return true
+  location.replace(fallbackHref)
+  return false
+}
 
 // Apply the tenant brand (colors) to the document and return its wordmark, when M-Broadcast-gated brand resolves. No-op otherwise.
 export function applyOrgBrand(orgId: string): string | null {
@@ -42,27 +59,44 @@ export function renderOrganizerWorkspace(event: TournamentEvent, activeKey: stri
     { key: 'standings', label: 'Classifiche', href: `/apps/organizer/classifiche.html?event=${id}` },
     { key: 'bracket', label: 'Tabellone', href: `/apps/organizer/tabellone.html?event=${id}` },
     { key: 'announcements', label: 'Avvisi', href: `/apps/organizer/avvisi.html?event=${id}` },
+    { key: 'resources', label: '🧺 Risorse', href: `/apps/organizer/risorse.html?event=${id}` },
     { key: 'settings', label: '⚙ Impostazioni', href: `/apps/organizer/impostazioni.html?event=${id}` },
   ]
-  const nav = tabs.map(t => `<a class="pf-wtab${t.key === activeKey ? ' pf-wtab--active' : ''}" href="${t.href}">${t.label}</a>`).join('')
+  const role = currentRole()
+  const nav = tabs.filter(t => canSeeTab(role, t.key as never)).map(t => `<a class="pf-wtab${t.key === activeKey ? ' pf-wtab--active' : ''}" href="${t.href}">${t.label}</a>`).join('')
   const sub = getSubscription(event.organizationId)
   let banner = ''
   if (sub?.status === 'TRIAL') banner = `<div class="pf-subbanner pf-subbanner--trial">✨ Pro in prova · <b>${trialDaysLeft(event.organizationId)} giorni</b> rimasti — <a href="/apps/organizer/abbonamento.html">Attiva Pro</a> · <a href="/apps/organizer/abbonamento.html?expire=1">Simula scadenza</a></div>`
   else if (sub?.plan === 'FREE') banner = `<div class="pf-subbanner pf-subbanner--free">Sei su Free — <a href="/apps/organizer/abbonamento.html">Passa a Pro</a></div>`
   const brandLogo = applyOrgBrand(event.organizationId)
   const wordmark = brandLogo ? brandLogo : 'play<b>fusion</b>'
+  const chip = role !== 'OWNER'
+    ? `<span class="pf-rolechip pf-rolechip--${role.toLowerCase()}">${role === 'DIRECTOR' ? '🎽 Director · solo risultati' : '👥 Organizer'}</span>`
+    : ''
   return `
     <div class="pf-topbar"><a class="pf-brand" href="/apps/organizer/dashboard.html">${wordmark}<small>Organizer</small></a>
-      <nav><a href="/apps/organizer/dashboard.html">Eventi</a><a href="/index.html">Esci demo</a></nav></div>
+      <nav>${renderActAs(event.organizationId)}<a href="/apps/organizer/dashboard.html">Eventi</a><a href="/index.html">Esci demo</a></nav></div>
     <div class="pf-whero">
       <div class="pf-whero__inner">
         <span class="pf-wphase pf-wphase--${phaseMod}">${phaseLabel}</span>
         <h1>${event.name}</h1>
+        ${chip}
         <div class="pf-mono pf-muted">${event.sport} · ${event.location} · ${event.startDate}→${event.endDate}</div>
       </div>
       ${banner}
       <nav class="pf-wtabs">${nav}</nav>
     </div>`
+}
+
+// Demo "Agisci come…" lever: preview the workspace as any org member. Clearly a demo affordance.
+function renderActAs(orgId: string): string {
+  const members = listMembers(orgId)
+  if (!members.length) return ''
+  const cur = getSession()?.userId ?? ''
+  const opts = [`<option value=""${cur === '' ? ' selected' : ''}>— demo (owner) —</option>`]
+    .concat(members.map(m => `<option value="${m.id}"${m.id === cur ? ' selected' : ''}>${roleLabel(m.role)} · ${m.name}</option>`))
+    .join('')
+  return `<span class="pf-actas">🎭 Agisci come <select onchange="__pfActAs(this.value)">${opts}</select></span>`
 }
 
 export function renderPublicTopbar(brandText?: string): string {
@@ -83,7 +117,8 @@ export function renderCategoryTag(name: string, count: number, maxTeams: number)
 }
 
 // Calendar rendering — grouped by day, matches sorted by time then field. Shared by E1 and E3.
-export function renderCalendar(matches: ScheduledMatch[], catName: (id: string) => string, editable = false): string {
+// editable: false = read-only · true = reschedule + result · 'results' = result entry only (director).
+export function renderCalendar(matches: ScheduledMatch[], catName: (id: string) => string, editable: boolean | 'results' = false): string {
   if (!matches.length) return `<p class="pf-muted">Nessuna partita in calendario.</p>`
   const days = [...new Set(matches.map(m => m.day))].sort()
   return days.map(day => {
@@ -94,8 +129,9 @@ export function renderCalendar(matches: ScheduledMatch[], catName: (id: string) 
         const teams = played
           ? `${m.home} <b>${m.homeScore}–${m.awayScore}</b> ${m.away}`
           : `${m.home} <b>vs</b> ${m.away}`
+        const editBtn = editable === true ? `<button class="pf-btn js-editmatch" data-match="${m.id}" style="margin-top:6px">Modifica</button>` : ''
         const actions = editable
-          ? `<button class="pf-btn js-editmatch" data-match="${m.id}" style="margin-top:6px">Modifica</button>
+          ? `${editBtn}
              <button class="pf-btn js-resultmatch" data-match="${m.id}" style="margin-top:6px">Risultato</button>`
           : ''
         return `<li class="pf-match">

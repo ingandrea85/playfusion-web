@@ -1,5 +1,7 @@
-import { renderOrganizerWorkspace } from '../../shared/chrome'
+import { renderOrganizerWorkspace, requireRole } from '../../shared/chrome'
 import { getCategories, getCompetition, applyToAllCategories, upsertCompetition, getEvent } from '../../shared/mock/store'
+
+requireRole(['OWNER', 'ORGANIZER'])  // setup is not for the director
 import type { CompetitionConfig } from '../../shared/mock/types'
 
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'

@@ -17,7 +17,7 @@ describe('signUp', () => {
   it('creates org + user + trial subscription and sets the session', () => {
     const { user, organization } = signUp({ name: 'Marco Test', email: 'marco@test.it', orgName: 'ASD Prova' })
     expect(organization.name).toBe('ASD Prova')
-    expect(user.role).toBe('ADMIN')
+    expect(user.role).toBe('OWNER')
     expect(getCurrentOrgId()).toBe(organization.id)
     const sub = getSubscription(organization.id)!
     expect(sub.plan).toBe('PRO')

@@ -1,11 +1,14 @@
 import { renderOrganizerWorkspace, renderCalendar, renderTabs } from '../../shared/chrome'
-import { getCategories, getSchedule, getScheduledMatches, getEvent, generateSchedule, approveSchedule, publishSchedule } from '../../shared/mock/store'
+import { getCategories, getSchedule, getScheduledMatches, getEvent, generateSchedule, approveSchedule, publishSchedule, currentRole } from '../../shared/mock/store'
 import { openEditPanel, openResultPanel } from './panels'
 import type { CategorySchedule, ScheduleConfig } from '../../shared/mock/types'
 
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
 const ev = getEvent(id)
 if (ev) document.getElementById('shell')!.innerHTML = renderOrganizerWorkspace(ev, 'calendar')
+
+// Director sees a results-only surface: no config/generate/approve, just score entry.
+const director = currentRole() === 'DIRECTOR'
 
 const cats = getCategories(id)
 const catName = (catId: string) => cats.find(c => c.id === catId)?.name ?? '—'
@@ -135,7 +138,7 @@ function renderViews(): void {
   bars[1].querySelectorAll<HTMLButtonElement>('.pf-tab').forEach(b =>
     b.addEventListener('click', () => { selGir = b.dataset.key!; renderViews() }))
   const inSel = (categoryId: string, groupLabel: string) => categoryId === selCat && (selGir === 'ALL' || groupLabel === selGir)
-  document.getElementById('calendar')!.innerHTML = renderCalendar(getScheduledMatches(id).filter(m => inSel(m.categoryId, m.groupLabel)), catName, true)
+  document.getElementById('calendar')!.innerHTML = renderCalendar(getScheduledMatches(id).filter(m => inSel(m.categoryId, m.groupLabel)), catName, director ? 'results' : true)
   document.querySelectorAll<HTMLButtonElement>('#calendar .js-editmatch').forEach(b =>
     b.addEventListener('click', () => openEditPanel(id, b.dataset.match!, renderViews)))
   document.querySelectorAll<HTMLButtonElement>('#calendar .js-resultmatch').forEach(b =>
@@ -144,6 +147,16 @@ function renderViews(): void {
 
 function render(): void {
   document.getElementById('flash')!.innerHTML = ''
+  if (director) {
+    for (const idp of ['window', 'configarea', 'actions']) document.getElementById(idp)!.innerHTML = ''
+    document.getElementById('uniform')?.closest('.pf-card')?.remove()
+    if (schedule().status === 'NONE') {
+      document.getElementById('viewtabs')!.innerHTML = ''
+      document.getElementById('calendar')!.innerHTML = `<p class="pf-muted">Calendario non ancora disponibile.</p>`
+      return
+    }
+    renderViews(); return
+  }
   if (cats.length === 0) {
     document.getElementById('window')!.innerHTML = ''
     document.getElementById('configarea')!.innerHTML = `<div class="pf-card pf-muted">Nessuna categoria. Aggiungile prima nello step Categorie.</div>`
@@ -165,7 +178,9 @@ function render(): void {
   }
 }
 
-const toggle = document.getElementById('uniform') as HTMLInputElement
-toggle.checked = uniform
-toggle.addEventListener('change', () => { uniform = toggle.checked; render() })
+if (!director) {
+  const toggle = document.getElementById('uniform') as HTMLInputElement
+  toggle.checked = uniform
+  toggle.addEventListener('change', () => { uniform = toggle.checked; render() })
+}
 render()

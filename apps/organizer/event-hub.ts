@@ -4,7 +4,9 @@ import {
   getEvent, getRegistrations, getCategories, getCompetitions, getSchedule, getGroupSlots,
   getScheduledMatches, getFinals,
   getEventPhase, getPendingActions, getNextMatches, getLastResults, getGroupLeaders,
+  getMatchProgress, getProgressByDay, getProgressByField, getPaymentSplit, getEnrollmentByCategory, getEventSummary,
 } from '../../shared/mock/store'
+import { donut, capacityBars, stackedStatusBar, dayColumns, statTiles } from './dashboard-charts'
 
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
 const event = getEvent(id)
@@ -44,7 +46,7 @@ if (!event) {
     const doneN = steps.filter(s => s.done).length
     const pct = Math.round((doneN / steps.length) * 100)
     const rows = steps.map(s => `<li data-done="${s.done}">${s.href ? `<a href="${s.href}">${s.label}</a>` : `<span>${s.label}</span>`}</li>`).join('')
-    return `<div class="pf-card"><h2>Prossimi passi</h2>
+    return dashPrep() + `<div class="pf-card"><h2>Prossimi passi</h2>
       <div style="height:8px;background:#e2e8f0;border-radius:99px;margin:8px 0"><div style="width:${pct}%;height:8px;background:var(--color-action-primary);border-radius:99px"></div></div>
       <div class="pf-muted" style="margin-bottom:var(--space-3)">Setup ${pct}%</div>
       <ol class="pf-steplist">${rows}</ol></div>
@@ -59,6 +61,7 @@ if (!event) {
     if (p.unresolvedTies) todo.push(`<li><a href="/apps/organizer/classifiche.html?event=${id}">${p.unresolvedTies} parità da risolvere</a></li>`)
     if (p.unpaid) todo.push(`<li><a href="/apps/organizer/payments.html?event=${id}">${p.unpaid} quote non pagate</a></li>`)
     const todoCard = todo.length ? `<div class="pf-card"><h2>Da fare ora</h2><ul class="pf-todo">${todo.join('')}</ul></div>` : ''
+    const band = dashLive()
     const next = getNextMatches(id, 5)
     const nextCard = `<div class="pf-card"><h2>Prossime partite</h2>${next.length ? renderCalendar(next, catName) : '<p class="pf-muted">Nessuna partita in programma.</p>'}</div>`
     const last = getLastResults(id, 5)
@@ -68,7 +71,7 @@ if (!event) {
       ? `<ul class="pf-roster">${leaders.map(l => `<li class="pf-rosterrow"><span class="pf-mono pf-muted">${catName(l.categoryId)} · ${l.groupLabel}</span><span class="pf-rosterrow__name">${l.team}</span></li>`).join('')}</ul>
          <a class="pf-btn" href="/apps/organizer/classifiche.html?event=${id}" style="margin-top:var(--space-3)">Vedi classifiche →</a>`
       : '<p class="pf-muted">Classifiche non disponibili.</p>'}</div>`
-    return todoCard + nextCard + lastCard + leadCard
+    return band + todoCard + nextCard + lastCard + leadCard
   }
 
   function renderDone(): string {
@@ -76,7 +79,36 @@ if (!event) {
       const d = decideMatch(f); return d ? `<li class="pf-rosterrow"><span class="pf-mono pf-muted">${catName(f.categoryId)} · ${f.bracketLabel}</span><span class="pf-rosterrow__name">🏆 ${d.winner}</span></li>` : ''
     }).join('')
     const played = getScheduledMatches(id).filter(m => m.homeScore !== null).length
-    return `<div class="pf-card"><h2>Campioni</h2>${champs ? `<ul class="pf-roster">${champs}</ul>` : '<p class="pf-muted">Nessun campione decretato.</p>'}</div>
+    return dashDone() + `<div class="pf-card"><h2>Campioni</h2>${champs ? `<ul class="pf-roster">${champs}</ul>` : '<p class="pf-muted">Nessun campione decretato.</p>'}</div>
       <div class="pf-card pf-muted">${played} partite giocate · ${getRegistrations(id).filter(r => r.status === 'CONFIRMED').length} squadre</div>`
+  }
+
+  // ── Dashboard bands (phase-aware charts, prepended to each phase) ──────────
+  function dashPrep(): string {
+    const enr = getEnrollmentByCategory(id).map(e => ({ label: catName(e.categoryId), value: e.count, max: e.max, state: (e.count >= e.max && e.max > 0 ? 'full' : undefined) as 'full' | undefined }))
+    const pay = getPaymentSplit(id)
+    return `<div class="pf-dashgrid">
+      <div class="pf-card"><h3 class="pf-charh">Iscrizioni per categoria</h3>${enr.length ? capacityBars(enr) : '<p class="pf-muted">Nessuna categoria.</p>'}</div>
+      ${pay ? `<div class="pf-card"><h3 class="pf-charh">Quote d'iscrizione</h3>${stackedStatusBar(pay.paid, pay.unpaid)}</div>` : ''}
+    </div>`
+  }
+  function dashLive(): string {
+    const mp = getMatchProgress(id)
+    const days = getProgressByDay(id)
+    const fields = getProgressByField(id).map(f => ({ label: f.field, value: f.played, max: f.total, note: `${f.played}/${f.total}${f.behind ? ' · indietro' : ''}`, state: (f.behind ? 'behind' : undefined) as 'behind' | undefined }))
+    return `<div class="pf-dashgrid">
+        <div class="pf-card"><h3 class="pf-charh">Avanzamento partite</h3>${donut(mp.pct, `${mp.pct}%`, `${mp.played} / ${mp.total} partite giocate`)}</div>
+        <div class="pf-card"><h3 class="pf-charh">Partite per giornata</h3>${days.length ? dayColumns(days) : '<p class="pf-muted">—</p>'}</div>
+      </div>
+      ${fields.length ? `<div class="pf-card"><h3 class="pf-charh">Avanzamento per campo</h3>${capacityBars(fields)}</div>` : ''}`
+  }
+  function dashDone(): string {
+    const s = getEventSummary(id)
+    const champ = s.champions.length ? `🏆 ${s.champions[0].team}${s.champions.length > 1 ? ` +${s.champions.length - 1}` : ''}` : '—'
+    return `<div class="pf-card"><h3 class="pf-charh">Riepilogo evento</h3>${statTiles([
+      { big: String(s.matches), label: 'Partite giocate' },
+      { big: String(s.goals), label: 'Gol totali' },
+      { big: champ, label: 'Campione' },
+    ])}</div>`
   }
 }

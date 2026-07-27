@@ -1,11 +1,12 @@
 import { renderOrganizerWorkspace, renderStandings, renderTabs } from '../../shared/chrome'
-import { getCategories, getStandings, getScheduledMatches, getEvent, getTieOverrides } from '../../shared/mock/store'
+import { getCategories, getStandings, getScheduledMatches, getEvent, getTieOverrides, currentRole } from '../../shared/mock/store'
 import { rankStanding } from '../../shared/mock/ranking'
 import { openTiePanel } from './panels'
 
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
 const ev = getEvent(id)
 if (ev) document.getElementById('shell')!.innerHTML = renderOrganizerWorkspace(ev, 'standings')
+const director = currentRole() === 'DIRECTOR'  // read-only standings: no tie resolution
 const catName = (c: string) => getCategories(id).find(x => x.id === c)?.name ?? '—'
 let selCat = ''; let selGir = 'ALL'
 
@@ -32,6 +33,7 @@ function render(): void {
   const ovAll = getTieOverrides(id)
   const seen: Array<{ cat: string; g: string }> = []
   for (const s of visRows) if (!seen.some(x => x.cat === s.categoryId && x.g === s.groupLabel)) seen.push({ cat: s.categoryId, g: s.groupLabel })
+  if (director) { document.getElementById('tieactions')!.innerHTML = ''; return }
   const tieGroups: Array<{ cat: string; g: string; teams: string[] }> = []
   for (const { cat, g } of seen) {
     const grows = visRows.filter(s => s.categoryId === cat && s.groupLabel === g)

@@ -1,10 +1,12 @@
-import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus, Subscription, PlanKey, SubStatus, TieBreakCriterion, TieOverride, Announcement, User, Session } from './types'
+import type { Category, Competition, CompetitionConfig, Registration, Schedule, ScheduleConfig, ScheduledMatch, StandingRow, FinalMatch, GroupSlot, FixtureCategory, State, TournamentEvent, ScheduledCategory, Organization, OrgStatus, Subscription, PlanKey, SubStatus, TieBreakCriterion, TieOverride, Announcement, User, Session, OrgRole, Invitation, Resource, ResourceAssignment, TeamSize } from './types'
 import { buildSeed } from './seed'
 import { buildFixtures, splitIntoGroups, addMinutes } from './fixtures'
 import { buildFinals } from './finals'
 import { defaultTieBreak } from './tiebreak'
 import { recomputeStandings, resolveFinals, decideMatch } from './derive'
 import { eventPhase, pendingActions, nextMatches, lastResults, groupLeaders } from './overview'
+import { matchProgress, progressByDay, progressByField, paymentSplit, enrollmentByCategory, eventSummary } from './dashboard'
+import { resourceTurns, teamFinishes, teamSizeOf, eventDays, eventTeams } from './resources'
 import type { EventPhase } from './types'
 
 const KEY = 'playfusion-mock-v1'
@@ -368,9 +370,111 @@ export function getNextMatches(eventId: string, n: number) { return nextMatches(
 export function getLastResults(eventId: string, n: number) { return lastResults(load(), eventId, n) }
 export function getGroupLeaders(eventId: string) { return groupLeaders(load(), eventId) }
 
+export function getMatchProgress(eventId: string) { return matchProgress(load(), eventId) }
+export function getProgressByDay(eventId: string) { return progressByDay(load(), eventId) }
+export function getProgressByField(eventId: string) { return progressByField(load(), eventId) }
+export function getPaymentSplit(eventId: string) { return paymentSplit(load(), eventId) }
+export function getEnrollmentByCategory(eventId: string) { return enrollmentByCategory(load(), eventId) }
+export function getEventSummary(eventId: string) { return eventSummary(load(), eventId) }
+
+// ── Resources & post-match logistics (slice rs) ──────────────────────────────
+export function getResources(eventId: string): Resource[] { return load().resources.filter(r => r.eventId === eventId) }
+export function addResource(eventId: string, input: { name: string; occupancyMinutes: number; capacityPersons: number; offsetMinutes: number }): Resource {
+  const state = load()
+  const n = Math.max(0, ...state.resources.map(r => Number(r.id.replace('res-', '')) || 0)) + 1
+  const res: Resource = { id: `res-${n}`, eventId, ...input }
+  state.resources.push(res); save(state); return res
+}
+export function updateResource(id: string, patch: Partial<Omit<Resource, 'id' | 'eventId'>>): void {
+  const state = load(); const r = state.resources.find(x => x.id === id); if (r) Object.assign(r, patch); save(state)
+}
+export function removeResource(id: string): void {
+  const state = load()
+  state.resources = state.resources.filter(r => r.id !== id)
+  state.resourceAssignments = state.resourceAssignments.filter(a => a.resourceId !== id)
+  save(state)
+}
+export function getTeamSizes(eventId: string): TeamSize[] { return load().teamSizes.filter(t => t.eventId === eventId) }
+export function getEventTeams(eventId: string): string[] { return eventTeams(load(), eventId) }
+export function getTeamSize(eventId: string, team: string): number { return teamSizeOf(load(), eventId, team) }
+export function setTeamSize(eventId: string, team: string, size: number | null): void {
+  const state = load()
+  state.teamSizes = state.teamSizes.filter(t => !(t.eventId === eventId && t.team === team))
+  if (size != null) state.teamSizes.push({ eventId, team, size })
+  save(state)
+}
+export function setEventDefaultTeamSize(eventId: string, size: number): void {
+  const state = load(); const e = state.events.find(x => x.id === eventId); if (e) e.defaultTeamSize = size; save(state)
+}
+export function getResourceAssignments(eventId: string): ResourceAssignment[] { return load().resourceAssignments.filter(a => a.eventId === eventId) }
+export function setResourceAssignment(eventId: string, resourceId: string, day: string, team: string, slotTime: string | null): void {
+  const state = load()
+  state.resourceAssignments = state.resourceAssignments.filter(a => !(a.eventId === eventId && a.resourceId === resourceId && a.day === day && a.team === team))
+  if (slotTime) state.resourceAssignments.push({ eventId, resourceId, day, team, slotTime })
+  save(state)
+}
+export function getResourceTurns(eventId: string, resourceId: string, day: string) { return resourceTurns(load(), eventId, resourceId, day) }
+export function getTeamFinishes(eventId: string, day: string) { return teamFinishes(load(), eventId, day) }
+export function getEventDays(eventId: string) { return eventDays(load(), eventId) }
+
 export function getSession(): Session | null { return load().session }
 export function getCurrentOrgId(): string { return load().session?.organizationId ?? 'org-1' }
 export function logout(): void { const s = load(); s.session = null; save(s) }
+
+// ── Membership & per-tenant roles ────────────────────────────────────────────
+export function currentUser(): User | null {
+  const s = load(); return s.session ? s.users.find(u => u.id === s.session!.userId) ?? null : null
+}
+// Role driving the whole role-based experience. Defaults to OWNER when no session
+// (out-of-the-box demo has full permissions; the "Agisci come…" lever sets a session).
+export function currentRole(): OrgRole { return currentUser()?.role ?? 'OWNER' }
+
+export function listMembers(orgId: string): User[] { return load().users.filter(u => u.organizationId === orgId) }
+export function listInvitations(orgId: string): Invitation[] { return load().invitations.filter(i => i.organizationId === orgId) }
+
+function isLastOwnerIn(state: State, orgId: string, userId: string): boolean {
+  const owners = state.users.filter(u => u.organizationId === orgId && u.role === 'OWNER')
+  return owners.length === 1 && owners[0].id === userId
+}
+export function isLastOwner(orgId: string, userId: string): boolean { return isLastOwnerIn(load(), orgId, userId) }
+
+export function inviteMember(orgId: string, input: { name: string; email: string; role: OrgRole }): Invitation {
+  const state = load()
+  const n = Math.max(0, ...state.invitations.map(i => Number(i.id.replace('inv-', '')) || 0)) + 1
+  const inv: Invitation = { id: `inv-${n}`, organizationId: orgId, name: input.name, email: input.email, role: input.role, status: 'PENDING', createdAt: new Date().toISOString() }
+  state.invitations.push(inv); save(state); return inv
+}
+// The demo "Simula accettazione" lever: turns a PENDING invitation into an org member.
+export function acceptInvitation(invitationId: string): User | null {
+  const state = load()
+  const inv = state.invitations.find(i => i.id === invitationId)
+  if (!inv || inv.status === 'ACCEPTED') return null
+  const usrNum = Math.max(0, ...state.users.map(u => Number(u.id.replace('usr-', '')) || 0)) + 1
+  const user: User = { id: `usr-${usrNum}`, name: inv.name, email: inv.email, organizationId: inv.organizationId, role: inv.role }
+  inv.status = 'ACCEPTED'; state.users.push(user); save(state); return user
+}
+export function revokeInvitation(invitationId: string): void {
+  const state = load(); state.invitations = state.invitations.filter(i => i.id !== invitationId); save(state)
+}
+
+// Both guarded by the "≥1 OWNER" invariant.
+export function changeMemberRole(userId: string, role: OrgRole): boolean {
+  const state = load(); const u = state.users.find(x => x.id === userId); if (!u) return false
+  if (u.role === 'OWNER' && role !== 'OWNER' && isLastOwnerIn(state, u.organizationId, userId)) return false
+  u.role = role; save(state); return true
+}
+export function removeMember(userId: string): boolean {
+  const state = load(); const u = state.users.find(x => x.id === userId); if (!u) return false
+  if (u.role === 'OWNER' && isLastOwnerIn(state, u.organizationId, userId)) return false
+  state.users = state.users.filter(x => x.id !== userId)
+  if (state.session?.userId === userId) state.session = null
+  save(state); return true
+}
+// Demo lever: preview the app as a given member.
+export function actAs(userId: string): void {
+  const state = load(); const u = state.users.find(x => x.id === userId); if (!u) return
+  state.session = { userId: u.id, organizationId: u.organizationId }; save(state)
+}
 
 export function signUp(input: { name: string; email: string; orgName: string }): { user: User; organization: Organization } {
   const state = load()
@@ -378,7 +482,7 @@ export function signUp(input: { name: string; email: string; orgName: string }):
   const usrNum = Math.max(0, ...state.users.map(u => Number(u.id.replace('usr-', '')) || 0)) + 1
   const orgId = `org-${orgNum}`
   const organization: Organization = { id: orgId, name: input.orgName, status: 'ACTIVE', modules: ['M-Core', 'M-Compete', 'M-Broadcast', 'M-Payments'] }
-  const user: User = { id: `usr-${usrNum}`, name: input.name, email: input.email, organizationId: orgId, role: 'ADMIN' }
+  const user: User = { id: `usr-${usrNum}`, name: input.name, email: input.email, organizationId: orgId, role: 'OWNER' }
   const renewsOn = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10)
   const sub: Subscription = { organizationId: orgId, plan: 'PRO', status: 'TRIAL', renewsOn }
   state.organizations.push(organization); state.users.push(user); state.subscriptions.push(sub)

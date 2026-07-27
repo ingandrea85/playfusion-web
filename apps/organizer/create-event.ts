@@ -1,5 +1,7 @@
-import { renderOrganizerTopbar } from '../../shared/chrome'
+import { renderOrganizerTopbar, requireRole } from '../../shared/chrome'
 import { createEvent, canCreateEvent, getCurrentOrgId } from '../../shared/mock/store'
+
+requireRole(['OWNER', 'ORGANIZER'])  // setup is not for the director
 import { defaultTieBreak, criterionLabel } from '../../shared/mock/tiebreak'
 import type { TieBreakCriterion } from '../../shared/mock/types'
 

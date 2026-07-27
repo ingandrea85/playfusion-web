@@ -1,7 +1,8 @@
-import { renderOrganizerWorkspace } from '../../shared/chrome'
+import { renderOrganizerWorkspace, requireRole } from '../../shared/chrome'
 import { getCurrentOrgId, getSubscription, getEvents, planOf, activatePro, expireTrial } from '../../shared/mock/store'
 import { PLANS, planLabel } from '../../shared/mock/plans'
 
+requireRole(['OWNER'])  // billing is owner-only
 const orgId = getCurrentOrgId()
 // Demo lever: only expire an actual trial (idempotent, no-op otherwise).
 if (new URLSearchParams(location.search).get('expire') === '1' && getSubscription(orgId)?.status === 'TRIAL') expireTrial(orgId)

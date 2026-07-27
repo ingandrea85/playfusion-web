@@ -144,7 +144,23 @@ export function buildSeed(): State {
         title: 'Ritrovo squadre', body: 'Presentarsi 30 minuti prima della prima gara per il ritiro pettorine.',
         createdAt: '2026-07-12T08:00:00.000Z' },
     ],
-    users: [],
+    users: [
+      { id: 'usr-1', name: 'Andrea B.', email: 'andrea@asdmemorial.it', organizationId: 'org-1', role: 'OWNER' },
+      { id: 'usr-2', name: 'Marco G.', email: 'marco@asdmemorial.it', organizationId: 'org-1', role: 'ORGANIZER' },
+      { id: 'usr-3', name: 'Luca R.', email: 'luca.arbitro@gmail.com', organizationId: 'org-1', role: 'DIRECTOR' },
+    ],
+    invitations: [
+      { id: 'inv-1', organizationId: 'org-1', name: 'Giulia P.', email: 'giulia@example.com', role: 'ORGANIZER', status: 'PENDING', createdAt: '2026-07-20T09:00:00.000Z' },
+    ],
+    resources: [
+      { id: 'res-1', eventId: 'evt-finals', name: '🚿 Docce', occupancyMinutes: 30, capacityPersons: 16, offsetMinutes: 0 },
+      { id: 'res-2', eventId: 'evt-finals', name: '🍝 Terzo tempo', occupancyMinutes: 45, capacityPersons: 60, offsetMinutes: 40 },
+    ],
+    resourceAssignments: [],
+    teamSizes: [
+      { eventId: 'evt-finals', team: 'Alfa', size: 8 },
+      { eventId: 'evt-finals', team: 'Bravo', size: 8 },
+    ],
     session: null,
   }
   for (const d of DEMOS) {

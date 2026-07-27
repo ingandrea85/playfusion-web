@@ -1,6 +1,7 @@
-import { renderOrganizerWorkspace } from '../../shared/chrome'
+import { renderOrganizerWorkspace, requireRole } from '../../shared/chrome'
 import { getCurrentOrgId, getEvents, getEvent, getBrand, setBrand, hasModule } from '../../shared/mock/store'
 
+requireRole(['OWNER'])  // brand is owner-only
 const eventId = new URLSearchParams(location.search).get('event') ?? 'evt-1'
 const orgId = getCurrentOrgId()
 const ev = getEvent(eventId) ?? getEvents().find(e => e.organizationId === orgId)

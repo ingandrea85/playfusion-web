@@ -18,6 +18,7 @@ export interface TournamentEvent {
   registrationsOpen: boolean
   tieBreak: TieBreakCriterion[]
   playbook: 'PB-1' | 'PB-2'
+  defaultTeamSize?: number
 }
 
 export interface Category { id: string; eventId: string; name: string; maxTeams: number }
@@ -165,6 +166,24 @@ export interface Registration {
   createdAt: string
 }
 
+export interface TeamSize { eventId: string; team: string; size: number }
+
+export interface Resource {
+  id: string
+  eventId: string
+  name: string
+  occupancyMinutes: number
+  capacityPersons: number
+  offsetMinutes: number
+}
+export interface ResourceAssignment {
+  eventId: string
+  resourceId: string
+  day: string
+  team: string
+  slotTime: string
+}
+
 export type OrgStatus = 'ACTIVE' | 'SUSPENDED'
 export interface Organization {
   id: string
@@ -195,12 +214,22 @@ export interface Announcement {
   createdAt: string
 }
 
+export type OrgRole = 'OWNER' | 'ORGANIZER' | 'DIRECTOR'
 export interface User {
   id: string
   name: string
   email: string
   organizationId: string
-  role: 'ADMIN'
+  role: OrgRole
+}
+export interface Invitation {
+  id: string
+  organizationId: string
+  name: string
+  email: string
+  role: OrgRole
+  status: 'PENDING' | 'ACCEPTED'
+  createdAt: string
 }
 export interface Session {
   userId: string
@@ -222,5 +251,9 @@ export interface State {
   subscriptions: Subscription[]
   announcements: Announcement[]
   users: User[]
+  invitations: Invitation[]
+  resources: Resource[]
+  resourceAssignments: ResourceAssignment[]
+  teamSizes: TeamSize[]
   session: Session | null
 }

@@ -1,5 +1,7 @@
-import { renderOrganizerWorkspace } from '../../shared/chrome'
+import { renderOrganizerWorkspace, requireRole } from '../../shared/chrome'
 import { getEvent, getCategories, getAnnouncements, addAnnouncement, removeAnnouncement, togglePin, announcementReach, hasModule } from '../../shared/mock/store'
+
+requireRole(['OWNER', 'ORGANIZER'])  // compose is not for the director
 
 const id = new URLSearchParams(location.search).get('event') ?? 'evt-1'
 const ev = getEvent(id)

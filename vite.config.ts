@@ -23,6 +23,8 @@ export default defineConfig({
         abbonamento: r('apps/organizer/abbonamento.html'),
         organizzazione: r('apps/organizer/organizzazione.html'),
         impostazioni: r('apps/organizer/impostazioni.html'),
+        membri: r('apps/organizer/membri.html'),
+        risorse: r('apps/organizer/risorse.html'),
         gironi: r('apps/organizer/gironi.html'),
         teams: r('apps/organizer/teams.html'),
         avvisiOrg: r('apps/organizer/avvisi.html'),
