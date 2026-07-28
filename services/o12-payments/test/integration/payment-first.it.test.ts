@@ -1,7 +1,7 @@
 import { test, expect, beforeAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
-process.env.AWS_ENDPOINT_URL = 'http://localhost:4566'; process.env.EVENT_BUS_NAME = 'playfusion-pilot';
-import { makeDocClient } from '@playfusion/platform-lib';
+process.env.AWS_ENDPOINT_URL = 'http://localhost:4566';
+import { makeDocClient, resourceName, busName, EVENT_SOURCE } from '@playfusion/platform-lib';
 import { PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { EventBridgeClient, PutRuleCommand, PutTargetsCommand } from '@aws-sdk/client-eventbridge';
 import { SQSClient, CreateQueueCommand, ReceiveMessageCommand, DeleteMessageCommand, GetQueueAttributesCommand, GetQueueUrlCommand } from '@aws-sdk/client-sqs';
@@ -10,12 +10,12 @@ const o5Consumer = (await import('../../../o5-registration/src/consumer.js') as 
 const o12Consumer = (await import('../../src/consumer.js') as any).handler;
 const o12 = (await import('../../src/handler.js') as any).app;
 
-// Criterion 3 observability harness: route the REAL `playfusion-pilot` bus (the one
+// Criterion 3 observability harness: route the derived bus (the one
 // O5's consumer/publisher actually uses) to an SQS queue we can poll, mirroring
 // packages/platform-lib/test/integration/eventbridge-event-publisher.it.test.ts.
 // Re-run safe: CreateQueue/PutRule/PutTargets all tolerate/upsert on repeat runs.
 const endpoint = process.env.AWS_ENDPOINT_URL ?? 'http://localhost:4566';
-const BUS = process.env.EVENT_BUS_NAME ?? 'playfusion-pilot';
+const BUS = busName();
 const QUEUE = 'o12-payment-first-it-q';
 
 async function ignoreExists(fn: () => Promise<unknown>): Promise<void> {
@@ -37,8 +37,8 @@ let queueUrl: string;
 
 beforeAll(async () => {
   const db = makeDocClient();
-  await db.send(new PutCommand({ TableName: 'o5-windows', Item: { sportEventId, state: 'Open' } }));
-  await db.send(new PutCommand({ TableName: 'o5-participants', Item: { participantRef } }));
+  await db.send(new PutCommand({ TableName: resourceName('o5-windows'), Item: { sportEventId, state: 'Open' } }));
+  await db.send(new PutCommand({ TableName: resourceName('o5-participants'), Item: { participantRef } }));
 
   const eb = new EventBridgeClient({ endpoint });
   const sqs = new SQSClient({ endpoint });
@@ -46,7 +46,7 @@ beforeAll(async () => {
   const q = await sqs.send(new GetQueueUrlCommand({ QueueName: QUEUE }));
   queueUrl = q.QueueUrl!;
   const attrs = await sqs.send(new GetQueueAttributesCommand({ QueueUrl: queueUrl, AttributeNames: ['QueueArn'] }));
-  await eb.send(new PutRuleCommand({ Name: 'o12-payment-first-it-all', EventBusName: BUS, EventPattern: JSON.stringify({ source: ['playfusion.pilot'] }) }));
+  await eb.send(new PutRuleCommand({ Name: 'o12-payment-first-it-all', EventBusName: BUS, EventPattern: JSON.stringify({ source: [EVENT_SOURCE] }) }));
   await eb.send(new PutTargetsCommand({ Rule: 'o12-payment-first-it-all', EventBusName: BUS, Targets: [{ Id: 't1', Arn: attrs.Attributes!.QueueArn! }] }));
 }, 20_000);
 
@@ -80,7 +80,7 @@ test('test_paymentFirst_autoConfirmsOnFeePaid', async () => {
   await o5Consumer({ 'detail-type': 'ParticipationFeePaid', detail: { registrationId, envelope: { organizationId: 'org-pilot', eventId: 'e2-' + randomUUID(), correlationId: 'c1' } } });
 
   const db = makeDocClient();
-  const stored = await db.send(new GetCommand({ TableName: 'o5-registrations', Key: { registrationId } }));
+  const stored = await db.send(new GetCommand({ TableName: resourceName('o5-registrations'), Key: { registrationId } }));
   expect(stored.Item).toMatchObject({ status: 'Confirmed' });
 
   // Criterion 3: RegistrationConfirmed must be observable on the REAL bus (not just in

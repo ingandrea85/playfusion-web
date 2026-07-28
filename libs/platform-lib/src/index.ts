@@ -8,3 +8,4 @@ export * from './recording-event-publisher.js';
 export * from './eventbridge-event-publisher.js';
 export * from './dynamo.js';
 export * from './idempotency.js';
+export * from './naming.js';

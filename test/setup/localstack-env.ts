@@ -7,4 +7,6 @@ process.env.AWS_ENDPOINT_URL ??= 'http://localhost:4566';
 process.env.AWS_REGION ??= 'us-east-1';
 process.env.AWS_ACCESS_KEY_ID ??= 'test';
 process.env.AWS_SECRET_ACCESS_KEY ??= 'test';
-process.env.EVENT_BUS_NAME ??= 'playfusion-pilot';
+// Env token for the playfusion2-<resource>-<env> convention (ADR-012). Local/tests
+// use `local`; the bus name is then derived by busName() (no legacy EVENT_BUS_NAME).
+process.env.PF_ENV ??= 'local';

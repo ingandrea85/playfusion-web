@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-const SECRET = process.env.PILOT_TOKEN_SECRET ?? 'pilot-dev-secret';
+const SECRET = process.env.PF_TOKEN_SECRET ?? 'dev-secret';
 export function signToken(subject: string, roles: string[]): string {
   const body = Buffer.from(JSON.stringify({ subject, roles })).toString('base64url');
   const sig = createHmac('sha256', SECRET).update(body).digest('base64url');

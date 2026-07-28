@@ -1,10 +1,11 @@
 import { PutCommand, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { resourceName } from '@playfusion/platform-lib';
 import type { RegistrationRepository } from '../ports/registration-repository.js';
 import type { RegistrationRequest } from '../domain/registration.js';
 
 export class DynamoDbRegistrationRepository implements RegistrationRepository {
-  constructor(private readonly db: DynamoDBDocumentClient, private readonly table = 'o5-registrations') {}
+  constructor(private readonly db: DynamoDBDocumentClient, private readonly table = resourceName('o5-registrations')) {}
   async save(r: RegistrationRequest) {
     await this.db.send(new PutCommand({ TableName: this.table, Item: { ...r, pe: `${r.participantRef}#${r.sportEventId}` } }));
   }

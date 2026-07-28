@@ -1,4 +1,4 @@
-import { makeDocClient, EventBridgeEventPublisher, DynamoIdempotencyStore, withCorrelation, checkpoint } from '@playfusion/platform-lib';
+import { makeDocClient, EventBridgeEventPublisher, DynamoIdempotencyStore, withCorrelation, checkpoint, busName, resourceName } from '@playfusion/platform-lib';
 import { DynamoDbRegistrationRepository } from './adapters/dynamodb-registration-repository.js';
 import { DynamoDbWindowRepository } from './adapters/dynamodb-window-repository.js';
 import { DynamoDbParticipantDirectory } from './adapters/dynamodb-participant-directory.js';
@@ -7,11 +7,11 @@ import { onParticipantCreated } from './application/on-participant-created.js';
 import { onEventPublished } from './application/on-event-published.js';
 
 const db = makeDocClient();
-const publisher = new EventBridgeEventPublisher(process.env.EVENT_BUS_NAME ?? 'playfusion-pilot');
+const publisher = new EventBridgeEventPublisher(busName());
 const repo = new DynamoDbRegistrationRepository(db);
 const windows = new DynamoDbWindowRepository(db);
 const participants = new DynamoDbParticipantDirectory(db);
-const idempotency = new DynamoIdempotencyStore(db, 'o5-processed-events');
+const idempotency = new DynamoIdempotencyStore(db, resourceName('o5-processed-events'));
 
 export const handler = async (event: any) => {
   const detail = event.detail ?? JSON.parse(event.Detail ?? '{}');

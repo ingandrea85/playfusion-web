@@ -1,6 +1,6 @@
 import { test, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { makeDocClient } from '@playfusion/platform-lib';
+import { makeDocClient, resourceName, busName, EVENT_SOURCE } from '@playfusion/platform-lib';
 import { GetCommand } from '@aws-sdk/lib-dynamodb';
 import { EventBridgeClient, PutRuleCommand, PutTargetsCommand } from '@aws-sdk/client-eventbridge';
 import { SQSClient, CreateQueueCommand, ReceiveMessageCommand, DeleteMessageCommand, GetQueueAttributesCommand, GetQueueUrlCommand } from '@aws-sdk/client-sqs';
@@ -29,7 +29,7 @@ import { spawnO2, type SpawnedO2 } from '../../services/o5-registration/test/int
 // randomUUID()-suffixed, so running this whole file twice back-to-back against the
 // SAME persistent LocalStack cannot collide with leftover rows from the previous run.
 const endpoint = process.env.AWS_ENDPOINT_URL ?? 'http://localhost:4566';
-const BUS = process.env.EVENT_BUS_NAME ?? 'playfusion-pilot';
+const BUS = busName();
 const QUEUE = 'pilot-acceptance-it-q';
 
 async function ignoreExists(fn: () => Promise<unknown>): Promise<void> {
@@ -81,7 +81,7 @@ beforeAll(async () => {
   });
   ({ token: regManagerToken } = await magicLinkRes.json());
 
-  // Criterion-3 observability harness: route the REAL `playfusion-pilot` bus (the one
+  // Criterion-3 observability harness: route the derived bus (the one
   // every BC's EventBridgeEventPublisher actually publishes to) to an SQS queue this
   // test can poll — mirrors packages/platform-lib/test/integration/
   // eventbridge-event-publisher.it.test.ts and packages/o12-payments/test/integration/
@@ -93,7 +93,7 @@ beforeAll(async () => {
   const q = await sqs.send(new GetQueueUrlCommand({ QueueName: QUEUE }));
   queueUrl = q.QueueUrl!;
   const attrs = await sqs.send(new GetQueueAttributesCommand({ QueueUrl: queueUrl, AttributeNames: ['QueueArn'] }));
-  await eb.send(new PutRuleCommand({ Name: 'pilot-acceptance-it-all', EventBusName: BUS, EventPattern: JSON.stringify({ source: ['playfusion.pilot'] }) }));
+  await eb.send(new PutRuleCommand({ Name: 'pilot-acceptance-it-all', EventBusName: BUS, EventPattern: JSON.stringify({ source: [EVENT_SOURCE] }) }));
   await eb.send(new PutTargetsCommand({ Rule: 'pilot-acceptance-it-all', EventBusName: BUS, Targets: [{ Id: 't1', Arn: attrs.Attributes!.QueueArn! }] }));
 }, 20_000);
 
@@ -148,7 +148,7 @@ test('test_pilotAcceptance_coachCanApplyForMemorial_registrationApplied', async 
   const applyJson = await applyRes.json();
   expect(applyJson).toMatchObject({ status: 'Applied' });
   const db = makeDocClient();
-  const stored = await db.send(new GetCommand({ TableName: 'o5-registrations', Key: { registrationId: applyJson.registrationId } }));
+  const stored = await db.send(new GetCommand({ TableName: resourceName('o5-registrations'), Key: { registrationId: applyJson.registrationId } }));
   expect(stored.Item).toMatchObject({ status: 'Applied' });
 
   // Cleanup: hand the registrationId to the next ordered test in this chain.
@@ -172,7 +172,7 @@ test('test_pilotAcceptance_organizerCanConfirm_registrationConfirmed', async () 
   expect(confirmRes.status).toBe(200);
   expect(await confirmRes.json()).toMatchObject({ status: 'Confirmed' });
   const db = makeDocClient();
-  const stored = await db.send(new GetCommand({ TableName: 'o5-registrations', Key: { registrationId: chainRegistrationId } }));
+  const stored = await db.send(new GetCommand({ TableName: resourceName('o5-registrations'), Key: { registrationId: chainRegistrationId } }));
   expect(stored.Item).toMatchObject({ status: 'Confirmed' });
 
   // Cleanup: none (read-only assertion beyond the confirm call already made).
@@ -237,7 +237,7 @@ test('test_pilotAcceptance_happyRejectionAndDoubleApply_allBehaveCorrectly', asy
   expect(rejectRes.status).toBe(200);
   expect(await rejectRes.json()).toMatchObject({ status: 'Rejected' });
   const db = makeDocClient();
-  const rejectedStored = await db.send(new GetCommand({ TableName: 'o5-registrations', Key: { registrationId: rejectRegistrationId } }));
+  const rejectedStored = await db.send(new GetCommand({ TableName: resourceName('o5-registrations'), Key: { registrationId: rejectRegistrationId } }));
   expect(rejectedStored.Item).toMatchObject({ status: 'Rejected' });
 
   // Act + Assert (double-apply scenario, part of criterion 4): applying twice for the

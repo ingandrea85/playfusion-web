@@ -1,6 +1,6 @@
 import { test, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { makeDocClient } from '@playfusion/platform-lib';
+import { makeDocClient, resourceName } from '@playfusion/platform-lib';
 import { PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 // Test-to-test relative import (not src-to-src), so ADR-002's BC-boundary ESLint rule
 // (scoped to `files: ['packages/**/*.ts']`) does not apply here — this mirrors how
@@ -57,7 +57,7 @@ test('test_pb1Setup_stepsOneToSix_reachConfirmedAfterApplyAndPay', async () => {
   // Pre-existing collaborator data the orchestrator's steps rely on (participant
   // directory row), mirroring registration-flow.it.test.ts's beforeAll seeding.
   const db = makeDocClient();
-  await db.send(new PutCommand({ TableName: 'o5-participants', Item: { participantRef } }));
+  await db.send(new PutCommand({ TableName: resourceName('o5-participants'), Item: { participantRef } }));
 
   // Fire the orchestrator: it will run steps 1-3 (CreateEvent, OpenRegistrationWindow),
   // then block in step 4's poll waiting for a RegistrationApplied-backed row to appear.
@@ -74,7 +74,7 @@ test('test_pb1Setup_stepsOneToSix_reachConfirmedAfterApplyAndPay', async () => {
   const { ScanCommand } = await import('@aws-sdk/lib-dynamodb');
   const sportEventId: string = await (async () => {
     for (let i = 0; i < 30; i++) {
-      const res = await db.send(new ScanCommand({ TableName: 'o3-events', FilterExpression: '#s = :sport', ExpressionAttributeNames: { '#s': 'sport' }, ExpressionAttributeValues: { ':sport': sport } }));
+      const res = await db.send(new ScanCommand({ TableName: resourceName('o3-events'), FilterExpression: '#s = :sport', ExpressionAttributeNames: { '#s': 'sport' }, ExpressionAttributeValues: { ':sport': sport } }));
       const created = (res.Items ?? []).find((it: any) => it.dates?.from === dates.from && it.dates?.to === dates.to);
       if (created) return created.sportEventId as string;
       await new Promise((r) => setTimeout(r, 200));
@@ -90,7 +90,7 @@ test('test_pb1Setup_stepsOneToSix_reachConfirmedAfterApplyAndPay', async () => {
   // by sportEventId, no GSI needed) until state is 'Open' before applying.
   await (async () => {
     for (let i = 0; i < 30; i++) {
-      const res = await db.send(new GetCommand({ TableName: 'o5-windows', Key: { sportEventId } }));
+      const res = await db.send(new GetCommand({ TableName: resourceName('o5-windows'), Key: { sportEventId } }));
       if (res.Item?.state === 'Open') return;
       await new Promise((r) => setTimeout(r, 100));
     }
@@ -113,7 +113,7 @@ test('test_pb1Setup_stepsOneToSix_reachConfirmedAfterApplyAndPay', async () => {
   // -> fee paid) rather than relying on onFeePaid's already-Confirmed no-op guard. Poll
   // o5-registrations directly for status 'Confirmed' with a short timeout.
   for (let i = 0; i < 30; i++) {
-    const row = await db.send(new GetCommand({ TableName: 'o5-registrations', Key: { registrationId } }));
+    const row = await db.send(new GetCommand({ TableName: resourceName('o5-registrations'), Key: { registrationId } }));
     if (row.Item?.status === 'Confirmed') break;
     await new Promise((r) => setTimeout(r, 200));
   }
@@ -144,6 +144,6 @@ test('test_pb1Setup_stepsOneToSix_reachConfirmedAfterApplyAndPay', async () => {
   expect(result.registrationId).toBe(registrationId);
   expect(result.status).toBe('Confirmed');
 
-  const stored = await db.send(new GetCommand({ TableName: 'o5-registrations', Key: { registrationId } }));
+  const stored = await db.send(new GetCommand({ TableName: resourceName('o5-registrations'), Key: { registrationId } }));
   expect(stored.Item).toMatchObject({ status: 'Confirmed' });
 }, 30_000);

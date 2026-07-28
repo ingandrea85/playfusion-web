@@ -6,11 +6,13 @@ process.env.AWS_ENDPOINT_URL ??= 'http://localhost:4566';
 process.env.AWS_REGION ??= 'us-east-1';
 process.env.AWS_ACCESS_KEY_ID ??= 'test';
 process.env.AWS_SECRET_ACCESS_KEY ??= 'test';
-process.env.EVENT_BUS_NAME ??= 'playfusion-pilot';
 
 import { DynamoDBClient, CreateTableCommand } from '@aws-sdk/client-dynamodb';
 import { EventBridgeClient, CreateEventBusCommand } from '@aws-sdk/client-eventbridge';
 import { readFile } from 'node:fs/promises';
+// Single source of truth for physical names (ADR-012). Imported from the lib source
+// so `npm run provision` (tsx) stays self-sufficient without a prior build.
+import { resourceName, busName } from '../libs/platform-lib/src/naming.js';
 
 const endpoint = process.env.AWS_ENDPOINT_URL ?? 'http://localhost:4566';
 const ddb = new DynamoDBClient({ endpoint });
@@ -22,10 +24,10 @@ const ignoreExists = (e: any) => {
   if (!/exist/i.test(marker)) throw e;
 };
 
-await eb.send(new CreateEventBusCommand({ Name: process.env.EVENT_BUS_NAME ?? 'playfusion-pilot' })).catch(ignoreExists);
+await eb.send(new CreateEventBusCommand({ Name: busName() })).catch(ignoreExists);
 
 await ddb.send(new CreateTableCommand({
-  TableName: 'o5-registrations', BillingMode: 'PAY_PER_REQUEST',
+  TableName: resourceName('o5-registrations'), BillingMode: 'PAY_PER_REQUEST',
   AttributeDefinitions: [{ AttributeName: 'registrationId', AttributeType: 'S' }, { AttributeName: 'pe', AttributeType: 'S' }],
   KeySchema: [{ AttributeName: 'registrationId', KeyType: 'HASH' }],
   GlobalSecondaryIndexes: [{ IndexName: 'pe-index', KeySchema: [{ AttributeName: 'pe', KeyType: 'HASH' }], Projection: { ProjectionType: 'ALL' } }],
@@ -33,7 +35,7 @@ await ddb.send(new CreateTableCommand({
 
 for (const [t, key] of [['o5-windows', 'sportEventId'], ['o5-participants', 'participantRef']] as const) {
   await ddb.send(new CreateTableCommand({
-    TableName: t, BillingMode: 'PAY_PER_REQUEST',
+    TableName: resourceName(t), BillingMode: 'PAY_PER_REQUEST',
     AttributeDefinitions: [{ AttributeName: key, AttributeType: 'S' }],
     KeySchema: [{ AttributeName: key, KeyType: 'HASH' }],
   })).catch(ignoreExists);
@@ -43,7 +45,7 @@ console.log('provision: O5 tables (o5-registrations, o5-windows, o5-participants
 
 for (const [t, key] of [['o3-events', 'sportEventId'], ['o4-participants', 'participantId']] as const) {
   await ddb.send(new CreateTableCommand({
-    TableName: t, BillingMode: 'PAY_PER_REQUEST',
+    TableName: resourceName(t), BillingMode: 'PAY_PER_REQUEST',
     AttributeDefinitions: [{ AttributeName: key, AttributeType: 'S' }],
     KeySchema: [{ AttributeName: key, KeyType: 'HASH' }],
   })).catch(ignoreExists);
@@ -52,7 +54,7 @@ for (const [t, key] of [['o3-events', 'sportEventId'], ['o4-participants', 'part
 console.log('provision: O3/O4 tables (o3-events, o4-participants) ensured on', endpoint);
 
 await ddb.send(new CreateTableCommand({
-  TableName: 'o2-identities', BillingMode: 'PAY_PER_REQUEST',
+  TableName: resourceName('o2-identities'), BillingMode: 'PAY_PER_REQUEST',
   AttributeDefinitions: [{ AttributeName: 'subject', AttributeType: 'S' }],
   KeySchema: [{ AttributeName: 'subject', KeyType: 'HASH' }],
 })).catch(ignoreExists);
@@ -60,13 +62,13 @@ await ddb.send(new CreateTableCommand({
 console.log('provision: O2 table (o2-identities) ensured on', endpoint);
 
 await ddb.send(new CreateTableCommand({
-  TableName: 'o12-fees', BillingMode: 'PAY_PER_REQUEST',
+  TableName: resourceName('o12-fees'), BillingMode: 'PAY_PER_REQUEST',
   AttributeDefinitions: [{ AttributeName: 'registrationId', AttributeType: 'S' }],
   KeySchema: [{ AttributeName: 'registrationId', KeyType: 'HASH' }],
 })).catch(ignoreExists);
 
 await ddb.send(new CreateTableCommand({
-  TableName: 'o5-processed-events', BillingMode: 'PAY_PER_REQUEST',
+  TableName: resourceName('o5-processed-events'), BillingMode: 'PAY_PER_REQUEST',
   AttributeDefinitions: [{ AttributeName: 'eventId', AttributeType: 'S' }],
   KeySchema: [{ AttributeName: 'eventId', KeyType: 'HASH' }],
 })).catch(ignoreExists);

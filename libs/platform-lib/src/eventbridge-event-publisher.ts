@@ -2,6 +2,7 @@ import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge
 import type { EventPublisher } from './event-publisher.js';
 import { makeEnvelope } from './envelope.js';
 import { checkpoint } from './logging.js';
+import { EVENT_SOURCE } from './naming.js';
 
 export class EventBridgeEventPublisher implements EventPublisher {
   private readonly client: EventBridgeClient;
@@ -13,7 +14,7 @@ export class EventBridgeEventPublisher implements EventPublisher {
     await this.client.send(new PutEventsCommand({
       Entries: [{
         EventBusName: this.busName,
-        Source: 'playfusion.pilot',
+        Source: EVENT_SOURCE,
         DetailType: name,
         Detail: JSON.stringify({ envelope, ...payload }),
       }],

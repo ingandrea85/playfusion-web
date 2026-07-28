@@ -30,7 +30,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { makeDocClient, checkpoint } from '@playfusion/platform-lib';
+import { makeDocClient, checkpoint, resourceName } from '@playfusion/platform-lib';
 
 export type Pb1SetupInput = {
   sport: string;
@@ -127,7 +127,7 @@ export async function runPb1Setup(input: Pb1SetupInput): Promise<Pb1SetupResult>
     `RegistrationApplied (participantRef=${input.participantRef}, sportEventId=${sportEventId})`,
     async () => {
       const res = await db.send(new QueryCommand({
-        TableName: 'o5-registrations',
+        TableName: resourceName('o5-registrations'),
         IndexName: 'pe-index',
         KeyConditionExpression: 'pe = :pe',
         ExpressionAttributeValues: { ':pe': pe },
@@ -168,7 +168,7 @@ export async function runPb1Setup(input: Pb1SetupInput): Promise<Pb1SetupResult>
   const finalReg = await pollUntil(
     `ParticipationFeePaid (registrationId=${registrationId})`,
     async () => {
-      const res = await db.send(new GetCommand({ TableName: 'o5-registrations', Key: { registrationId } }));
+      const res = await db.send(new GetCommand({ TableName: resourceName('o5-registrations'), Key: { registrationId } }));
       return res.Item?.status === 'Confirmed' ? res.Item : undefined;
     },
   );

@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-process.env.AWS_ENDPOINT_URL = 'http://localhost:4566'; process.env.EVENT_BUS_NAME = 'playfusion-pilot';
+process.env.AWS_ENDPOINT_URL = 'http://localhost:4566';
 const { app } = await import('../../src/handler.js') as any;
 
 test('test_createParticipant_persistsAndReturnsParticipantId', async () => {

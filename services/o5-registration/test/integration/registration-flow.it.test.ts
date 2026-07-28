@@ -1,6 +1,6 @@
 import { test, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { makeDocClient } from '@playfusion/platform-lib';
+import { makeDocClient, resourceName } from '@playfusion/platform-lib';
 import { PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { spawnO2, type SpawnedO2 } from './spawn-o2.js';
 
@@ -31,9 +31,9 @@ beforeAll(async () => {
 
   // provision assumed run via `npm run provision`; seed the collaborators O5 needs:
   const db = makeDocClient();
-  await db.send(new PutCommand({ TableName: 'o5-windows', Item: { sportEventId, state: 'Open' } }));
-  await db.send(new PutCommand({ TableName: 'o5-participants', Item: { participantRef } }));
-  await db.send(new PutCommand({ TableName: 'o5-participants', Item: { participantRef: dupParticipantRef } }));
+  await db.send(new PutCommand({ TableName: resourceName('o5-windows'), Item: { sportEventId, state: 'Open' } }));
+  await db.send(new PutCommand({ TableName: resourceName('o5-participants'), Item: { participantRef } }));
+  await db.send(new PutCommand({ TableName: resourceName('o5-participants'), Item: { participantRef: dupParticipantRef } }));
 }, 20_000);
 
 afterAll(async () => {
@@ -46,7 +46,7 @@ test('test_registrationFlow_applyThenConfirm_happyPath', async () => {
   const { registrationId } = await applyRes.json();
 
   const db = makeDocClient();
-  const stored = await db.send(new GetCommand({ TableName: 'o5-registrations', Key: { registrationId } }));
+  const stored = await db.send(new GetCommand({ TableName: resourceName('o5-registrations'), Key: { registrationId } }));
   expect(stored.Item).toMatchObject({ status: 'Applied' });
 
   const confirmRes = await app.request(`/registrations/${registrationId}/confirm`, { method: 'POST', headers: { authorization: regManagerToken } });

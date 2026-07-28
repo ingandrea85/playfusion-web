@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import {
   withCorrelation, currentCorrelationId, toHttpError, checkpoint,
-  makeDocClient, EventBridgeEventPublisher,
+  makeDocClient, EventBridgeEventPublisher, busName,
 } from '@playfusion/platform-lib';
 import { applyRegistration } from './application/apply-registration.js';
 import { confirmRegistration } from './application/confirm-registration.js';
@@ -15,7 +15,7 @@ import { DynamoDbParticipantDirectory } from './adapters/dynamodb-participant-di
 import { HttpClaimAuthorizer } from './adapters/http-claim-authorizer.js';
 
 const db = makeDocClient();
-const publisher = new EventBridgeEventPublisher(process.env.EVENT_BUS_NAME ?? 'playfusion-pilot');
+const publisher = new EventBridgeEventPublisher(busName());
 const repo = new DynamoDbRegistrationRepository(db);
 const windows = new DynamoDbWindowRepository(db);
 const participants = new DynamoDbParticipantDirectory(db);

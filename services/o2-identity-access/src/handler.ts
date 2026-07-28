@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { handle } from 'hono/aws-lambda';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { withCorrelation, makeDocClient, toHttpError } from '@playfusion/platform-lib';
+import { withCorrelation, makeDocClient, toHttpError, resourceName } from '@playfusion/platform-lib';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { signToken, verifyToken } from './token.js';
 
@@ -13,7 +13,7 @@ const body = z.object({ contact: z.string(), roles: z.array(z.string()).default(
 app.post('/identities/magic-link', async (c) => {
   const b = body.parse(await c.req.json());
   const subject = randomUUID();
-  await db.send(new PutCommand({ TableName: 'o2-identities', Item: { subject, contact: b.contact, roles: b.roles } }));
+  await db.send(new PutCommand({ TableName: resourceName('o2-identities'), Item: { subject, contact: b.contact, roles: b.roles } }));
   return c.json({ subject, token: signToken(subject, b.roles) }, 201); // in production the token is emailed as a link, not returned
 });
 app.get('/identities/verify', (c) => {

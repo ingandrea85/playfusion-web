@@ -1,6 +1,6 @@
 import { test, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { makeDocClient } from '@playfusion/platform-lib';
+import { makeDocClient, resourceName } from '@playfusion/platform-lib';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { spawnO2, type SpawnedO2 } from './spawn-o2.js';
 
@@ -19,9 +19,9 @@ beforeAll(async () => {
   ({ app } = await import('../../src/handler.js'));
 
   const db = makeDocClient();
-  await db.send(new PutCommand({ TableName: 'o5-windows', Item: { sportEventId, state: 'Open' } }));
-  await db.send(new PutCommand({ TableName: 'o5-participants', Item: { participantRef: participantRefWithRole } }));
-  await db.send(new PutCommand({ TableName: 'o5-participants', Item: { participantRef: participantRefWithoutRole } }));
+  await db.send(new PutCommand({ TableName: resourceName('o5-windows'), Item: { sportEventId, state: 'Open' } }));
+  await db.send(new PutCommand({ TableName: resourceName('o5-participants'), Item: { participantRef: participantRefWithRole } }));
+  await db.send(new PutCommand({ TableName: resourceName('o5-participants'), Item: { participantRef: participantRefWithoutRole } }));
 }, 20_000);
 
 afterAll(async () => {
