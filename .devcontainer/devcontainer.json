@@ -1,0 +1,21 @@
+{
+  "name": "playfusion-web",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+  // Front-end only at S0.1. When LocalStack/services arrive (S0.6+), add:
+  //   "features": { "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {} }
+  //   and forward 4566 (LocalStack).
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": { "label": "front-end (Vite)", "onAutoForward": "openBrowser" }
+  },
+  "postCreateCommand": "npm install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "vitest.explorer",
+        "nrwl.angular-console"
+      ]
+    }
+  }
+}

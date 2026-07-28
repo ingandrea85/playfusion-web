@@ -1,0 +1,3 @@
+# Mockups are runnable reference material, not a product package (ADR-011).
+# Keep them out of the Nx project graph; run them via `npm run mockups`.
+mockups

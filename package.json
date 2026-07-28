@@ -3,21 +3,27 @@
   "private": true,
   "type": "module",
   "engines": { "node": ">=20 <21" },
+  "workspaces": [
+    "apps/*",
+    "libs/*",
+    "services/*",
+    "infra/*",
+    "mockups"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "vitest run"
-  },
-  "dependencies": {
-    "@fontsource-variable/archivo": "^5.1.0",
-    "@fontsource-variable/hanken-grotesk": "^5.1.0",
-    "@fontsource-variable/spline-sans-mono": "^5.1.0"
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "lint": "nx run-many -t lint",
+    "graph": "nx graph",
+    "mockups": "npm run dev -w @playfusion/mockups"
   },
   "devDependencies": {
+    "@nx/eslint-plugin": "^20.0.0",
+    "@types/node": "^20.14.0",
+    "eslint": "^9.0.0",
+    "nx": "^20.0.0",
     "typescript": "^5.5.0",
-    "vite": "^5.4.0",
-    "vitest": "^2.1.0",
-    "jsdom": "^25.0.0"
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^2.1.0"
   }
 }

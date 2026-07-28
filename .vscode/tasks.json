@@ -1,0 +1,53 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Front-end: serve",
+      "detail": "Serve the runnable front-end (mockups today; real SPAs from S6+) on :5173",
+      "type": "shell",
+      "command": "npm run mockups",
+      "isBackground": true,
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": [
+          {
+            "regexp": "^(.*)$",
+            "file": 1,
+            "location": 1,
+            "message": 1
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*VITE.*",
+          "endsPattern": ".*(Local:|ready in).*"
+        }
+      }
+    },
+    {
+      "label": "Build all",
+      "detail": "nx run-many -t build",
+      "type": "shell",
+      "command": "npm run build",
+      "group": "build",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Test all",
+      "detail": "nx run-many -t test",
+      "type": "shell",
+      "command": "npm test",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint all",
+      "detail": "nx run-many -t lint (ADR-011 module boundaries)",
+      "type": "shell",
+      "command": "npm run lint",
+      "group": "build",
+      "problemMatcher": ["$eslint-stylish"]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "baseUrl": ".",
+    // Path aliases map each workspace package name to its source entry so internal
+    // imports resolve as *internal* (not node_modules), which is what lets
+    // @nx/enforce-module-boundaries (ADR-011) see and police cross-layer imports.
+    // Real libs/services replace these placeholder entries in S0.2 / S0.5.
+    "paths": {
+      "@playfusion/app-placeholder": ["apps/_placeholder/src/index.ts"],
+      "@playfusion/lib-placeholder": ["libs/_placeholder/src/index.ts"],
+      "@playfusion/service-placeholder": ["services/_placeholder/src/index.ts"],
+      "@playfusion/infra-placeholder": ["infra/_placeholder/src/index.ts"]
+    }
+  }
+}
