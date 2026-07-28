@@ -48,6 +48,43 @@
       "command": "npm run lint",
       "group": "build",
       "problemMatcher": ["$eslint-stylish"]
+    },
+    {
+      "label": "Stack up (LocalStack)",
+      "detail": "docker compose up -d — start the local AWS backend",
+      "type": "shell",
+      "command": "npm run stack:up",
+      "problemMatcher": []
+    },
+    {
+      "label": "Stack down (LocalStack)",
+      "detail": "docker compose down",
+      "type": "shell",
+      "command": "npm run stack:down",
+      "problemMatcher": []
+    },
+    {
+      "label": "Provision (LocalStack)",
+      "detail": "Create DynamoDB tables + EventBridge bus on LocalStack",
+      "type": "shell",
+      "command": "npm run provision",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test (unit)",
+      "detail": "vitest run --project unit",
+      "type": "shell",
+      "command": "npm test",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test (integration)",
+      "detail": "vitest run --project integration (requires Stack up + Provision)",
+      "type": "shell",
+      "command": "npm run test:it",
+      "group": "test",
+      "problemMatcher": []
     }
   ]
 }

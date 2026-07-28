@@ -1,0 +1,122 @@
+{
+  "Comment": "PB-1 'Bundle Enrollment' — Setup steps 1-6. AUTHORED SPEC ARTIFACT: this state machine documents the intended orchestration shape (ADR-002: workflow orchestrates, domain owns rules — no business logic lives here, only sequencing/error routing). It is registered on LocalStack (best-effort, see scripts/provision.ts) for parse-validation purposes only. It is NOT the executed engine for this pilot: the automatic Task states below target arn:aws:states:::apigateway:invoke, the one HTTP-style connector that LocalStack Community's ASL parser recognizes, but no API Gateway REST API is actually deployed anywhere in this repo (every BC is an in-process Hono app, invoked directly in tests/orchestrator code, never fronted by API Gateway or Lambda). Real execution of steps 1-6 is instead driven by workflow/pb-1-orchestrator.ts (the L2 fallback), which calls the same BC entrypoints in-process and polls DynamoDB read models in place of Activity task-token callbacks. See that file's header comment for the decision-4 rationale.",
+  "StartAt": "CreateEvent",
+  "States": {
+    "CreateEvent": {
+      "Type": "Task",
+      "Comment": "Steps 1-2 combined: O3 POST /events creates the sport event AND its categorie in one call (O3's handler accepts categorie in the request body, publishing EventPublished). Resource is arn:aws:states:::apigateway:invoke — the only http-shaped connector LocalStack Community's parser accepts; arn:aws:states:::http:invoke is rejected at CreateStateMachine time ('Unknown service: http'). ApiEndpoint/ApiId/Stage are placeholders: in production these would resolve from CDK-exported API Gateway stage outputs for the O3 BC; here no API Gateway is deployed, so this Task can only ever be parsed, never actually invoked end-to-end.",
+      "Resource": "arn:aws:states:::apigateway:invoke",
+      "Parameters": {
+        "ApiEndpoint.$": "$.apiBaseUrl",
+        "Method": "POST",
+        "Path": "/events",
+        "Stage": "local",
+        "RequestBody.$": "$.createEventPayload",
+        "Headers": {
+          "Content-Type": ["application/json"],
+          "x-organization-id.$": "States.Array($.organizationId)"
+        }
+      },
+      "ResultSelector": {
+        "sportEventId.$": "$.ResponseBody.sportEventId"
+      },
+      "ResultPath": "$.createEventResult",
+      "OutputPath": "$",
+      "Catch": [
+        {
+          "ErrorEquals": ["DomainError"],
+          "ResultPath": "$.error",
+          "Next": "HumanReview"
+        },
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HumanReview"
+        }
+      ],
+      "Next": "OpenRegistrationWindow"
+    },
+    "OpenRegistrationWindow": {
+      "Type": "Task",
+      "Comment": "Step 3: O5 POST /events/{sportEventId}/registration-window:open. sportEventId threads forward from CreateEvent's ResultPath (createEventResult.sportEventId). Same apigateway:invoke placeholder caveat as CreateEvent — O5 is also an in-process Hono app with no API Gateway front door in this pilot.",
+      "Resource": "arn:aws:states:::apigateway:invoke",
+      "Parameters": {
+        "ApiEndpoint.$": "$.apiBaseUrl",
+        "Method": "POST",
+        "Path.$": "States.Format('/events/{}/registration-window:open', $.createEventResult.sportEventId)",
+        "Stage": "local",
+        "Headers": {
+          "x-organization-id.$": "States.Array($.organizationId)"
+        }
+      },
+      "ResultPath": "$.openWindowResult",
+      "Catch": [
+        {
+          "ErrorEquals": ["DomainError"],
+          "ResultPath": "$.error",
+          "Next": "HumanReview"
+        },
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HumanReview"
+        }
+      ],
+      "Next": "WaitForApplication"
+    },
+    "WaitForApplication": {
+      "Type": "Task",
+      "Comment": "Step 4: pause the execution until a participant actually applies (RegistrationApplied domain event), i.e. a genuine .waitForTaskToken-style callback. Resource is an Activity ARN placeholder substituted at provision time (see scripts/provision.ts, which creates the 'pb-1-registration-applied-activity' Activity and string-replaces this token before CreateStateMachine). A worker would call GetActivityTask against this ARN, block until O5's RegistrationApplied handler (or an EventBridge rule targeting the activity via a small poller) calls SendTaskSuccess with the registrationId. This Activity/GetActivityTask/SendTaskSuccess round trip was empirically verified to work on LocalStack Community; the blocker for this pilot is exclusively the preceding Task states' lack of an invocable REST target, not this callback mechanism.",
+      "Resource": "${RegistrationAppliedActivityArn}",
+      "ResultPath": "$.registrationApplied",
+      "Next": "ConfirmTeam"
+    },
+    "ConfirmTeam": {
+      "Type": "Task",
+      "Comment": "Step 5: O5 POST /registrations/{registrationId}/confirm. This is the human-in-the-loop step referenced in the brief: confirmation requires a RegistrationManager-authorized caller (see HttpClaimAuthorizer), so in practice a human/organizer action surfaces this as a manual approval — a read-model/dashboard view can observe the registration sitting in 'Applied' status awaiting this Task to fire. Same apigateway:invoke placeholder caveat as the earlier Task states.",
+      "Resource": "arn:aws:states:::apigateway:invoke",
+      "Parameters": {
+        "ApiEndpoint.$": "$.apiBaseUrl",
+        "Method": "POST",
+        "Path.$": "States.Format('/registrations/{}/confirm', $.registrationApplied.registrationId)",
+        "Stage": "local",
+        "Headers": {
+          "authorization.$": "States.Array($.approverToken)"
+        }
+      },
+      "ResultPath": "$.confirmResult",
+      "Catch": [
+        {
+          "ErrorEquals": ["DomainError"],
+          "ResultPath": "$.error",
+          "Next": "HumanReview"
+        },
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "HumanReview"
+        }
+      ],
+      "Next": "WaitForFeePaid"
+    },
+    "WaitForFeePaid": {
+      "Type": "Task",
+      "Comment": "Step 6: pause again until ParticipationFeePaid is observed (O12 pay -> O5's onFeePaid auto-confirm). Same Activity-ARN placeholder / task-token pattern as WaitForApplication, substituted at provision time with the 'pb-1-fee-paid-activity' Activity ARN.",
+      "Resource": "${FeePaidActivityArn}",
+      "ResultPath": "$.feePaid",
+      "Next": "SetupComplete"
+    },
+    "SetupComplete": {
+      "Type": "Succeed",
+      "Comment": "PB-1 Setup steps 1-6 complete: event created, registration window open, a participant applied, was confirmed by a RegistrationManager, and paid the participation fee."
+    },
+    "HumanReview": {
+      "Type": "Pass",
+      "Comment": "Structural error-routing target only (ADR-002: workflow orchestrates, domain owns rules — no business-rule logic here). When a domain Task rejects with a 409/422 (e.g. DoubleApplyError, WindowClosedError, NotAuthorizedError), the execution lands here instead of failing outright, representing a queue/dashboard row for manual operator intervention. A real deployment would route this to an SNS topic, a support queue, or a read-model flag; this pilot models only the state-machine shape, not that integration.",
+      "Parameters": {
+        "reason.$": "$.error"
+      },
+      "End": true
+    }
+  }
+}

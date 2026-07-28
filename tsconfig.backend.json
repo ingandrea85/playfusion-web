@@ -1,0 +1,16 @@
+{
+  // Backend (services/* + libs/platform-lib) compile as Node ESM Lambda code.
+  // Mirrors the pilot's tsconfig.base (NodeNext + composite). The FE uses
+  // tsconfig.base.json (bundler resolution) instead.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "declaration": true,
+    "composite": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  }
+}

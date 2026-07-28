@@ -6,3 +6,4 @@ dist/
 .nx/
 tmp/
 .vite/
+*.tsbuildinfo

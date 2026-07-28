@@ -1,0 +1,21 @@
+# LocalStack — the local AWS backend for tests, provisioning and (from S0.6+) CDK.
+# Used standalone on the host via `npm run stack:up`, and included by the
+# devcontainer (.devcontainer/docker-compose.yml) so the dev container gets the
+# whole AWS backend on the same network.
+services:
+  localstack:
+    image: localstack/localstack:3
+    ports:
+      - "4566:4566"
+    environment:
+      # Broad service set so the full backend infra runs locally today, and so
+      # `cdklocal deploy` works unchanged from S0.6+ (needs cloudformation/iam/sts/logs).
+      - SERVICES=dynamodb,events,lambda,apigateway,stepfunctions,sqs,s3,iam,sts,logs,cloudformation
+      - DEBUG=0
+    volumes:
+      # LocalStack spawns Lambda runtime containers on the host Docker engine.
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "localstack-data:/var/lib/localstack"
+
+volumes:
+  localstack-data:

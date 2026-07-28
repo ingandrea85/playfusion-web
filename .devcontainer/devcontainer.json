@@ -1,12 +1,14 @@
 {
   "name": "playfusion-web",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
-  // Front-end only at S0.1. When LocalStack/services arrive (S0.6+), add:
-  //   "features": { "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {} }
-  //   and forward 4566 (LocalStack).
-  "forwardPorts": [5173],
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/playfusion-web",
+  // LocalStack runs as a sibling compose service (see docker-compose.yml). The dev
+  // container talks to it at http://localstack:4566 — no docker-outside-of-docker here.
+  "forwardPorts": [5173, 4566],
   "portsAttributes": {
-    "5173": { "label": "front-end (Vite)", "onAutoForward": "openBrowser" }
+    "5173": { "label": "front-end (Vite)", "onAutoForward": "openBrowser" },
+    "4566": { "label": "LocalStack (AWS)", "onAutoForward": "silent" }
   },
   "postCreateCommand": "npm install",
   "customizations": {
@@ -14,7 +16,8 @@
       "extensions": [
         "dbaeumer.vscode-eslint",
         "vitest.explorer",
-        "nrwl.angular-console"
+        "nrwl.angular-console",
+        "ms-azuretools.vscode-docker"
       ]
     }
   }

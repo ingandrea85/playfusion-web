@@ -1,0 +1,22 @@
+# Devcontainer composition: the dev container (`app`) + LocalStack, on one network.
+# Pulls in the root LocalStack service via `include` (paths rebased to repo root),
+# so there is a single source of truth for the LocalStack definition.
+include:
+  - ../docker-compose.yml
+
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/typescript-node:20
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces/playfusion-web:cached
+    environment:
+      # The dev container reaches LocalStack by its compose service name — no
+      # docker-outside-of-docker on the app container; only LocalStack needs the socket.
+      - AWS_ENDPOINT_URL=http://localstack:4566
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - EVENT_BUS_NAME=playfusion-pilot
+    depends_on:
+      - localstack
