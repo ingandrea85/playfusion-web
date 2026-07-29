@@ -32,4 +32,13 @@ A devcontainer (`.devcontainer/`, Node 20) and VS Code tasks (`.vscode/tasks.jso
 including **Front-end: serve**) are provided. Open the folder in a container, or run the
 commands above on Node 20.
 
-See `docs/superpowers/specs/` for design specs.
+## Documentation
+
+This README is the entry point. Start at the **[documentation hub](docs/README.md)**,
+which links everything together:
+
+- **[docs/README.md](docs/README.md)** — documentation index / map.
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — how the system is built and why
+  (monorepo, bounded contexts, event flow, shared kernel, local infra, testing).
+- **[docs/superpowers/specs/](docs/superpowers/specs/)** — per-slice design specs.
+- **[docs/superpowers/plans/](docs/superpowers/plans/)** — per-slice implementation plans.
