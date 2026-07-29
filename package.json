@@ -19,7 +19,10 @@
     "provision": "tsx scripts/provision.ts",
     "stack:up": "docker compose up -d",
     "stack:down": "docker compose down",
-    "mockups": "npm run dev -w @playfusion/mockups"
+    "mockups": "npm run dev -w @playfusion/mockups",
+    "tokens:build": "npm run tokens:build -w @playfusion/tokens",
+    "storybook": "npm run storybook -w @playfusion/ui",
+    "build-storybook": "npm run build-storybook -w @playfusion/ui"
   },
   "devDependencies": {
     "@aws-sdk/client-dynamodb": "^3.600.0",

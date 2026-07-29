@@ -1,0 +1,12 @@
+.pf-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  color: currentColor;
+}
+
+.pf-icon--xs { width: 12px; height: 12px; }
+.pf-icon--sm { width: 16px; height: 16px; }
+.pf-icon--md { width: 20px; height: 20px; }
+.pf-icon--lg { width: 24px; height: 24px; }
+.pf-icon--xl { width: 32px; height: 32px; }

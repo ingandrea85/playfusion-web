@@ -38,8 +38,8 @@ Where each concept lives, with links straight into the tree:
 |------|------|-------|
 | Bounded Contexts (backend) | [`services/`](../services/) | `o2` identity, `o3` sport-events, `o4` participants, `o5` registration (hexagonal reference), `o12` payments |
 | Shared runtime kernel | [`libs/platform-lib/`](../libs/platform-lib/) | correlation, events, logging, dynamo, idempotency, naming |
-| Design system (S0.5) | [`libs/`](../libs/) | PS-B tokens + UI (placeholder today) |
-| Experience SPAs (S6+) | [`apps/`](../apps/) | E1 organizer, E3 public, E4 admin (placeholder today) |
+| Design system (PS-B) | [`libs/tokens/`](../libs/tokens/) · [`libs/ui/`](../libs/ui/) | Style-Dictionary tokens + `pf-*` Web Components + Storybook (S0.5) |
+| Experience SPAs (S6+) | [`apps/`](../apps/) | `sample-web` PS-B harness today; E1/E3/E4 from S6 |
 | AWS CDK (S0.6+) | [`infra/`](../infra/) | placeholder today |
 | PB-1 orchestration | [`workflow/`](../workflow/) | Step Functions ASL + local-orchestrator fallback |
 | Local provisioning | [`scripts/provision.ts`](../scripts/provision.ts) | tables + event bus on LocalStack |

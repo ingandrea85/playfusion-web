@@ -17,7 +17,8 @@
     // Real libs/services replace these placeholder entries in S0.2 / S0.5.
     "paths": {
       "@playfusion/platform-lib": ["libs/platform-lib/src/index.ts"],
-      "@playfusion/app-placeholder": ["apps/_placeholder/src/index.ts"],
+      "@playfusion/tokens": ["libs/tokens/src/index.ts"],
+      "@playfusion/ui": ["libs/ui/src/index.ts"],
       "@playfusion/infra-placeholder": ["infra/_placeholder/src/index.ts"]
     }
   }

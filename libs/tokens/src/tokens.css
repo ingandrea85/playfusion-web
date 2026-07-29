@@ -1,0 +1,35 @@
+/**
+ * Do not edit directly, this file was auto-generated.
+ */
+
+:root {
+  --color-action-primary: #0b5fff;
+  --color-action-primary-hover: #0847c7;
+  --color-action-accent: #ff6b00;
+  --color-feedback-success: #16a34a;
+  --color-feedback-warning: #f59e0b;
+  --color-feedback-danger: #dc2626;
+  --color-surface-bg: #f4f7fb;
+  --color-surface-default: #ffffff;
+  --color-text-default: #0f172a;
+  --color-text-muted: #475569;
+  --color-text-soft: #334155;
+  --color-border-default: #d9e2ec;
+  --color-border-strong: #cbd5e1;
+  --color-status-finished: #64748b;
+  --color-hero-gradient-from: #eef4ff;
+  --color-hero-gradient-to: #fff2e8;
+  --color-tertiary: #f4f7fb;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-round: 50%;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+}

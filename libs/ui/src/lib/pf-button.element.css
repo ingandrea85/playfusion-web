@@ -1,0 +1,103 @@
+.pf-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.pf-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.pf-button:focus-visible {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 2px;
+}
+
+/* Sizes */
+.pf-button--sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
+.pf-button--md { padding: 0.5rem 1rem;      font-size: 0.875rem; }
+.pf-button--lg { padding: 0.625rem 1.25rem; font-size: 1rem; }
+
+/* Variants */
+.pf-button--primary {
+  background: var(--color-action-primary);
+  color: #ffffff;
+  border-color: var(--color-action-primary);
+}
+.pf-button--primary:hover:not(:disabled) {
+  background: var(--color-action-primary-hover);
+  border-color: var(--color-action-primary-hover);
+}
+
+.pf-button--secondary {
+  background: var(--color-surface-default);
+  color: var(--color-text-default);
+  border-color: var(--color-border-strong);
+}
+.pf-button--secondary:hover:not(:disabled) {
+  background: var(--color-surface-bg);
+}
+
+.pf-button--ghost {
+  background: transparent;
+  color: var(--color-text-soft);
+  border-color: transparent;
+}
+.pf-button--ghost:hover:not(:disabled) {
+  background: var(--color-surface-bg);
+}
+
+.pf-button--danger {
+  background: var(--color-feedback-danger);
+  color: #ffffff;
+  border-color: var(--color-feedback-danger);
+}
+.pf-button--danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.pf-button--link {
+  background: transparent;
+  color: var(--color-action-primary);
+  border-color: transparent;
+  padding-left: 0;
+  padding-right: 0;
+}
+.pf-button--link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+/* Icon + spinner slot positioning */
+.pf-button__icon-left,
+.pf-button__icon-right {
+  display: inline-flex;
+  align-items: center;
+}
+
+.pf-button--loading .pf-button__label {
+  opacity: 0;
+}
+.pf-button--loading .pf-button__icon-left,
+.pf-button--loading .pf-button__icon-right {
+  opacity: 0;
+}
+.pf-button--loading .pf-button__spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.pf-button--loading {
+  position: relative;
+}

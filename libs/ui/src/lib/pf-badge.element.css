@@ -1,0 +1,45 @@
+.pf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pf-badge--sm {
+  padding: 2px var(--space-xs);
+  font-size: 0.6875rem;
+}
+
+.pf-badge--md {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.8125rem;
+}
+
+.pf-badge--dot {
+  padding: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.pf-badge--neutral { background: var(--color-border-default); color: var(--color-text-soft); }
+.pf-badge--active  { background: rgba(11, 95, 255, 0.12); color: var(--color-action-primary); }
+.pf-badge--draft   { background: rgba(100, 116, 139, 0.16); color: var(--color-text-muted); }
+.pf-badge--done    { background: rgba(100, 116, 139, 0.12); color: var(--color-status-finished); }
+.pf-badge--warning { background: rgba(245, 158, 11, 0.16); color: #b45309; }
+.pf-badge--danger  { background: rgba(220, 38, 38, 0.12); color: var(--color-feedback-danger); }
+.pf-badge--success { background: rgba(22, 163, 74, 0.12); color: var(--color-feedback-success); }
+
+/* Dot variants are solid color, no background tint */
+.pf-badge--dot.pf-badge--neutral { background: var(--color-border-strong); }
+.pf-badge--dot.pf-badge--active  { background: var(--color-action-primary); }
+.pf-badge--dot.pf-badge--draft   { background: var(--color-text-muted); }
+.pf-badge--dot.pf-badge--done    { background: var(--color-status-finished); }
+.pf-badge--dot.pf-badge--warning { background: var(--color-feedback-warning); }
+.pf-badge--dot.pf-badge--danger  { background: var(--color-feedback-danger); }
+.pf-badge--dot.pf-badge--success { background: var(--color-feedback-success); }

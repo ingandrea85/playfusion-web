@@ -31,8 +31,8 @@ Nx provides the task graph, caching, and module-boundary linting.
 
 ```
 playfusion-web/
-├── apps/        Experience SPAs (E1 organizer, E3 public, E4 admin…) — real content in S6+
-├── libs/        platform-lib (shared runtime kernel) + PS-B design system (S0.5)
+├── apps/        Experience SPAs (E1 organizer, E3 public, E4 admin…) — real content in S6+ (sample-web since S0.5)
+├── libs/        platform-lib (shared runtime kernel) + PS-B design system (tokens, ui — §4b)
 ├── services/    Bounded Contexts (the backend) — migrated from the pilot in S0.2
 ├── infra/       AWS CDK stacks (ADR-012) — real content in S0.6+
 ├── mockups/     Mid-fidelity runnable UI reference (npm run mockups → :5173)
@@ -42,9 +42,9 @@ playfusion-web/
 └── docs/        Design specs & plans (docs/superpowers/) + this document
 ```
 
-Each not-yet-populated layer holds a single `_placeholder` package so the
+Any not-yet-populated layer holds a single `_placeholder` package so the
 workspace resolves and `build`/`test`/`lint` run end-to-end. Placeholders are
-deleted as real content lands (`apps/` and `infra/` are placeholder today).
+deleted as real content lands (only `infra/` is placeholder today).
 
 **Toolchain:** Node 20 (`.nvmrc`, `engines`), TypeScript 5.5 (ES2022, ESNext
 modules, `moduleResolution: bundler`, `strict`), ESM throughout (`"type":
@@ -130,6 +130,29 @@ concerns, not business logic:
 | `http.ts` | `ok(body)` and `toHttpError(e)` — maps `DomainError` → its status, `ZodError` → 400, else → 500 |
 | `errors.ts` | `DomainError` (business, default 409) vs `TechnicalError` |
 | `naming.ts` | `resourceName(base)`, `busName()`, `EVENT_SOURCE`, `PF_ENV` — single source of truth for physical names (ADR-012) |
+
+## 4b. The design system — PS-B (`libs/tokens` + `libs/ui`)
+
+The front-end shares one design system, **PS-B** (ADR-008), migrated from
+`playfuse-frontend` in S0.5 under the `@playfusion/*` scope:
+
+- **`@playfusion/tokens`** — the Style-Dictionary pipeline. Source design tokens live in
+  `libs/tokens/design/figma-export/tokens.json` (the Figma export); `npm run tokens:build`
+  runs `tools/build-tokens.mjs` to generate `src/tokens.css` (CSS custom properties, the
+  `--color-*` etc. consumed at runtime) and `src/lib/tokens.generated.ts` (typed constants).
+  The generated artifacts are committed so consumers need no build step.
+- **`@playfusion/ui`** — the `pf-*` primitives (`pf-badge`, `pf-button`, `pf-color-swatch`,
+  `pf-icon`, `pf-spinner`). They are **framework-free native Web Components** (`HTMLElement`
+  with a CSS side-effect import per element); `lit` is used only by the Storybook stories,
+  not at runtime. Importing `@playfusion/ui` registers every custom element as a side effect.
+  **Storybook** (`@storybook/web-components-vite`, `libs/ui/.storybook/`) is the component
+  gallery: `npm run storybook` (dev) / `npm run build-storybook` (static).
+
+Both are `scope:lib`, so apps and services may depend on them (a service never would, but
+the boundary rules permit `lib`). `apps/sample-web` is a minimal Vite app that imports a
+`pf-*` primitive end-to-end — the S0.5 acceptance harness that both libs resolve and bundle.
+Component specs run in jsdom via each lib's own vitest config (`npm run test -w @playfusion/ui`),
+kept out of the backend root test run.
 
 ## 5. Runtime data flow
 
@@ -276,13 +299,13 @@ npm run mockups      # serve the UI reference on :5173
 
 ## 12. Current status & roadmap
 
-**Phase S0 (setup).** S0.1 (Nx scaffold), S0.2 (BCs migrated from the pilot into
-`services/*`), and S0.3 (centralized `naming.ts`) are complete. `apps/` and
-`infra/` still hold placeholders. Immediate next work: **S0.4** — formalize the
-no-cross-BC lint rule; **S0.5** — the PS-B design system in `libs/`; **S0.6+** —
-real CDK stacks in `infra/`. The frontend Experience SPAs (E1 organizer, E3
-public, E4 admin) arrive from S6 onward; `mockups/` is the runnable reference
-until then.
+**Phase S0 (setup).** Complete: S0.1 (Nx scaffold), S0.2 (BCs migrated from the
+pilot into `services/*`), S0.3 (centralized `naming.ts`), S0.4 (no-cross-BC lint
+rule + its automated proof, §8), and S0.5 (PS-B design system — `libs/tokens`,
+`libs/ui`, Storybook, `apps/sample-web` — §4b). Only `infra/` still holds a
+placeholder. Immediate next work: **S0.6+** — real CDK stacks in `infra/`. The
+frontend Experience SPAs (E1 organizer, E3 public, E4 admin) arrive from S6
+onward; `mockups/` is the runnable reference until then.
 
 ## 13. Where to read more
 

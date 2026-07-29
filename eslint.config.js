@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 // the rule below forbids disallowed cross-imports across those layers.
 export default [
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '.nx/**', 'mockups/**']
+    ignores: ['**/dist/**', '**/node_modules/**', '.nx/**', 'mockups/**', '**/storybook-static/**']
   },
   {
     files: ['**/*.ts'],
