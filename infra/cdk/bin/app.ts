@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { DataStack } from '../lib/data-stack.js';
+import { ApiStack } from '../lib/api-stack.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -22,4 +23,5 @@ const stackEnv = {
   region: cfg.region ?? process.env.CDK_DEFAULT_REGION ?? 'eu-south-1',
 };
 
-new DataStack(app, `playfusion2-data-${envToken}`, { env: stackEnv, appEnv: envToken });
+const data = new DataStack(app, `playfusion2-data-${envToken}`, { env: stackEnv, appEnv: envToken });
+new ApiStack(app, `playfusion2-api-${envToken}`, { env: stackEnv, appEnv: envToken, data });

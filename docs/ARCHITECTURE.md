@@ -246,6 +246,7 @@ Stacks:
 | Stack | Slice | Contents |
 |-------|-------|----------|
 | `DataStack` | S0.6 | The per-BC DynamoDB tables (incl. `o5-registrations` + `pe-index` GSI) and the EventBridge bus `playfusion2-bus-<env>` — mirrors `scripts/provision.ts`. |
+| `ApiStack` | S0.7 | One esbuild-bundled `NodejsFunction` per BC (o2/o3/o4/o5/o12) fronted by an API Gateway REST API (`/<bc>/{proxy+}` → the BC's Hono app), plus the o5/o12 event consumers wired as EventBridge rule targets, each with least-privilege grants on its own tables + the bus. The S0.4 lint rule guarantees a bundle never pulls another BC's code. |
 
 ## 8. Boundary enforcement
 
