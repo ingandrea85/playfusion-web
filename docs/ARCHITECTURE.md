@@ -247,6 +247,7 @@ Stacks:
 |-------|-------|----------|
 | `DataStack` | S0.6 | The per-BC DynamoDB tables (incl. `o5-registrations` + `pe-index` GSI) and the EventBridge bus `playfusion2-bus-<env>` — mirrors `scripts/provision.ts`. |
 | `ApiStack` | S0.7 | One esbuild-bundled `NodejsFunction` per BC (o2/o3/o4/o5/o12) fronted by an API Gateway REST API (`/<bc>/{proxy+}` → the BC's Hono app), plus the o5/o12 event consumers wired as EventBridge rule targets, each with least-privilege grants on its own tables + the bus. The S0.4 lint rule guarantees a bundle never pulls another BC's code. |
+| `WorkflowStack` | S0.8 | The PB-1 "Bundle Enrollment" Setup ASL (`workflow/pb-1-setup.asl.json`) deployed as a real Step Functions state machine + its two task-token Activities — the runtime ADR-010 could previously only simulate. Automatic tasks invoke the S0.7 API via `apigateway:invoke` (endpoint from execution input). `test/integration/pb-1-statemachine.it.test.ts` creates the state machine on the engine and asserts an execution walks the Setup graph to a terminal state; the happy-path functional walk of steps 1–6 stays covered by the L2 orchestrator test (§9). |
 
 ## 8. Boundary enforcement
 

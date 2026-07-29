@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { DataStack } from '../lib/data-stack.js';
 import { ApiStack } from '../lib/api-stack.js';
+import { WorkflowStack } from '../lib/workflow-stack.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -25,3 +26,4 @@ const stackEnv = {
 
 const data = new DataStack(app, `playfusion2-data-${envToken}`, { env: stackEnv, appEnv: envToken });
 new ApiStack(app, `playfusion2-api-${envToken}`, { env: stackEnv, appEnv: envToken, data });
+new WorkflowStack(app, `playfusion2-workflow-${envToken}`, { env: stackEnv, appEnv: envToken });
