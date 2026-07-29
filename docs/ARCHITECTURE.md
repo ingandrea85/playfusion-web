@@ -220,6 +220,12 @@ in layers:
 
 Run it with `npm run lint` (`nx run-many -t lint`).
 
+The rule is **proven** by an automated test, `test/lint-boundary.test.ts` (S0.4): it
+lints source snippets through the real `eslint.config.js` via the ESLint Node API and
+asserts that a static cross-BC import and a dynamic cross-BC `import()` both fail
+(with the ADR-002 messages), while a legitimate `@playfusion/platform-lib` import lints
+clean — so a regression that weakens the boundary breaks `npm test`.
+
 ## 9. The PB-1 workflow (Bundle Enrollment)
 
 `workflow/pb-1-setup.asl.json` documents the **intended** Step Functions shape

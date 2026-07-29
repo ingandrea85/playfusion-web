@@ -16,7 +16,9 @@ export default defineConfig({
         resolve: { alias },
         test: {
           name: 'unit',
-          include: ['{services,libs}/*/test/**/*.test.ts'],
+          // Also picks up workspace-level unit tests under test/ (e.g. the S0.4
+          // lint-boundary proof); the exclude below keeps integration files out.
+          include: ['{services,libs}/*/test/**/*.test.ts', 'test/**/*.test.ts'],
           exclude: ['**/*.it.test.ts'],
         },
       },
