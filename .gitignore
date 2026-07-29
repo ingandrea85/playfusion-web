@@ -8,3 +8,4 @@ tmp/
 .vite/
 *.tsbuildinfo
 storybook-static/
+cdk.out/

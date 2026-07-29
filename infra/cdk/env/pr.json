@@ -1,0 +1,5 @@
+{
+  "env": "pr",
+  "environmentName": "produzione",
+  "region": "eu-south-1"
+}

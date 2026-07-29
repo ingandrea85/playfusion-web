@@ -1,0 +1,5 @@
+{
+  "env": "stg",
+  "environmentName": "collaudo",
+  "region": "eu-south-1"
+}

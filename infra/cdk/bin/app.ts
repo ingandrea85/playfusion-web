@@ -1,0 +1,25 @@
+#!/usr/bin/env node
+import { App } from 'aws-cdk-lib';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+import { DataStack } from '../lib/data-stack.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Env token from CDK context (`-c env=stg|pr|local`), default local (LocalStack/synth).
+// Non-secret per-env config lives in env/<token>.json; credentials/account come from the
+// standard AWS chain via CDK_DEFAULT_ACCOUNT/REGION (populated by the CLI/CI), reusing the
+// previous playfuse-infra pattern. No secrets in the repo.
+const app = new App();
+const envToken: string = app.node.tryGetContext('env') ?? 'local';
+const cfg = JSON.parse(
+  readFileSync(resolve(__dirname, '..', 'env', `${envToken}.json`), 'utf-8'),
+) as { env: string; region?: string; environmentName?: string };
+
+const stackEnv = {
+  account: process.env.CDK_DEFAULT_ACCOUNT,
+  region: cfg.region ?? process.env.CDK_DEFAULT_REGION ?? 'eu-south-1',
+};
+
+new DataStack(app, `playfusion2-data-${envToken}`, { env: stackEnv, appEnv: envToken });

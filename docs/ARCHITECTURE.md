@@ -226,6 +226,27 @@ and creates the DynamoDB tables per BC plus the EventBridge bus, all named via
 `resourceName`/`busName`. A devcontainer (`.devcontainer/`, Node 20) composes
 LocalStack onto the same network for a batteries-included dev environment.
 
+## 7b. Cloud infrastructure (AWS CDK)
+
+The deployed topology lives in `infra/cdk` (`@playfusion/infra`), an AWS CDK app
+(`aws-cdk-lib` v2). It reuses the previous `playfuse-infra` operational pattern:
+
+- **Env from context.** `bin/app.ts` reads the env token from CDK context
+  (`-c env=stg|pr|local`, default `local`) and loads non-secret per-env config from
+  `env/<token>.json`. Every physical name derives from that token via `lib/naming.ts`
+  (`playfusion2-<base>-<env>`), so nothing is hard-coded to one environment (S0.10).
+- **Credentials.** Account/region come from the standard AWS chain
+  (`CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION`, populated by the CLI or CI); region
+  defaults to `eu-south-1` (ADR-012). No secrets in the repo.
+- **Local verification.** `npm run synth -w @playfusion/infra` (no credentials needed);
+  `aws-cdk-local` (`cdklocal`) deploys against the same LocalStack used for tests.
+
+Stacks:
+
+| Stack | Slice | Contents |
+|-------|-------|----------|
+| `DataStack` | S0.6 | The per-BC DynamoDB tables (incl. `o5-registrations` + `pe-index` GSI) and the EventBridge bus `playfusion2-bus-<env>` — mirrors `scripts/provision.ts`. |
+
 ## 8. Boundary enforcement
 
 The no-cross-BC invariant (ADR-002/011) is enforced by ESLint (`eslint.config.js`),
