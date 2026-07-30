@@ -256,6 +256,16 @@ the prod removal policy. `cdk synth -c env=stg` and `-c env=pr` therefore produc
 fully disjoint resource sets, proven by `test/env-isolation.test.ts` (synthesizes both
 in-memory and asserts every name carries its token and the sets don't overlap).
 
+## 7c. CI/CD & deployment
+
+Two GitHub Actions workflows deploy the CDK app, credentials assumed via GitHub→AWS
+**OIDC** (no long-lived keys, S0.13); the deploy-role ARN is the repo variable
+`AWS_DEPLOY_ROLE_ARN`, region `eu-south-1`.
+
+| Workflow | Trigger | Effect |
+|----------|---------|--------|
+| `.github/workflows/deploy-stage.yml` | push to `stage` | Deploys the **collaudo** (`stg`) env, **path-aware**: maps the changed paths → affected stacks and `cdk deploy`s only those (shared changes fall back to `--all`). A single-BC change does not redeploy the others (S0.11). |
+
 ## 8. Boundary enforcement
 
 The no-cross-BC invariant (ADR-002/011) is enforced by ESLint (`eslint.config.js`),

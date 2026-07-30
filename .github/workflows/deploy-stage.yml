@@ -1,0 +1,85 @@
+name: Deploy stage → collaudo
+
+# S0.11 — a push to `stage` synth+deploys the collaudo (stg) environment, deploying only
+# the CDK stacks affected by the changed paths (path-aware; a single-BC change does not
+# redeploy the others). Credentials are assumed via GitHub→AWS OIDC (S0.13): no long-lived
+# keys. The deploy-role ARN comes from the repo variable AWS_DEPLOY_ROLE_ARN.
+
+on:
+  push:
+    branches: [stage]
+
+concurrency:
+  group: deploy-stg
+  cancel-in-progress: false
+
+permissions:
+  id-token: write # OIDC
+  contents: read
+
+env:
+  PF_ENV: stg
+  AWS_REGION: eu-south-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/cdk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need the previous commit to diff changed paths
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install
+        run: npm ci
+        working-directory: .
+
+      - name: Build backend (platform-lib for Lambda bundling)
+        run: npm run build -w @playfusion/platform-lib
+        working-directory: .
+
+      # Path-aware stack selection: map changed paths → affected stacks. Shared changes
+      # (naming/app entry, platform-lib, root config) fall back to deploying all stacks.
+      - name: Select affected stacks
+        id: select
+        working-directory: .
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.before }}"
+          if ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then BASE="HEAD~1"; fi
+          CHANGED="$(git diff --name-only "$BASE" "${{ github.sha }}")"
+          echo "Changed files:"; echo "$CHANGED"
+          stacks=""
+          add() { case " $stacks " in *" $1 "*) ;; *) stacks="$stacks $1";; esac; }
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            case "$f" in
+              infra/cdk/lib/data-stack.ts|scripts/*)            add playfusion2-data-stg ;;
+              services/*|infra/cdk/lib/api-stack.ts)            add playfusion2-api-stg ;;
+              workflow/*|infra/cdk/lib/workflow-stack.ts)       add playfusion2-workflow-stg ;;
+              apps/*|libs/tokens/*|libs/ui/*|infra/cdk/lib/hosting-stack.ts) add playfusion2-hosting-stg ;;
+              infra/cdk/lib/naming.ts|infra/cdk/bin/*|infra/cdk/package.json|package.json|package-lock.json)
+                add "--all" ;;
+            esac
+          done <<< "$CHANGED"
+          [ -z "$stacks" ] && stacks="--all"
+          echo "Selected: $stacks"
+          echo "stacks=$stacks" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: CDK synth (env=stg)
+        run: npx cdk synth -c env=stg
+
+      - name: CDK deploy affected stacks (env=stg)
+        run: npx cdk deploy ${{ steps.select.outputs.stacks }} -c env=stg --require-approval never
