@@ -271,6 +271,12 @@ The role trusts only this repo's `stage` branch and `v*` tags, and may only assu
 | `.github/workflows/deploy-stage.yml` | push to `stage` | Deploys the **collaudo** (`stg`) env, **path-aware**: maps the changed paths → affected stacks and `cdk deploy`s only those (shared changes fall back to `--all`). A single-BC change does not redeploy the others (S0.11). |
 | `.github/workflows/deploy-prod.yml` | pushed tag `v*` | Deploys the **produzione** (`pr`) env (`--all`). Tags-only trigger + a guard that the tagged commit is on `main`, so a plain merge to `main` deploys nothing (S0.12). |
 
+The **first real deploy to `stg` + the pilot E2E on real AWS** (S0.14) is a user action
+(needs a live account) — the procedure and the 5-criteria evidence template are in
+[`docs/runbooks/s0.14-first-stg-deploy.md`](runbooks/s0.14-first-stg-deploy.md). A
+skip-gated harness `test/e2e/pilot-e2e.e2e.test.ts` (`npm run test:e2e` with `API_BASE_URL`)
+drives the deployed API; it no-ops without a live endpoint so `npm test` stays green.
+
 ## 8. Boundary enforcement
 
 The no-cross-BC invariant (ADR-002/011) is enforced by ESLint (`eslint.config.js`),

@@ -17,9 +17,9 @@ export default defineConfig({
         test: {
           name: 'unit',
           // Also picks up workspace-level unit tests under test/ (e.g. the S0.4
-          // lint-boundary proof); the exclude below keeps integration files out.
+          // lint-boundary proof); the excludes keep integration + e2e files out.
           include: ['{services,libs}/*/test/**/*.test.ts', 'test/**/*.test.ts'],
-          exclude: ['**/*.it.test.ts'],
+          exclude: ['**/*.it.test.ts', '**/*.e2e.test.ts'],
         },
       },
       {
@@ -28,6 +28,15 @@ export default defineConfig({
           name: 'integration',
           include: ['{services,libs}/*/test/**/*.it.test.ts', 'test/**/*.it.test.ts'],
           setupFiles: ['./test/setup/localstack-env.ts'],
+        },
+      },
+      {
+        resolve: { alias },
+        test: {
+          // Pilot acceptance E2E against a real deployed env (S0.14); skip-gated on
+          // API_BASE_URL, so it is a no-op unless pointed at a deployed stage.
+          name: 'e2e',
+          include: ['test/e2e/**/*.e2e.test.ts'],
         },
       },
     ],

@@ -14,6 +14,7 @@
     "build": "nx run-many -t build",
     "test": "vitest run --project unit",
     "test:it": "vitest run --project integration",
+    "test:e2e": "vitest run --project e2e",
     "lint": "nx run-many -t lint",
     "graph": "nx graph",
     "provision": "tsx scripts/provision.ts",
