@@ -250,6 +250,12 @@ Stacks:
 | `WorkflowStack` | S0.8 | The PB-1 "Bundle Enrollment" Setup ASL (`workflow/pb-1-setup.asl.json`) deployed as a real Step Functions state machine + its two task-token Activities — the runtime ADR-010 could previously only simulate. Automatic tasks invoke the S0.7 API via `apigateway:invoke` (endpoint from execution input). `test/integration/pb-1-statemachine.it.test.ts` creates the state machine on the engine and asserts an execution walks the Setup graph to a terminal state; the happy-path functional walk of steps 1–6 stays covered by the L2 orchestrator test (§9). |
 | `HostingStack` | S0.9 | S3 bucket + CloudFront static hosting with path-based behaviours per Experience (`e1/*` organizer, `e3/*` public; default → E3) off one origin (R7). A placeholder index per app is deployed inline so a real deploy serves a page per path. |
 
+Every stack derives its env token from CDK context and threads it through `naming.ts`
+(S0.10) — no physical name is pinned to one environment; the only per-env conditional is
+the prod removal policy. `cdk synth -c env=stg` and `-c env=pr` therefore produce two
+fully disjoint resource sets, proven by `test/env-isolation.test.ts` (synthesizes both
+in-memory and asserts every name carries its token and the sets don't overlap).
+
 ## 8. Boundary enforcement
 
 The no-cross-BC invariant (ADR-002/011) is enforced by ESLint (`eslint.config.js`),
@@ -323,13 +329,14 @@ npm run mockups      # serve the UI reference on :5173
 
 ## 12. Current status & roadmap
 
-**Phase S0 (setup).** Complete: S0.1 (Nx scaffold), S0.2 (BCs migrated from the
+**Phase S0 (setup) — complete.** S0.1 (Nx scaffold), S0.2 (BCs migrated from the
 pilot into `services/*`), S0.3 (centralized `naming.ts`), S0.4 (no-cross-BC lint
-rule + its automated proof, §8), and S0.5 (PS-B design system — `libs/tokens`,
-`libs/ui`, Storybook, `apps/sample-web` — §4b). Only `infra/` still holds a
-placeholder. Immediate next work: **S0.6+** — real CDK stacks in `infra/`. The
-frontend Experience SPAs (E1 organizer, E3 public, E4 admin) arrive from S6
-onward; `mockups/` is the runnable reference until then.
+rule + its automated proof, §8), S0.5 (PS-B design system — `libs/tokens`,
+`libs/ui`, Storybook, `apps/sample-web` — §4b), and S0.6–S0.10 (the AWS CDK app in
+`infra/cdk`: `DataStack`, `ApiStack`, `WorkflowStack`, `HostingStack`, all
+env-parametrized — §7b). Next: real feature slices (S1+) and the frontend
+Experience SPAs (E1 organizer, E3 public, E4 admin) from S6 onward; `mockups/` is
+the runnable reference until then.
 
 ## 13. Where to read more
 
