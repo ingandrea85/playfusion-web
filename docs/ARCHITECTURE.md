@@ -260,7 +260,11 @@ in-memory and asserts every name carries its token and the sets don't overlap).
 
 Two GitHub Actions workflows deploy the CDK app, credentials assumed via GitHub→AWS
 **OIDC** (no long-lived keys, S0.13); the deploy-role ARN is the repo variable
-`AWS_DEPLOY_ROLE_ARN`, region `eu-south-1`.
+`AWS_DEPLOY_ROLE_ARN`, region `eu-south-1`. The OIDC provider + least-privilege deploy
+role are created once per account from `infra/bootstrap/github-oidc.yaml` — the manual
+prerequisite is documented in [`infra/bootstrap/README.md`](../infra/bootstrap/README.md).
+The role trusts only this repo's `stage` branch and `v*` tags, and may only assume the
+`cdk-*` bootstrap roles.
 
 | Workflow | Trigger | Effect |
 |----------|---------|--------|

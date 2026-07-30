@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  S0.13 — GitHub->AWS OIDC trust + deploy role for the playfusion-web CI/CD workflows
+  (deploy-stage.yml / deploy-prod.yml). No long-lived keys: the workflows assume this
+  role via OIDC. Deploy ONCE per AWS account with admin credentials (see README.md).
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Default: ingandrea85
+  GitHubRepo:
+    Type: String
+    Default: playfusion-web
+  CreateOidcProvider:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Set 'false' if the GitHub OIDC provider already exists in this account.
+
+Conditions:
+  ShouldCreateProvider: !Equals [!Ref CreateOidcProvider, 'true']
+
+Resources:
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: ShouldCreateProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      # IAM validates GitHub's OIDC via its trust store; the thumbprint is required by
+      # CloudFormation but no longer materially checked for this provider.
+      ThumbprintList: ['6938fd4d98bab03faadb97b34396831e3780aea1']
+
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: playfusion2-gha-deploy
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - ShouldCreateProvider
+                - !Ref GitHubOidcProvider
+                - !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                # collaudo deploys from the `stage` branch; produzione from `v*` tags.
+                token.actions.githubusercontent.com:sub:
+                  - !Sub repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/stage
+                  - !Sub repo:${GitHubOrg}/${GitHubRepo}:ref:refs/tags/v*
+      Policies:
+        - PolicyName: assume-cdk-bootstrap-roles
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Modern CDK v2 deploys by assuming the bootstrap roles created by
+              # `cdk bootstrap`; the GitHub role needs only to assume those + read CFN.
+              - Effect: Allow
+                Action: sts:AssumeRole
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/cdk-*
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:GetTemplate
+                Resource: '*'
+
+Outputs:
+  DeployRoleArn:
+    Description: Set this as the repo variable AWS_DEPLOY_ROLE_ARN.
+    Value: !GetAtt DeployRole.Arn
