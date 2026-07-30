@@ -1,0 +1,67 @@
+name: Deploy tag → produzione
+
+# S0.12 — a pushed version tag (`v*`) synth+deploys the produzione (pr) environment.
+# The trigger is tags-only, so a plain merge to `main` deploys nothing; a guard also
+# asserts the tagged commit is reachable from main (tags are cut from main). Credentials
+# via GitHub→AWS OIDC (S0.13); no long-lived keys.
+
+on:
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: deploy-pr
+  cancel-in-progress: false
+
+permissions:
+  id-token: write # OIDC
+  contents: read
+
+env:
+  PF_ENV: pr
+  AWS_REGION: eu-south-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/cdk
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need main to verify the tag is cut from it
+
+      - name: Guard — tag must be on main
+        working-directory: .
+        run: |
+          set -euo pipefail
+          if ! git branch -r --contains "${{ github.sha }}" | grep -qE 'origin/main$'; then
+            echo "::error::Tag ${{ github.ref_name }} is not on main — refusing to deploy prod."
+            exit 1
+          fi
+          echo "Tag ${{ github.ref_name }} is on main ✓"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install
+        run: npm ci
+        working-directory: .
+
+      - name: Build backend (platform-lib for Lambda bundling)
+        run: npm run build -w @playfusion/platform-lib
+        working-directory: .
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: CDK synth (env=pr)
+        run: npx cdk synth -c env=pr
+
+      - name: CDK deploy (env=pr)
+        run: npx cdk deploy --all -c env=pr --require-approval never

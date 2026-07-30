@@ -265,6 +265,7 @@ Two GitHub Actions workflows deploy the CDK app, credentials assumed via GitHubâ
 | Workflow | Trigger | Effect |
 |----------|---------|--------|
 | `.github/workflows/deploy-stage.yml` | push to `stage` | Deploys the **collaudo** (`stg`) env, **path-aware**: maps the changed paths â†’ affected stacks and `cdk deploy`s only those (shared changes fall back to `--all`). A single-BC change does not redeploy the others (S0.11). |
+| `.github/workflows/deploy-prod.yml` | pushed tag `v*` | Deploys the **produzione** (`pr`) env (`--all`). Tags-only trigger + a guard that the tagged commit is on `main`, so a plain merge to `main` deploys nothing (S0.12). |
 
 ## 8. Boundary enforcement
 
