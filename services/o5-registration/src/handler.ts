@@ -61,6 +61,8 @@ export { app };
 import { handle } from 'hono/aws-lambda';
 const inner = handle(app);
 export const handler = async (event: any, ctx: any) => {
+  // API Gateway mounts this BC at /o5/{proxy+}; route on the proxied sub-path only.
+  if (event?.pathParameters?.proxy != null) event.path = `/${event.pathParameters.proxy}`;
   const correlationId = event.headers?.['x-correlation-id'] ?? randomUUID();
   return withCorrelation(correlationId, async () => {
     checkpoint('o5-handler', 'START', { path: event.rawPath ?? event.path, correlationId: currentCorrelationId() });

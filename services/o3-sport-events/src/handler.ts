@@ -21,4 +21,8 @@ app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e
 
 export { app };
 const inner = handle(app);
-export const handler = (event: any, ctx: any) => withCorrelation(event.headers?.['x-correlation-id'] ?? randomUUID(), () => inner(event, ctx));
+export const handler = (event: any, ctx: any) => {
+  // API Gateway mounts this BC at /o3/{proxy+}; route on the proxied sub-path only.
+  if (event?.pathParameters?.proxy != null) event.path = `/${event.pathParameters.proxy}`;
+  return withCorrelation(event.headers?.['x-correlation-id'] ?? randomUUID(), () => inner(event, ctx));
+};

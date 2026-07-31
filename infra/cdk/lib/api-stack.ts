@@ -72,13 +72,22 @@ export class ApiStack extends Stack {
           mainFields: ['module', 'main'],
           // The Node 20 Lambda runtime ships the AWS SDK v3; keep it external.
           externalModules: ['@aws-sdk/*'],
+          // pino (and other CJS deps) use dynamic require() of node builtins,
+          // unsupported in an ESM bundle. Reintroduce require via createRequire.
+          banner: "import{createRequire}from'module';const require=createRequire(import.meta.url);",
         },
       });
 
     const api = new RestApi(this, 'api', { restApiName: `playfusion2-api-${env}` });
 
+    // Cross-BC HTTP contract (ADR-002: no code imports): handlers that must reach O2's
+    // verify endpoint get its base URL here. Built from restApiId (not api.url) to avoid a
+    // Lambda→Stage→Deployment→Method→Lambda circular dependency; stage name is the default 'prod'.
+    const o2BaseUrl = `https://${api.restApiId}.execute-api.${this.region}.amazonaws.com/prod/o2`;
+
     for (const bc of BCS) {
       const handler = lambda(`${bc.route}-handler`, resolve(SERVICES, bc.key, 'src/handler.ts'));
+      handler.addEnvironment('O2_BASE_URL', o2BaseUrl);
       for (const t of bc.tables) props.data.tables[t]!.grantReadWriteData(handler);
       props.data.bus.grantPutEventsTo(handler);
 
