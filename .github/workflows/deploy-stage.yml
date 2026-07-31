@@ -20,6 +20,11 @@ permissions:
 env:
   PF_ENV: stg
   AWS_REGION: eu-south-1
+  # eu-south-1 is an opt-in region whose regional STS endpoint rejects GitHub OIDC
+  # web-identity federation ("Not authorized to perform sts:AssumeRoleWithWebIdentity").
+  # Assume the deploy role via a non-opt-in STS endpoint; the stacks still deploy to
+  # eu-south-1 (region is pinned in infra/cdk/env/*.json), so STS region ≠ deploy region.
+  OIDC_STS_REGION: us-east-1
 
 jobs:
   deploy:
@@ -76,7 +81,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ env.OIDC_STS_REGION }} # non-opt-in STS for OIDC; deploy stays eu-south-1
 
       - name: CDK synth (env=stg)
         run: npx cdk synth -c env=stg
