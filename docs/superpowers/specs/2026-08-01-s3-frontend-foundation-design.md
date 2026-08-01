@@ -193,16 +193,42 @@ Vite SPA, `base: '/e3/'`. Public, read-only.
   build reads `domain`/`clientId`/`audience` from here (or from CI env). Filling these is the
   manual tenant prerequisite (below).
 
-### Auth0 real-tenant prerequisite (manual, external)
+### Auth0 real-tenant — recycled from the previous PlayFusion
 
-Per the chosen approach E1 targets a **real Auth0 tenant**, but tenant creation is a manual
-Auth0-dashboard step outside this codebase and outside my authorized services. This slice
-delivers **all code + config plumbing + a setup runbook** (`docs/runbooks/auth0-spa-e1.md`)
-and the wiring is unit-tested against a mocked client. The **live-login smoke** on E1 is
-unblocked once the operator creates the SPA application + API and provides
-`domain / clientId / audience` (dropped into `env/stg.json` / CI env). This is the one
-acceptance sub-item with an external dependency; it is called out explicitly, not silently
-skipped.
+E1 targets a **real Auth0 tenant**, and rather than provisioning a new one we **recycle the
+existing tenant** from the previous PlayFusion frontend
+(`playfusion/playfusion-frontend/.../apps/web/.env.local`):
+
+| Field | Value |
+| --- | --- |
+| `VITE_AUTH0_DOMAIN` | `dev-c6din8ya.eu.auth0.com` |
+| `VITE_AUTH0_CLIENT_ID` | `65atFepkIh2jiMeaDqZlqgD63ccd2Gw1` |
+| `VITE_AUTH0_AUDIENCE` | `https://plafusionapi.it` |
+| `VITE_AUTH0_SCOPE` | `openid profile email` |
+| backend `auth0.issuer` (`env/stg.json`) | `https://dev-c6din8ya.eu.auth0.com/` |
+| backend `auth0.audience` | `https://plafusionapi.it` |
+| roles claim namespace | `https://plafusionapi.it/roles` (values **lowercase**: `organizer`, `director`, `admin`, `tenant_admin`) |
+
+These are non-secret SPA/public identifiers (the client id is public in a SPA; the GraphQL
+API key found alongside them is **not** copied — unrelated to this slice). Two manual/config
+reconciliations, both flagged rather than silently skipped:
+
+1. **Allowed URLs (manual, Auth0 dashboard, operator):** the reused SPA application must add
+   the new E1 origins to **Allowed Callback URLs / Web Origins / Logout URLs** — the E1
+   CloudFront URL and `http://localhost:<port>` for local dev. Code + runbook
+   (`docs/runbooks/auth0-spa-e1.md`) delivered; the allow-listing is your dashboard step.
+2. **Role/org claim mapping (config):** the tenant emits roles under
+   `https://plafusionapi.it/roles` (lowercase) with no guaranteed `org_id` claim, whereas
+   `platform-lib` defaults to `https://playfusion/roles` + `ORGANIZER` + `org_id`. So
+   `env/stg.json` sets `rolesClaim: "https://plafusionapi.it/roles"` and the
+   organizer-role check is normalized case-insensitively (`organizer` ⇒ `ORGANIZER`). Org
+   scoping continues to fall back to the `x-organization-id` header until the tenant carries
+   an org claim. This keeps E1 login real end-to-end; deeper role→org enforcement is a
+   backend follow-up, not an S3 blocker.
+
+The FE wiring (auth-guard state machine + token→header injection) is unit-tested against a
+**mocked** Auth0 client, so local build/verify passes without a network round-trip; the
+**live-login smoke** runs once the operator completes reconciliation (1).
 
 ## Testing strategy
 
@@ -229,4 +255,5 @@ skipped.
   `tools/build-tokens.mjs`, not hand-edit, and confirm PS-B consumers still resolve.
 - **CORS `allowOrigins`** needs the CloudFront domain, unknown until hosting is deployed;
   on stg use the distribution domain via output/ref or a documented `'*'`.
-- **E1 live login** depends on the external Auth0 tenant values (handoff above).
+- **E1 live login** uses the recycled Auth0 tenant; it depends on the operator adding the E1
+  origins to the app's Allowed Callback/Web Origins/Logout URLs (reconciliation 1 above).
