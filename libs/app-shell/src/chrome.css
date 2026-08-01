@@ -1,0 +1,110 @@
+/* Ported from mockups/shared/ui.css — PlayFusion "Matchday" component language.
+   Mockup token names substituted to the PS-B design system (libs/tokens).
+   Only the selectors app-shell's chrome.ts renders are ported (see task-4 brief step 9). */
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--color-text-default);
+  background: var(--color-surface-bg);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--color-action-primary); }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; margin: 0; }
+h1 { font-size: 30px; }
+h2 { font-size: 20px; }
+h3 { font-size: 15px; letter-spacing: 0.02em; }
+
+/* ---------- Layout ---------- */
+.pf-container { max-width: 1080px; margin: 0 auto; padding: var(--space-xl) var(--space-lg) var(--space-2xl); }
+.pf-container--narrow { max-width: 600px; }
+
+/* ---------- App bar (E1 Organizer) ---------- */
+.pf-topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: var(--space-md);
+  padding: 12px var(--space-lg);
+  background: color-mix(in srgb, var(--color-surface-default) 88%, transparent);
+  backdrop-filter: saturate(1.2) blur(8px);
+  border-bottom: 1px solid var(--color-border-default);
+}
+.pf-brand { display: inline-flex; align-items: baseline; gap: 2px;
+  font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -0.02em;
+  color: var(--color-text-default); text-decoration: none; }
+.pf-brand b { color: var(--color-action-primary); }
+.pf-brand small { font-family: var(--font-sans); font-weight: 600; font-size: 12px; color: var(--color-text-muted);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-left: var(--space-sm); }
+.pf-topbar nav { display: flex; align-items: center; gap: var(--space-lg); margin-left: auto; }
+.pf-topbar nav a { text-decoration: none; color: var(--color-text-muted); font-weight: 600; font-size: 14px; }
+.pf-topbar nav a:hover { color: var(--color-text-default); }
+.pf-topbar nav a[aria-current="page"] { color: var(--color-text-default); }
+
+/* ---------- Page header (eyebrow + title) ---------- */
+.pf-pagehead { margin-bottom: var(--space-xl); }
+.pf-eyebrow { font-family: var(--font-mono); font-size: 12px; font-weight: 500; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--color-text-muted); display: flex; align-items: center; gap: var(--space-sm); }
+.pf-eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--color-action-accent); }
+
+/* ---------- Cards ---------- */
+.pf-card { background: var(--color-surface-default); border: 1px solid var(--color-border-default);
+  border-radius: 8px; padding: var(--space-lg); box-shadow: var(--shadow-sm); margin-bottom: var(--space-md); }
+.pf-card--link { transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease; }
+.pf-card--link:hover { box-shadow: var(--shadow-md); border-color: var(--color-border-strong); transform: translateY(-2px); }
+
+/* ---------- Buttons ---------- */
+.pf-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm);
+  padding: 10px var(--space-md); border-radius: 8px; border: 1px solid var(--color-border-default);
+  background: var(--color-surface-default); color: var(--color-text-default); font-family: var(--font-sans);
+  font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; transition: background .15s ease, border-color .15s ease; }
+.pf-btn:hover { border-color: var(--color-border-strong); background: var(--color-surface-sunken); }
+.pf-btn--primary { background: var(--color-action-accent); color: #fff; border-color: transparent; }
+.pf-btn--primary:hover { background: var(--color-action-accent-hover); border-color: transparent; }
+.pf-btn--lg { padding: 14px var(--space-xl); font-size: 16px; }
+.pf-btn--ghost { padding: 4px 10px; font-size: 14px; background: transparent; border-color: transparent; color: var(--color-text-muted); }
+.pf-btn--ghost:hover { background: var(--color-surface-sunken); border-color: var(--color-border-default); }
+.pf-btn:disabled, .pf-btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+
+/* ---------- Category tag (age bracket + capacity) ---------- */
+.pf-catlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.pf-cat { display: flex; align-items: center; gap: 12px; padding: 12px var(--space-md);
+  background: var(--color-surface-default); border: 1px solid var(--color-border-default); border-radius: 8px; }
+.pf-cat__label { font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em;
+  color: var(--color-action-primary); flex: none; }
+.pf-cat__body { flex: 1; min-width: 0; }
+.pf-cat__cap { font-family: var(--font-mono); font-size: 12px; color: var(--color-text-muted); white-space: nowrap; }
+.pf-cat__bar { height: 6px; margin-top: 6px; border-radius: var(--radius-pill); background: var(--color-surface-sunken); overflow: hidden; }
+.pf-cat__bar > i { display: block; height: 100%; border-radius: var(--radius-pill); background: var(--color-action-accent); }
+.pf-cat--full { border-color: var(--color-feedback-success); }
+.pf-cat--full .pf-cat__bar > i { background: var(--color-feedback-success); }
+.pf-cat--full .pf-cat__cap { color: var(--color-feedback-success); font-weight: 700; }
+
+/* ---------- E3 Public hero (matchday poster) ---------- */
+.pf-publicbar { display: flex; align-items: center; padding: 12px var(--space-lg);
+  background: var(--color-surface-default); border-bottom: 1px solid var(--color-border-default); }
+.pf-hero { background: linear-gradient(135deg, var(--color-hero-gradient-from), var(--color-hero-gradient-to)); border-bottom: 1px solid var(--color-border-default); }
+.pf-hero__inner { max-width: 600px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg); }
+.pf-hero h1 { font-size: clamp(34px, 9vw, 52px); text-transform: uppercase; margin: 12px 0; }
+.pf-hero__meta { font-family: var(--font-mono); font-size: 13px; color: var(--color-text-soft);
+  text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--space-lg); }
+
+/* ---------- Helpers ---------- */
+.pf-muted { color: var(--color-text-muted); }
+.pf-mono { font-family: var(--font-mono); font-size: 12.5px; color: var(--color-text-muted); }
+.pf-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); flex-wrap: wrap; }
+.pf-stack > * + * { margin-top: 12px; }
+
+/* ---------- Organizer workspace (hero + tabs) ---------- */
+.pf-whero { position: sticky; top: 0; z-index: 20; background: var(--color-surface-default); border-bottom: 1px solid var(--color-border-strong); }
+.pf-whero__inner { max-width: 960px; margin: 0 auto; padding: var(--space-md) var(--space-md) 12px; }
+.pf-whero h1 { margin: 6px 0 4px; }
+.pf-wphase { display: inline-block; padding: 3px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 700; }
+.pf-wphase--prep { background: #fef3e2; color: #b45309; }
+.pf-wphase--live { background: #eafaf1; color: var(--color-feedback-success); }
+.pf-wphase--done { background: #eef2f7; color: var(--color-text-soft); }
+.pf-wtabs { display: flex; gap: 2px; max-width: 960px; margin: 0 auto; padding: 0 var(--space-md); overflow-x: auto; }
+.pf-wtab { padding: 10px 14px; font-weight: 700; font-size: 14px; color: var(--color-text-soft); text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap; }
+.pf-wtab--active { color: var(--color-action-primary); border-bottom-color: var(--color-action-primary); }

@@ -7,6 +7,7 @@ import { resolve } from 'node:path'
 const alias = {
   '@playfusion/platform-lib': resolve(__dirname, 'libs/platform-lib/src/index.ts'),
   '@playfusion/rest-client': resolve(__dirname, 'libs/rest-client/src/index.ts'),
+  '@playfusion/app-shell': resolve(__dirname, 'libs/app-shell/src/index.ts'),
 }
 
 export default defineConfig({
