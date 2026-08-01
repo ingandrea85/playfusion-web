@@ -6,6 +6,7 @@ import { resolve } from 'node:path'
 // builds still resolve the package via its built dist/ (package.json main).
 const alias = {
   '@playfusion/platform-lib': resolve(__dirname, 'libs/platform-lib/src/index.ts'),
+  '@playfusion/rest-client': resolve(__dirname, 'libs/rest-client/src/index.ts'),
 }
 
 export default defineConfig({

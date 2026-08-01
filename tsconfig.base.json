@@ -18,7 +18,8 @@
     "paths": {
       "@playfusion/platform-lib": ["libs/platform-lib/src/index.ts"],
       "@playfusion/tokens": ["libs/tokens/src/index.ts"],
-      "@playfusion/ui": ["libs/ui/src/index.ts"]
+      "@playfusion/ui": ["libs/ui/src/index.ts"],
+      "@playfusion/rest-client": ["libs/rest-client/src/index.ts"]
     }
   }
 }
