@@ -213,6 +213,33 @@ ports as writes (O5 `RegistrationRepository.findByEvent`, O3 `EventReadStore`), 
 unit-tested with in-memory fakes; the DynamoDB adapters' GSI queries are smoke-checked
 against LocalStack.
 
+### 5c. Auth (S2)
+
+Two credential types, verified in shared-kernel code (`libs/platform-lib`) and enforced as
+Hono middleware at each BC's HTTP boundary:
+
+- **Organizers** log in with **Auth0** (RS256 JWT). `createAuth0Verifier` validates
+  signature (JWKS), issuer and audience via `jose`, and projects the token into an
+  `Identity` (roles from a namespaced claim, org from `org_id`). Config is injected per-env
+  by the `ApiStack` (`AUTH0_*`); see the [Auth0 setup runbook](runbooks/auth0-setup.md).
+- **Coaches** enrol with an O2 **magic-link** — a hardened HMAC token (versioned, expiring,
+  timing-safe, optional purpose) in `magic-link.ts`, mintable by O2 and verifiable by any
+  BC against the shared `PF_TOKEN_SECRET` without importing O2 code (ADR-002).
+
+Enforcement (`requireOrganizer` / `requireMagicLink`):
+
+| Route | Middleware | Accepts |
+|---|---|---|
+| O3 `POST /events`, O5 `open-window` / `confirm` / `reject` | `requireOrganizer` | Auth0 organizer JWT **or** an O2 `RegistrationManager` magic-link (transitional bridge) |
+| O5 `POST /registrations` (coach apply) | `requireMagicLink` | any valid magic-link |
+| GET read endpoints (§5b) | none | public (E3 landing) |
+
+Missing/invalid credential → **401**; valid credential without the required role → **403**.
+The token is read from `authorization` or `x-approver-token` (Step Functions'
+`apigateway:invoke` forbids the reserved `authorization` header). The **dual-accept bridge**
+keeps the deployed PB-1 Step Functions + pilot green while no Auth0 tenant exists; it is
+removed once Auth0 is live.
+
 ## 6. Naming & environments (ADR-012)
 
 All physical AWS resource names are derived from one helper so they can never
@@ -384,6 +411,11 @@ the runnable reference until then.
 per-BC direct query, no projection), S1.2 (`GET /events` per org + detail), S1.3
 (`GET /events/:id/registrations?state=`), S1.4 (window state + per-category capacity) —
 see §5b and the S1.1 spec. These feed the S4/S5 Bundle Enrollment screens.
+
+**Phase S2 (auth) — backend complete.** S2.2 (shared Auth0 JWT verifier + auth middleware
+in platform-lib), S2.3 (hardened magic-link), S2.4 (enforcement on O3/O5, dual-accept
+bridge) — see §5c. S2.1 ships the Auth0 config plumbing + [setup runbook](runbooks/auth0-setup.md);
+live organizer login is deferred until the tenant + E1 SPA (S3) exist.
 
 ## 13. Where to read more
 

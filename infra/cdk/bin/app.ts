@@ -18,7 +18,10 @@ const app = new App();
 const envToken: string = app.node.tryGetContext('env') ?? 'local';
 const cfg = JSON.parse(
   readFileSync(resolve(__dirname, '..', 'env', `${envToken}.json`), 'utf-8'),
-) as { env: string; region?: string; environmentName?: string };
+) as {
+  env: string; region?: string; environmentName?: string;
+  auth0?: { issuer?: string; audience?: string; jwksUri?: string; rolesClaim?: string; orgClaim?: string };
+};
 
 const stackEnv = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
@@ -26,6 +29,6 @@ const stackEnv = {
 };
 
 const data = new DataStack(app, `playfusion2-data-${envToken}`, { env: stackEnv, appEnv: envToken });
-new ApiStack(app, `playfusion2-api-${envToken}`, { env: stackEnv, appEnv: envToken, data });
+new ApiStack(app, `playfusion2-api-${envToken}`, { env: stackEnv, appEnv: envToken, data, auth0: cfg.auth0 });
 new WorkflowStack(app, `playfusion2-workflow-${envToken}`, { env: stackEnv, appEnv: envToken });
 new HostingStack(app, `playfusion2-hosting-${envToken}`, { env: stackEnv, appEnv: envToken });
