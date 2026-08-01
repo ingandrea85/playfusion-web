@@ -5,6 +5,11 @@ import { Distribution, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { resourceName } from './naming.js';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const REPO = resolve(__dirname, '..', '..', '..');
 
 export interface HostingStackProps extends StackProps {
   readonly appEnv: string;
@@ -17,15 +22,13 @@ const APPS = [
   { name: 'e3', prefix: 'e3', title: 'E3 — Public' },
 ];
 
-const placeholder = (title: string): string =>
-  `<!doctype html><meta charset="utf-8"><title>${title}</title>` +
-  `<h1>${title}</h1><p>PlayFusion 2.0 — placeholder (S0.9).</p>`;
-
 /**
- * S0.9 — S3 + CloudFront static hosting with path-based behaviours per Experience.
+ * S3.2/S3.3 — S3 + CloudFront static hosting with path-based behaviours per Experience.
  * Default behaviour serves E3 (public); `e1/*` and `e3/*` route to the same origin under
  * their own prefixes, so each Experience gets isolated, independently-cacheable paths.
- * A placeholder index is deployed per app so a real deploy serves something per path.
+ * Each app's built `dist/` is deployed under its own prefix, and CloudFront error
+ * responses fall back to E3's `index.html` so client-side (hash) routing survives a
+ * hard refresh or deep link.
  */
 export class HostingStack extends Stack {
   constructor(scope: Construct, id: string, props: HostingStackProps) {
@@ -47,12 +50,22 @@ export class HostingStack extends Stack {
       defaultRootObject: 'e3/index.html',
       defaultBehavior: behaviour,
       additionalBehaviors: Object.fromEntries(APPS.map((a) => [`${a.prefix}/*`, behaviour])),
+      errorResponses: [
+        { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/e3/index.html' },
+        { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/e3/index.html' },
+      ],
     });
 
-    // Placeholder index per app (inline, no Docker) — so a deploy serves a page per path.
-    new BucketDeployment(this, 'placeholders', {
+    // Real built app bundles, one BucketDeployment per app, each under its own prefix.
+    new BucketDeployment(this, 'e1', {
       destinationBucket: bucket,
-      sources: APPS.map((a) => Source.data(`${a.prefix}/index.html`, placeholder(a.title))),
+      destinationKeyPrefix: 'e1',
+      sources: [Source.asset(resolve(REPO, 'apps/e1-web/dist'))],
+    });
+    new BucketDeployment(this, 'e3', {
+      destinationBucket: bucket,
+      destinationKeyPrefix: 'e3',
+      sources: [Source.asset(resolve(REPO, 'apps/e3-web/dist'))],
     });
   }
 }
