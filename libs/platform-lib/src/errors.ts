@@ -10,3 +10,12 @@ export class TechnicalError extends Error {
     this.name = 'TechnicalError';
   }
 }
+
+/** 401 — no credential, or the credential failed verification. */
+export class UnauthorizedError extends DomainError {
+  constructor(message = 'unauthorized') { super('UNAUTHORIZED', message, 401); }
+}
+/** 403 — a valid credential that lacks the required role/permission. */
+export class ForbiddenError extends DomainError {
+  constructor(message = 'forbidden') { super('FORBIDDEN', message, 403); }
+}

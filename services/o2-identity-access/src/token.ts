@@ -1,14 +1,15 @@
-import { createHmac } from 'node:crypto';
-const SECRET = process.env.PF_TOKEN_SECRET ?? 'dev-secret';
-export function signToken(subject: string, roles: string[]): string {
-  const body = Buffer.from(JSON.stringify({ subject, roles })).toString('base64url');
-  const sig = createHmac('sha256', SECRET).update(body).digest('base64url');
-  return `${body}.${sig}`;
+// O2's token is the shared-kernel magic-link (S2.3): hardened (versioned, expiring,
+// timing-safe, optional purpose) and verifiable by other BCs without importing O2 code.
+// This module keeps O2's original signToken/verifyToken surface as thin adapters.
+import { signMagicLink, verifyMagicLink } from '@playfusion/platform-lib';
+
+export const COACH_ENROLLMENT = 'coach-enrollment';
+
+export function signToken(subject: string, roles: string[], opts: { purpose?: string; ttlSeconds?: number } = {}): string {
+  return signMagicLink({ subject, roles, purpose: opts.purpose, ttlSeconds: opts.ttlSeconds });
 }
+
 export function verifyToken(token: string): { subject: string; roles: string[] } | null {
-  const [body, sig] = token.split('.');
-  if (!body || !sig) return null;
-  const expected = createHmac('sha256', SECRET).update(body).digest('base64url');
-  if (sig !== expected) return null;
-  return JSON.parse(Buffer.from(body, 'base64url').toString());
+  const identity = verifyMagicLink(token);
+  return identity ? { subject: identity.subject, roles: identity.roles } : null;
 }

@@ -9,3 +9,8 @@ export * from './eventbridge-event-publisher.js';
 export * from './dynamo.js';
 export * from './idempotency.js';
 export * from './naming.js';
+export * from './identity.js';
+export * from './magic-link.js';
+export * from './auth0.js';
+export * from './auth-middleware.js';
+export * from './auth-config.js';
