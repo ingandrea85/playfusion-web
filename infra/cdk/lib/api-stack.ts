@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
-import { RestApi, LambdaIntegration } from 'aws-cdk-lib/aws-apigateway';
+import { RestApi, LambdaIntegration, Cors } from 'aws-cdk-lib/aws-apigateway';
 import { Rule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
 import type { DataStack } from './data-stack.js';
@@ -100,7 +100,17 @@ export class ApiStack extends Stack {
         },
       });
 
-    const api = new RestApi(this, 'api', { restApiName: `playfusion2-api-${env}` });
+    const api = new RestApi(this, 'api', {
+      restApiName: `playfusion2-api-${env}`,
+      // Browser SPAs (E1/E3 on CloudFront) call this API cross-origin. Preflight must allow the
+      // auth + org + correlation headers the rest-client sends. On stg the CloudFront domain is
+      // not known at synth time, so allow any origin; tighten to the exact domain in pr.
+      defaultCorsPreflightOptions: {
+        allowOrigins: Cors.ALL_ORIGINS,
+        allowMethods: ['GET', 'POST', 'OPTIONS'],
+        allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'],
+      },
+    });
 
     // Cross-BC HTTP contract (ADR-002: no code imports): handlers that must reach O2's
     // verify endpoint get its base URL here. Built from restApiId (not api.url) to avoid a
