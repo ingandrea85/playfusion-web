@@ -39,6 +39,11 @@ export class DataStack extends Stack {
       indexName: 'pe-index',
       partitionKey: { name: 'pe', type: AttributeType.STRING },
     });
+    // event-index: list registrations per event (+state filter) — S1.3/S1.4.
+    registrations.addGlobalSecondaryIndex({
+      indexName: 'event-index',
+      partitionKey: { name: 'sportEventId', type: AttributeType.STRING },
+    });
     this.tables['o5-registrations'] = registrations;
     this.tables['o5-windows'] = table('o5-windows', 'sportEventId');
     this.tables['o5-participants'] = table('o5-participants', 'participantRef');
@@ -46,7 +51,13 @@ export class DataStack extends Stack {
     this.tables['o5-processed-events'] = table('o5-processed-events', 'eventId');
 
     // Other BCs' primary stores
-    this.tables['o3-events'] = table('o3-events', 'sportEventId');
+    // O3 events: + org-index GSI so S1.2 can list events per organization.
+    const events = table('o3-events', 'sportEventId');
+    events.addGlobalSecondaryIndex({
+      indexName: 'org-index',
+      partitionKey: { name: 'organizationId', type: AttributeType.STRING },
+    });
+    this.tables['o3-events'] = events;
     this.tables['o4-participants'] = table('o4-participants', 'participantId');
     this.tables['o2-identities'] = table('o2-identities', 'subject');
     this.tables['o12-fees'] = table('o12-fees', 'registrationId');

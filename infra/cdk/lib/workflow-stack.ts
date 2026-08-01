@@ -21,8 +21,9 @@ export interface WorkflowStackProps extends StackProps {
  * The two wait states resume via task-token Activity callbacks (RegistrationApplied /
  * ParticipationFeePaid); their ARNs are substituted into the definition here. The automatic
  * Task states call the S0.7 API Gateway via `apigateway:invoke`, resolving the endpoint from
- * the execution input (`$.apiBaseUrl`) — so the machine is env-agnostic and works against
- * whichever env's API is passed at start time.
+ * the execution input (`$.apiHost` = the execute-api host, `$.stage` = the API stage) — so the
+ * machine is env-agnostic and works against whichever env's API is passed at start time. Paths
+ * are BC-prefixed (`/o3/…`, `/o5/…`) to match the ApiStack `/<bc>/{proxy+}` mount.
  */
 export class WorkflowStack extends Stack {
   readonly stateMachine: StateMachine;

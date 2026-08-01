@@ -1,5 +1,11 @@
 {
   "env": "stg",
   "environmentName": "collaudo",
-  "region": "eu-south-1"
+  "region": "eu-south-1",
+  "auth0": {
+    "issuer": "",
+    "audience": "",
+    "rolesClaim": "https://playfusion/roles",
+    "orgClaim": "org_id"
+  }
 }

@@ -28,9 +28,16 @@ await eb.send(new CreateEventBusCommand({ Name: busName() })).catch(ignoreExists
 
 await ddb.send(new CreateTableCommand({
   TableName: resourceName('o5-registrations'), BillingMode: 'PAY_PER_REQUEST',
-  AttributeDefinitions: [{ AttributeName: 'registrationId', AttributeType: 'S' }, { AttributeName: 'pe', AttributeType: 'S' }],
+  AttributeDefinitions: [
+    { AttributeName: 'registrationId', AttributeType: 'S' },
+    { AttributeName: 'pe', AttributeType: 'S' },
+    { AttributeName: 'sportEventId', AttributeType: 'S' },
+  ],
   KeySchema: [{ AttributeName: 'registrationId', KeyType: 'HASH' }],
-  GlobalSecondaryIndexes: [{ IndexName: 'pe-index', KeySchema: [{ AttributeName: 'pe', KeyType: 'HASH' }], Projection: { ProjectionType: 'ALL' } }],
+  GlobalSecondaryIndexes: [
+    { IndexName: 'pe-index', KeySchema: [{ AttributeName: 'pe', KeyType: 'HASH' }], Projection: { ProjectionType: 'ALL' } },
+    { IndexName: 'event-index', KeySchema: [{ AttributeName: 'sportEventId', KeyType: 'HASH' }], Projection: { ProjectionType: 'ALL' } },
+  ],
 })).catch(ignoreExists);
 
 for (const [t, key] of [['o5-windows', 'sportEventId'], ['o5-participants', 'participantRef']] as const) {
@@ -43,13 +50,19 @@ for (const [t, key] of [['o5-windows', 'sportEventId'], ['o5-participants', 'par
 
 console.log('provision: O5 tables (o5-registrations, o5-windows, o5-participants) + bus ensured on', endpoint);
 
-for (const [t, key] of [['o3-events', 'sportEventId'], ['o4-participants', 'participantId']] as const) {
-  await ddb.send(new CreateTableCommand({
-    TableName: resourceName(t), BillingMode: 'PAY_PER_REQUEST',
-    AttributeDefinitions: [{ AttributeName: key, AttributeType: 'S' }],
-    KeySchema: [{ AttributeName: key, KeyType: 'HASH' }],
-  })).catch(ignoreExists);
-}
+// O3 events: + org-index GSI so S1.2 can list events per organization.
+await ddb.send(new CreateTableCommand({
+  TableName: resourceName('o3-events'), BillingMode: 'PAY_PER_REQUEST',
+  AttributeDefinitions: [{ AttributeName: 'sportEventId', AttributeType: 'S' }, { AttributeName: 'organizationId', AttributeType: 'S' }],
+  KeySchema: [{ AttributeName: 'sportEventId', KeyType: 'HASH' }],
+  GlobalSecondaryIndexes: [{ IndexName: 'org-index', KeySchema: [{ AttributeName: 'organizationId', KeyType: 'HASH' }], Projection: { ProjectionType: 'ALL' } }],
+})).catch(ignoreExists);
+
+await ddb.send(new CreateTableCommand({
+  TableName: resourceName('o4-participants'), BillingMode: 'PAY_PER_REQUEST',
+  AttributeDefinitions: [{ AttributeName: 'participantId', AttributeType: 'S' }],
+  KeySchema: [{ AttributeName: 'participantId', KeyType: 'HASH' }],
+})).catch(ignoreExists);
 
 console.log('provision: O3/O4 tables (o3-events, o4-participants) ensured on', endpoint);
 

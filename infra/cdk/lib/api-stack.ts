@@ -13,9 +13,19 @@ import { EVENT_SOURCE, busName } from './naming.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SERVICES = resolve(__dirname, '..', '..', '..', 'services');
 
+/** Non-secret Auth0 organizer-login config (S2.1); empty issuer/audience = disabled. */
+export interface Auth0EnvConfig {
+  readonly issuer?: string;
+  readonly audience?: string;
+  readonly jwksUri?: string;
+  readonly rolesClaim?: string;
+  readonly orgClaim?: string;
+}
+
 export interface ApiStackProps extends StackProps {
   readonly appEnv: string;
   readonly data: DataStack;
+  readonly auth0?: Auth0EnvConfig;
 }
 
 // One Bounded Context = one mono-Lambda (ADR-002). `tables` are the primary stores the
@@ -58,7 +68,19 @@ export class ApiStack extends Stack {
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
     const env = props.appEnv;
-    const commonEnv = { PF_ENV: env, EVENT_BUS_NAME: busName(env) };
+    const commonEnv: Record<string, string> = { PF_ENV: env, EVENT_BUS_NAME: busName(env) };
+    // S2.1: pass Auth0 organizer-login config to every BC's requireOrganizer middleware.
+    // Empty issuer/audience (no tenant yet) leaves the middleware on the magic-link bridge.
+    if (props.auth0?.issuer && props.auth0?.audience) {
+      commonEnv.AUTH0_ISSUER = props.auth0.issuer;
+      commonEnv.AUTH0_AUDIENCE = props.auth0.audience;
+      if (props.auth0.jwksUri) commonEnv.AUTH0_JWKS_URI = props.auth0.jwksUri;
+      if (props.auth0.rolesClaim) commonEnv.AUTH0_ROLES_CLAIM = props.auth0.rolesClaim;
+      if (props.auth0.orgClaim) commonEnv.AUTH0_ORG_CLAIM = props.auth0.orgClaim;
+    }
+    // Shared magic-link secret for the cross-BC bridge (S2.3/S2.4). Injected by the
+    // deployer via env (never committed); absent → all BCs fall back to the dev default.
+    if (process.env.PF_TOKEN_SECRET) commonEnv.PF_TOKEN_SECRET = process.env.PF_TOKEN_SECRET;
 
     const lambda = (idSuffix: string, entry: string): NodejsFunction =>
       new NodejsFunction(this, idSuffix, {
@@ -72,13 +94,22 @@ export class ApiStack extends Stack {
           mainFields: ['module', 'main'],
           // The Node 20 Lambda runtime ships the AWS SDK v3; keep it external.
           externalModules: ['@aws-sdk/*'],
+          // pino (and other CJS deps) use dynamic require() of node builtins,
+          // unsupported in an ESM bundle. Reintroduce require via createRequire.
+          banner: "import{createRequire}from'module';const require=createRequire(import.meta.url);",
         },
       });
 
     const api = new RestApi(this, 'api', { restApiName: `playfusion2-api-${env}` });
 
+    // Cross-BC HTTP contract (ADR-002: no code imports): handlers that must reach O2's
+    // verify endpoint get its base URL here. Built from restApiId (not api.url) to avoid a
+    // Lambda→Stage→Deployment→Method→Lambda circular dependency; stage name is the default 'prod'.
+    const o2BaseUrl = `https://${api.restApiId}.execute-api.${this.region}.amazonaws.com/prod/o2`;
+
     for (const bc of BCS) {
       const handler = lambda(`${bc.route}-handler`, resolve(SERVICES, bc.key, 'src/handler.ts'));
+      handler.addEnvironment('O2_BASE_URL', o2BaseUrl);
       for (const t of bc.tables) props.data.tables[t]!.grantReadWriteData(handler);
       props.data.bus.grantPutEventsTo(handler);
 

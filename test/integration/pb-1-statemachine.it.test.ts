@@ -53,7 +53,8 @@ test('test_pb1StateMachine_deploysAndExecutionWalksSetupSteps', async () => {
   const exec = await sfn.send(new StartExecutionCommand({
     stateMachineArn: sm.stateMachineArn,
     input: JSON.stringify({
-      apiBaseUrl: 'http://localhost:9', // no API deployed here → CreateEvent Task fails, Catch routes on
+      apiHost: 'localhost:9', // no API deployed here → CreateEvent Task fails, Catch routes on
+      stage: 'local',
       organizationId: 'org-pilot',
       createEventPayload: { sport: 'Volleyball', categorie: ['U15'], dates: { from: 'a', to: 'b' } },
       approverToken: 'test-token',

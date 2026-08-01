@@ -55,19 +55,20 @@ test('test_registrationFlow_applyThenConfirm_happyPath', async () => {
 });
 
 test('test_registrationFlow_doubleApply_rejectedWithConflict', async () => {
+  // apply now requires a valid magic-link (S2.4); the RegistrationManager link is a valid one.
   const body = JSON.stringify({ participantRef: dupParticipantRef, sportEventId, categoria: 'U15' });
-  const first = await app.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+  const first = await app.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json', authorization: regManagerToken }, body });
   expect(first.status).toBe(201);
-  const second = await app.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+  const second = await app.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json', authorization: regManagerToken }, body });
   expect(second.status).toBe(409);
   expect(await second.json()).toMatchObject({ code: 'DOUBLE_APPLY' });
 });
 
 test('test_registrationFlow_missingField_rejectedWith400', async () => {
-  // Missing sportEventId + categoria: fails Zod boundary validation before DynamoDB is touched.
+  // Missing sportEventId + categoria: fails Zod boundary validation (after auth) before DynamoDB.
   const res = await app.request('/registrations', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', authorization: regManagerToken },
     body: JSON.stringify({ participantRef: 'x' }),
   });
   expect(res.status).toBe(400);

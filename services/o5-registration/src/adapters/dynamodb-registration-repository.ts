@@ -2,7 +2,7 @@ import { PutCommand, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { resourceName } from '@playfusion/platform-lib';
 import type { RegistrationRepository } from '../ports/registration-repository.js';
-import type { RegistrationRequest } from '../domain/registration.js';
+import type { RegistrationRequest, RegistrationStatus } from '../domain/registration.js';
 
 export class DynamoDbRegistrationRepository implements RegistrationRepository {
   constructor(private readonly db: DynamoDBDocumentClient, private readonly table = resourceName('o5-registrations')) {}
@@ -20,5 +20,15 @@ export class DynamoDbRegistrationRepository implements RegistrationRepository {
       ExpressionAttributeValues: { ':pe': `${participantRef}#${sportEventId}` },
     }));
     return res.Items?.[0] as RegistrationRequest | undefined;
+  }
+  async findByEvent(sportEventId: string, state?: RegistrationStatus) {
+    // `status` is a DynamoDB reserved word, so it is aliased when filtering.
+    const res = await this.db.send(new QueryCommand({
+      TableName: this.table, IndexName: 'event-index',
+      KeyConditionExpression: 'sportEventId = :e',
+      ...(state ? { FilterExpression: '#s = :s', ExpressionAttributeNames: { '#s': 'status' } } : {}),
+      ExpressionAttributeValues: { ':e': sportEventId, ...(state ? { ':s': state } : {}) },
+    }));
+    return (res.Items ?? []) as RegistrationRequest[];
   }
 }

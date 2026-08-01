@@ -192,6 +192,54 @@ Concretely, in `o5-registration`:
 Every hop carries the same `correlationId` (via the envelope and `AsyncLocalStorage`),
 so a full enrollment can be traced end-to-end in the logs.
 
+### 5b. Read side (S1)
+
+Reads are served by **querying each BC's own current-state store directly** — no
+event-sourced projection store (decision: `docs/superpowers/specs/2026-08-01-s1.1-read-model-strategy.md`).
+Cross-BC data is denormalised on the write side, never joined on the read path, so
+every query endpoint stays single-BC:
+
+| Endpoint | BC | Access pattern |
+|---|---|---|
+| `GET /events` | o3 | `org-index` GSI (`organizationId` denormalised onto the item) |
+| `GET /events/:id` | o3 | `GetItem` by `sportEventId` — detail + categories |
+| `GET /events/:id/registrations?state=` | o5 | `event-index` GSI + `status` filter (inbox = `Applied`, participants = `Confirmed`) |
+| `GET /events/:id/registration-window` | o5 | `o5-windows` state + `event-index` active counts → per-category `{cap, count, remaining}` |
+
+The per-category cap (D-O5-1) is denormalised into the O5 registration-window when
+registrations are opened (`open-window` accepts `capacities`), so remaining capacity is
+computed inside O5 without a query-time call to O3. Query logic lives behind the same
+ports as writes (O5 `RegistrationRepository.findByEvent`, O3 `EventReadStore`), so it is
+unit-tested with in-memory fakes; the DynamoDB adapters' GSI queries are smoke-checked
+against LocalStack.
+
+### 5c. Auth (S2)
+
+Two credential types, verified in shared-kernel code (`libs/platform-lib`) and enforced as
+Hono middleware at each BC's HTTP boundary:
+
+- **Organizers** log in with **Auth0** (RS256 JWT). `createAuth0Verifier` validates
+  signature (JWKS), issuer and audience via `jose`, and projects the token into an
+  `Identity` (roles from a namespaced claim, org from `org_id`). Config is injected per-env
+  by the `ApiStack` (`AUTH0_*`); see the [Auth0 setup runbook](runbooks/auth0-setup.md).
+- **Coaches** enrol with an O2 **magic-link** — a hardened HMAC token (versioned, expiring,
+  timing-safe, optional purpose) in `magic-link.ts`, mintable by O2 and verifiable by any
+  BC against the shared `PF_TOKEN_SECRET` without importing O2 code (ADR-002).
+
+Enforcement (`requireOrganizer` / `requireMagicLink`):
+
+| Route | Middleware | Accepts |
+|---|---|---|
+| O3 `POST /events`, O5 `open-window` / `confirm` / `reject` | `requireOrganizer` | Auth0 organizer JWT **or** an O2 `RegistrationManager` magic-link (transitional bridge) |
+| O5 `POST /registrations` (coach apply) | `requireMagicLink` | any valid magic-link |
+| GET read endpoints (§5b) | none | public (E3 landing) |
+
+Missing/invalid credential → **401**; valid credential without the required role → **403**.
+The token is read from `authorization` or `x-approver-token` (Step Functions'
+`apigateway:invoke` forbids the reserved `authorization` header). The **dual-accept bridge**
+keeps the deployed PB-1 Step Functions + pilot green while no Auth0 tenant exists; it is
+removed once Auth0 is live.
+
 ## 6. Naming & environments (ADR-012)
 
 All physical AWS resource names are derived from one helper so they can never
@@ -245,7 +293,7 @@ Stacks:
 
 | Stack | Slice | Contents |
 |-------|-------|----------|
-| `DataStack` | S0.6 | The per-BC DynamoDB tables (incl. `o5-registrations` + `pe-index` GSI) and the EventBridge bus `playfusion2-bus-<env>` — mirrors `scripts/provision.ts`. |
+| `DataStack` | S0.6 | The per-BC DynamoDB tables and the EventBridge bus `playfusion2-bus-<env>` — mirrors `scripts/provision.ts`. Read GSIs (S1): `o5-registrations` `pe-index` + `event-index`, `o3-events` `org-index`. |
 | `ApiStack` | S0.7 | One esbuild-bundled `NodejsFunction` per BC (o2/o3/o4/o5/o12) fronted by an API Gateway REST API (`/<bc>/{proxy+}` → the BC's Hono app), plus the o5/o12 event consumers wired as EventBridge rule targets, each with least-privilege grants on its own tables + the bus. The S0.4 lint rule guarantees a bundle never pulls another BC's code. |
 | `WorkflowStack` | S0.8 | The PB-1 "Bundle Enrollment" Setup ASL (`workflow/pb-1-setup.asl.json`) deployed as a real Step Functions state machine + its two task-token Activities — the runtime ADR-010 could previously only simulate. Automatic tasks invoke the S0.7 API via `apigateway:invoke` (endpoint from execution input). `test/integration/pb-1-statemachine.it.test.ts` creates the state machine on the engine and asserts an execution walks the Setup graph to a terminal state; the happy-path functional walk of steps 1–6 stays covered by the L2 orchestrator test (§9). |
 | `HostingStack` | S0.9 | S3 bucket + CloudFront static hosting with path-based behaviours per Experience (`e1/*` organizer, `e3/*` public; default → E3) off one origin (R7). A placeholder index per app is deployed inline so a real deploy serves a page per path. |
@@ -358,6 +406,16 @@ rule + its automated proof, §8), S0.5 (PS-B design system — `libs/tokens`,
 env-parametrized — §7b). Next: real feature slices (S1+) and the frontend
 Experience SPAs (E1 organizer, E3 public, E4 admin) from S6 onward; `mockups/` is
 the runnable reference until then.
+
+**Phase S1 (read models / query endpoints) — complete.** S1.1 (read-model strategy:
+per-BC direct query, no projection), S1.2 (`GET /events` per org + detail), S1.3
+(`GET /events/:id/registrations?state=`), S1.4 (window state + per-category capacity) —
+see §5b and the S1.1 spec. These feed the S4/S5 Bundle Enrollment screens.
+
+**Phase S2 (auth) — backend complete.** S2.2 (shared Auth0 JWT verifier + auth middleware
+in platform-lib), S2.3 (hardened magic-link), S2.4 (enforcement on O3/O5, dual-accept
+bridge) — see §5c. S2.1 ships the Auth0 config plumbing + [setup runbook](runbooks/auth0-setup.md);
+live organizer login is deferred until the tenant + E1 SPA (S3) exist.
 
 ## 13. Where to read more
 
