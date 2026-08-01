@@ -7,6 +7,7 @@ import {
 } from '@playfusion/platform-lib';
 import { applyRegistration } from './application/apply-registration.js';
 import { listRegistrationsByEvent } from './application/list-registrations-by-event.js';
+import { getRegistrationWindow } from './application/get-registration-window.js';
 import type { RegistrationStatus } from './domain/registration.js';
 import { confirmRegistration } from './application/confirm-registration.js';
 import { rejectRegistration } from './application/reject-registration.js';
@@ -63,9 +64,15 @@ app.get('/events/:id/registrations', async (c) => {
 });
 
 app.post('/events/:id/registration-window:open', async (c) => {
-  await openWindow({ windows, publisher })({ sportEventId: c.req.param('id'), organizationId: orgOf(c) });
+  const raw = await c.req.json().catch(() => ({}));
+  const capacities = z.record(z.number().int().nonnegative()).optional().parse((raw as any).capacities);
+  await openWindow({ windows, publisher })({ sportEventId: c.req.param('id'), organizationId: orgOf(c), capacities });
   return c.json({ sportEventId: c.req.param('id'), state: 'Open' });
 });
+
+// S1.4 read: window state + per-category remaining capacity (D-O5-1).
+app.get('/events/:id/registration-window', async (c) =>
+  c.json(await getRegistrationWindow({ windows, repo })(c.req.param('id'))));
 
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
 
