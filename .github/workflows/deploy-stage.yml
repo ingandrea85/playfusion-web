@@ -56,6 +56,7 @@ jobs:
           CHANGED="$(git diff --name-only "$BASE" "${{ github.sha }}")"
           echo "Changed files:"; echo "$CHANGED"
           stacks=""
+          all=0
           add() { case " $stacks " in *" $1 "*) ;; *) stacks="$stacks $1";; esac; }
           while IFS= read -r f; do
             [ -z "$f" ] && continue
@@ -64,11 +65,15 @@ jobs:
               services/*|infra/cdk/lib/api-stack.ts)            add playfusion2-api-stg ;;
               workflow/*|infra/cdk/lib/workflow-stack.ts)       add playfusion2-workflow-stg ;;
               apps/*|libs/tokens/*|libs/ui/*|infra/cdk/lib/hosting-stack.ts) add playfusion2-hosting-stg ;;
-              infra/cdk/lib/naming.ts|infra/cdk/bin/*|infra/cdk/package.json|package.json|package-lock.json)
-                add "--all" ;;
+              # Shared code/config affects every stack → full deploy. platform-lib is bundled
+              # into every Lambda, so a change there must redeploy all app stacks too.
+              libs/platform-lib/*|infra/cdk/lib/naming.ts|infra/cdk/bin/*|infra/cdk/package.json|package.json|package-lock.json)
+                all=1 ;;
             esac
           done <<< "$CHANGED"
-          [ -z "$stacks" ] && stacks="--all"
+          # `--all` is mutually exclusive with an explicit stack list in cdk deploy, so it
+          # must REPLACE any specific selections, not be appended alongside them.
+          if [ "$all" = "1" ] || [ -z "$stacks" ]; then stacks="--all"; fi
           echo "Selected: $stacks"
           echo "stacks=$stacks" >> "$GITHUB_OUTPUT"
 
