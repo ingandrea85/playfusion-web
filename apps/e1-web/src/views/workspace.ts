@@ -1,15 +1,15 @@
 import type { EventDetail } from '@playfusion/rest-client'
-import { renderOrganizerWorkspace, type WorkspaceTab } from '@playfusion/app-shell'
+import { renderOrganizerWorkspace, esc, type WorkspaceTab } from '@playfusion/app-shell'
 
-const TABS = (id: string): WorkspaceTab[] => [
-  { key: 'overview', label: 'Panoramica', href: `#/events/${id}` },
-  { key: 'enroll', label: 'Iscrizioni', href: `#/events/${id}/enroll` },
+const tabs = (id: string): WorkspaceTab[] => [
+  { key: 'overview', label: 'Panoramica', href: `#/events/${encodeURIComponent(id)}` },
+  { key: 'enroll', label: 'Iscrizioni', href: `#/events/${encodeURIComponent(id)}/enroll` },
 ]
 
 export function renderWorkspace(event: EventDetail, activeTab: string): string {
   const hero = renderOrganizerWorkspace(
-    { name: `${event.sport} · ${event.categorie.join(', ')}`, meta: `${event.sport} · ${event.dates.from}→${event.dates.to}` },
-    TABS(event.sportEventId), activeTab,
+    { name: `${esc(event.sport)} · ${esc(event.categorie.join(', '))}`, meta: `${esc(event.sport)} · ${esc(event.dates.from)}→${esc(event.dates.to)}` },
+    tabs(event.sportEventId), activeTab,
   )
   return `${hero}
     <main class="pf-container">

@@ -11,7 +11,7 @@ export interface O5Api {
 }
 export const o5 = (cfg: HttpConfig): O5Api => ({
   listRegistrations: (eventId, state) =>
-    request(cfg, 'GET', `/o5/events/${encodeURIComponent(eventId)}/registrations${state ? `?state=${state}` : ''}`),
+    request(cfg, 'GET', `/o5/events/${encodeURIComponent(eventId)}/registrations${state ? `?state=${encodeURIComponent(state)}` : ''}`),
   getRegistrationWindow: (eventId) =>
     request(cfg, 'GET', `/o5/events/${encodeURIComponent(eventId)}/registration-window`),
   applyRegistration: (input) => request(cfg, 'POST', '/o5/registrations', input),

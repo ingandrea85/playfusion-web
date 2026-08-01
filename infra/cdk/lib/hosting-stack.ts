@@ -50,6 +50,9 @@ export class HostingStack extends Stack {
       defaultRootObject: 'e3/index.html',
       defaultBehavior: behaviour,
       additionalBehaviors: Object.fromEntries(APPS.map((a) => [`${a.prefix}/*`, behaviour])),
+      // 403/404 → /e3/index.html assumes hash routing (the server only ever needs to
+      // resolve /e1/ and /e3/, which exist); history/path-based routing inside an app
+      // would need its own per-path fallback, not a single global one.
       errorResponses: [
         { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/e3/index.html' },
         { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/e3/index.html' },
@@ -57,6 +60,9 @@ export class HostingStack extends Stack {
     });
 
     // Real built app bundles, one BucketDeployment per app, each under its own prefix.
+    // Prerequisite: `apps/{e1,e3}-web/dist` must already exist at synth time — run
+    // `npm run build -w @playfusion/e1-web -w @playfusion/e3-web` (or the Nx equivalent)
+    // before `cdk synth`/`cdk deploy`, since Source.asset reads the built output on disk.
     new BucketDeployment(this, 'e1', {
       destinationBucket: bucket,
       destinationKeyPrefix: 'e1',

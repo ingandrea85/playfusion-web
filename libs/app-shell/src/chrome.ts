@@ -1,3 +1,5 @@
+import { esc } from './html.js'
+
 export function renderOrganizerTopbar(active: string): string {
   const link = (href: string, label: string, key: string) =>
     `<a href="${href}"${active === key ? ' aria-current="page"' : ''}>${label}</a>`
@@ -24,10 +26,10 @@ export function renderPublicTopbar(brandHtml?: string): string {
 }
 
 export function renderCategoryTag(name: string, count: number, maxTeams: number): string {
-  const full = count >= maxTeams
+  const full = maxTeams > 0 && count >= maxTeams
   const pct = maxTeams > 0 ? Math.min(100, Math.round((count / maxTeams) * 100)) : 0
   return `<li class="pf-cat${full ? ' pf-cat--full' : ''}">
-    <span class="pf-cat__label">${name}</span>
+    <span class="pf-cat__label">${esc(name)}</span>
     <div class="pf-cat__body">
       <div class="pf-cat__cap">${count}/${maxTeams} squadre${full ? ' · completa' : ''}</div>
       <div class="pf-cat__bar"><i style="width:${pct}%"></i></div>

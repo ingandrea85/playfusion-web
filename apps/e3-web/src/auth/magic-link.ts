@@ -10,6 +10,8 @@ export function captureMagicLink(url: URL, storage: Storage): string | null {
   return storage.getItem(KEY)
 }
 export const storedToken = (storage: Storage): string | null => storage.getItem(KEY)
+/** Drops a known-bad token so it isn't re-sent on the next call/reload. */
+export const clearToken = (storage: Storage): void => storage.removeItem(KEY)
 export const magicLinkAuthProvider = (storage: Storage): AuthProvider => () => {
   const t = storage.getItem(KEY)
   return t ? { name: 'authorization', value: `Bearer ${t}` } : null

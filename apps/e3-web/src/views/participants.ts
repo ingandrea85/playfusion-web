@@ -1,9 +1,9 @@
 import type { RegistrationView } from '@playfusion/rest-client'
-import { renderPublicTopbar } from '@playfusion/app-shell'
+import { renderPublicTopbar, esc } from '@playfusion/app-shell'
 
 export function renderParticipants(rows: RegistrationView[]): string {
   const items = rows.length
-    ? rows.map((r) => `<li class="pf-card"><b>${r.participantRef}</b> · <span class="pf-mono">${r.categoria}</span></li>`).join('')
+    ? rows.map((r) => `<li class="pf-card"><b>${esc(r.participantRef)}</b> · <span class="pf-mono">${esc(r.categoria)}</span></li>`).join('')
     : `<li class="pf-card pf-muted">Nessuna squadra confermata.</li>`
   return `${renderPublicTopbar()}
     <main class="pf-container pf-container--narrow">

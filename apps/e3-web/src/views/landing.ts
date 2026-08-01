@@ -1,5 +1,5 @@
 import type { EventDetail, RegistrationWindowView } from '@playfusion/rest-client'
-import { renderPublicTopbar, renderCategoryTag } from '@playfusion/app-shell'
+import { renderPublicTopbar, renderCategoryTag, esc } from '@playfusion/app-shell'
 
 export { renderParticipants } from './participants.js'
 
@@ -9,9 +9,9 @@ export function renderLanding(event: EventDetail, window: RegistrationWindowView
   return `${renderPublicTopbar()}
     <section class="pf-hero"><div class="pf-hero__inner">
       <div class="pf-eyebrow">Evento</div>
-      <h1>${event.sport}</h1>
-      <div class="pf-hero__meta">${event.dates.from} → ${event.dates.to}</div>
+      <h1>${esc(event.sport)}</h1>
+      <div class="pf-hero__meta">${esc(event.dates.from)} → ${esc(event.dates.to)}</div>
       <ul class="pf-catlist">${cats}</ul>
-      <div><a class="pf-btn" href="#/events/${event.sportEventId}/participants">Vedi le squadre iscritte →</a></div>
+      <div><a class="pf-btn" href="#/events/${encodeURIComponent(event.sportEventId)}/participants">Vedi le squadre iscritte →</a></div>
     </div></section>`
 }

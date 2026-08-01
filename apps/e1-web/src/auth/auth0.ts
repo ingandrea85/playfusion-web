@@ -25,7 +25,10 @@ export function createAuth0Adapter(cfg: NonNullable<AppConfig['auth0']>): Auth0P
   }))
   return {
     isAuthenticated: async () => (await client()).isAuthenticated(),
-    handleRedirectCallback: async () => { await (await client()).handleRedirectCallback(); window.history.replaceState({}, '', '/e1/') },
+    handleRedirectCallback: async () => {
+      try { await (await client()).handleRedirectCallback() }
+      finally { window.history.replaceState({}, '', '/e1/') }
+    },
     loginWithRedirect: async () => (await client()).loginWithRedirect(),
     logout: async () => (await client()).logout({ logoutParams: { returnTo: redirectUri } }),
     getToken: async () => (await client()).getTokenSilently(),
@@ -37,7 +40,11 @@ export function createAuth0Adapter(cfg: NonNullable<AppConfig['auth0']>): Auth0P
  *  gates on authentication, kicking off login when absent. Returns whether to render. */
 export async function ensureAuthenticated(port: Auth0Port, search = window.location.search): Promise<boolean> {
   const params = new URLSearchParams(search)
-  if (params.has('code') && params.has('state')) await port.handleRedirectCallback()
+  if (params.has('code') && params.has('state')) {
+    // A stale/expired/invalid callback must not permanently blank the page on reload —
+    // fall through to the isAuthenticated() check, which restarts login when needed.
+    try { await port.handleRedirectCallback() } catch { /* fall through */ }
+  }
   if (await port.isAuthenticated()) return true
   await port.loginWithRedirect()
   return false
