@@ -32,6 +32,7 @@ export const RadiusMd = "6px";
 export const RadiusLg = "8px";
 export const RadiusRound = "50%";
 export const RadiusPill = "999px";
+export const RadiusXl = "16px";
 export const ShadowSm = "0 1px 2px rgba(15, 23, 42, 0.06)";
 export const ShadowMd = "0 4px 12px rgba(15, 23, 42, 0.08)";
 export const FontDisplay = "'Archivo Variable', system-ui, sans-serif";

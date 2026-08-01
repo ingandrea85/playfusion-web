@@ -51,13 +51,13 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 
 /* ---------- Cards ---------- */
 .pf-card { background: var(--color-surface-default); border: 1px solid var(--color-border-default);
-  border-radius: 8px; padding: var(--space-lg); box-shadow: var(--shadow-sm); margin-bottom: var(--space-md); }
+  border-radius: var(--radius-xl); padding: var(--space-lg); box-shadow: var(--shadow-sm); margin-bottom: var(--space-md); }
 .pf-card--link { transition: box-shadow .15s ease, transform .15s ease, border-color .15s ease; }
 .pf-card--link:hover { box-shadow: var(--shadow-md); border-color: var(--color-border-strong); transform: translateY(-2px); }
 
 /* ---------- Buttons ---------- */
 .pf-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm);
-  padding: 10px var(--space-md); border-radius: 8px; border: 1px solid var(--color-border-default);
+  padding: 10px var(--space-md); border-radius: 10px; /* mockup --radius-2 = 10px, no PS-B token */ border: 1px solid var(--color-border-default);
   background: var(--color-surface-default); color: var(--color-text-default); font-family: var(--font-sans);
   font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; transition: background .15s ease, border-color .15s ease; }
 .pf-btn:hover { border-color: var(--color-border-strong); background: var(--color-surface-sunken); }
@@ -71,7 +71,7 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 /* ---------- Category tag (age bracket + capacity) ---------- */
 .pf-catlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
 .pf-cat { display: flex; align-items: center; gap: 12px; padding: 12px var(--space-md);
-  background: var(--color-surface-default); border: 1px solid var(--color-border-default); border-radius: 8px; }
+  background: var(--color-surface-default); border: 1px solid var(--color-border-default); border-radius: 10px; /* mockup --radius-2 = 10px, no PS-B token */ }
 .pf-cat__label { font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em;
   color: var(--color-action-primary); flex: none; }
 .pf-cat__body { flex: 1; min-width: 0; }
