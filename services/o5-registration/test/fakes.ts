@@ -12,6 +12,9 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
   async findByParticipantAndEvent(p: string, e: string) {
     return [...this.byId.values()].find(r => r.participantRef === p && r.sportEventId === e);
   }
+  async findByEvent(e: string, state?: RegistrationRequest['status']) {
+    return [...this.byId.values()].filter(r => r.sportEventId === e && (!state || r.status === state));
+  }
 }
 export class InMemoryWindowRepository implements WindowRepository {
   private byEvent = new Map<string, RegistrationWindow>();

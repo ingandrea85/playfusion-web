@@ -28,9 +28,16 @@ await eb.send(new CreateEventBusCommand({ Name: busName() })).catch(ignoreExists
 
 await ddb.send(new CreateTableCommand({
   TableName: resourceName('o5-registrations'), BillingMode: 'PAY_PER_REQUEST',
-  AttributeDefinitions: [{ AttributeName: 'registrationId', AttributeType: 'S' }, { AttributeName: 'pe', AttributeType: 'S' }],
+  AttributeDefinitions: [
+    { AttributeName: 'registrationId', AttributeType: 'S' },
+    { AttributeName: 'pe', AttributeType: 'S' },
+    { AttributeName: 'sportEventId', AttributeType: 'S' },
+  ],
   KeySchema: [{ AttributeName: 'registrationId', KeyType: 'HASH' }],
-  GlobalSecondaryIndexes: [{ IndexName: 'pe-index', KeySchema: [{ AttributeName: 'pe', KeyType: 'HASH' }], Projection: { ProjectionType: 'ALL' } }],
+  GlobalSecondaryIndexes: [
+    { IndexName: 'pe-index', KeySchema: [{ AttributeName: 'pe', KeyType: 'HASH' }], Projection: { ProjectionType: 'ALL' } },
+    { IndexName: 'event-index', KeySchema: [{ AttributeName: 'sportEventId', KeyType: 'HASH' }], Projection: { ProjectionType: 'ALL' } },
+  ],
 })).catch(ignoreExists);
 
 for (const [t, key] of [['o5-windows', 'sportEventId'], ['o5-participants', 'participantRef']] as const) {

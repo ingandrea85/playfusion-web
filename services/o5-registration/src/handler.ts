@@ -6,6 +6,8 @@ import {
   makeDocClient, EventBridgeEventPublisher, busName,
 } from '@playfusion/platform-lib';
 import { applyRegistration } from './application/apply-registration.js';
+import { listRegistrationsByEvent } from './application/list-registrations-by-event.js';
+import type { RegistrationStatus } from './domain/registration.js';
 import { confirmRegistration } from './application/confirm-registration.js';
 import { rejectRegistration } from './application/reject-registration.js';
 import { openWindow } from './application/open-window.js';
@@ -50,6 +52,14 @@ app.post('/registrations/:id/reject', async (c) => {
     registrationId: c.req.param('id'), reason, approverToken: approverTokenOf(c), organizationId: orgOf(c),
   });
   return c.json(reg);
+});
+
+// S1.3 read: registrations for an event, optionally filtered by state.
+// `?state=Applied` → inbox (pending), `?state=Confirmed` → participants.
+app.get('/events/:id/registrations', async (c) => {
+  const state = c.req.query('state') as RegistrationStatus | undefined;
+  const rows = await listRegistrationsByEvent({ repo })({ sportEventId: c.req.param('id'), state });
+  return c.json(rows);
 });
 
 app.post('/events/:id/registration-window:open', async (c) => {

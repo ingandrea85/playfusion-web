@@ -39,6 +39,11 @@ export class DataStack extends Stack {
       indexName: 'pe-index',
       partitionKey: { name: 'pe', type: AttributeType.STRING },
     });
+    // event-index: list registrations per event (+state filter) — S1.3/S1.4.
+    registrations.addGlobalSecondaryIndex({
+      indexName: 'event-index',
+      partitionKey: { name: 'sportEventId', type: AttributeType.STRING },
+    });
     this.tables['o5-registrations'] = registrations;
     this.tables['o5-windows'] = table('o5-windows', 'sportEventId');
     this.tables['o5-participants'] = table('o5-participants', 'participantRef');
