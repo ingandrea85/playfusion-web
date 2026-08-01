@@ -5,11 +5,13 @@
 export const ColorActionPrimary = "#0b5fff";
 export const ColorActionPrimaryHover = "#0847c7";
 export const ColorActionAccent = "#ff6b00";
+export const ColorActionAccentHover = "#e35f00";
 export const ColorFeedbackSuccess = "#16a34a";
 export const ColorFeedbackWarning = "#f59e0b";
 export const ColorFeedbackDanger = "#dc2626";
 export const ColorSurfaceBg = "#f4f7fb";
 export const ColorSurfaceDefault = "#ffffff";
+export const ColorSurfaceSunken = "#eef2f8";
 export const ColorTextDefault = "#0f172a";
 export const ColorTextMuted = "#475569";
 export const ColorTextSoft = "#334155";
@@ -29,5 +31,10 @@ export const RadiusSm = "4px";
 export const RadiusMd = "6px";
 export const RadiusLg = "8px";
 export const RadiusRound = "50%";
+export const RadiusPill = "999px";
 export const ShadowSm = "0 1px 2px rgba(15, 23, 42, 0.06)";
 export const ShadowMd = "0 4px 12px rgba(15, 23, 42, 0.08)";
+export const FontDisplay = "'Archivo Variable', system-ui, sans-serif";
+export const FontSans = "'Hanken Grotesk Variable', system-ui, sans-serif";
+export const FontMono =
+  "'Spline Sans Mono Variable', ui-monospace, 'SF Mono', monospace";
