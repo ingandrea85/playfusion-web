@@ -88,7 +88,9 @@ export async function runPb1Setup(input: Pb1SetupInput): Promise<Pb1SetupResult>
   const o3 = (await import('../services/o3-sport-events/src/handler.js') as any).app;
   const createEventRes = await o3.request('/events', {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-organization-id': organizationId },
+    // S2.4: create-event/open-window are organizer mutations; the same approverToken
+    // (a RegistrationManager magic-link) authorizes them via the bridge.
+    headers: { 'content-type': 'application/json', 'x-organization-id': organizationId, ...(input.approverToken ? { authorization: input.approverToken } : {}) },
     body: JSON.stringify({ sport: input.sport, categorie: input.categorie, dates: input.dates }),
   });
   if (createEventRes.status !== 201) {
@@ -101,7 +103,7 @@ export async function runPb1Setup(input: Pb1SetupInput): Promise<Pb1SetupResult>
   const o5 = (await import('../services/o5-registration/src/handler.js') as any).app;
   const openWindowRes = await o5.request(`/events/${sportEventId}/registration-window:open`, {
     method: 'POST',
-    headers: { 'x-organization-id': organizationId },
+    headers: { 'x-organization-id': organizationId, ...(input.approverToken ? { authorization: input.approverToken } : {}) },
   });
   if (openWindowRes.status !== 200) {
     throw new Error(`pb-1-orchestrator: OpenRegistrationWindow failed with status ${openWindowRes.status}: ${await openWindowRes.text()}`);

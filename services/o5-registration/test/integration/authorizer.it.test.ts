@@ -1,8 +1,11 @@
 import { test, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { makeDocClient, resourceName } from '@playfusion/platform-lib';
+import { makeDocClient, resourceName, signMagicLink } from '@playfusion/platform-lib';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { spawnO2, type SpawnedO2 } from './spawn-o2.js';
+
+// S2.4: apply requires a valid magic-link; a coach link (no manager role) is enough.
+const coachToken = signMagicLink({ subject: 'it-coach', roles: ['coach'] });
 
 // HttpClaimAuthorizer is constructed at O5 handler module-load time from process.env.O2_BASE_URL,
 // so a REAL O2 process must be listening and the env var set BEFORE the dynamic import below.
@@ -41,7 +44,7 @@ async function issueToken(roles: string[]): Promise<string> {
 test('test_confirm_withoutRegistrationManagerRole_returns403NotAuthorized', async () => {
   const applyRes = await app.request('/registrations', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', authorization: coachToken },
     body: JSON.stringify({ participantRef: participantRefWithoutRole, sportEventId, categoria: 'U15' }),
   });
   expect(applyRes.status).toBe(201);
@@ -53,13 +56,13 @@ test('test_confirm_withoutRegistrationManagerRole_returns403NotAuthorized', asyn
     headers: { authorization: token },
   });
   expect(confirmRes.status).toBe(403);
-  expect(await confirmRes.json()).toMatchObject({ code: 'NOT_AUTHORIZED' });
+  expect(await confirmRes.json()).toMatchObject({ code: 'FORBIDDEN' });
 });
 
 test('test_confirm_withRegistrationManagerRole_returns200Confirmed', async () => {
   const applyRes = await app.request('/registrations', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', authorization: coachToken },
     body: JSON.stringify({ participantRef: participantRefWithRole, sportEventId, categoria: 'U15' }),
   });
   expect(applyRes.status).toBe(201);

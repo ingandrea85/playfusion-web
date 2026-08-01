@@ -1,7 +1,6 @@
 import type { RegistrationRepository } from '../src/ports/registration-repository.js';
 import type { WindowRepository } from '../src/ports/window-repository.js';
 import type { ParticipantDirectory } from '../src/ports/participant-directory.js';
-import type { Authorizer } from '../src/ports/authorizer.js';
 import type { RegistrationRequest } from '../src/domain/registration.js';
 import type { RegistrationWindow } from '../src/domain/registration-window.js';
 
@@ -26,5 +25,3 @@ export class InMemoryParticipantDirectory implements ParticipantDirectory {
   async exists(p: string) { return this.set.has(p); }
   async add(p: string) { this.set.add(p); }
 }
-export class AllowAllAuthorizer implements Authorizer { async hasRegistrationManagerRole() { return true; } }
-export class DenyAllAuthorizer implements Authorizer { async hasRegistrationManagerRole() { return false; } }

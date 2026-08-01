@@ -1,6 +1,6 @@
 import { test, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { makeDocClient, resourceName } from '@playfusion/platform-lib';
+import { makeDocClient, resourceName, signMagicLink } from '@playfusion/platform-lib';
 import { PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 // Test-to-test relative import (not src-to-src), so ADR-002's BC-boundary ESLint rule
 // (scoped to `files: ['packages/**/*.ts']`) does not apply here — this mirrors how
@@ -101,7 +101,8 @@ test('test_pb1Setup_stepsOneToSix_reachConfirmedAfterApplyAndPay', async () => {
   // published for real via EventBridgeEventPublisher inside applyRegistration).
   const applyRes = await o5.request('/registrations', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    // S2.4: apply needs a valid magic-link (the coach's enrollment link).
+    headers: { 'content-type': 'application/json', authorization: signMagicLink({ subject: 'pb1-coach', roles: ['coach'] }) },
     body: JSON.stringify({ participantRef, sportEventId, categoria: 'U15' }),
   });
   expect(applyRes.status).toBe(201);

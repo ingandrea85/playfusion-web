@@ -1,4 +1,7 @@
 import type { Authorizer } from '../ports/authorizer.js';
+// @deprecated S2.4 replaced this HTTP claim check with the platform-lib requireOrganizer
+// middleware (which verifies the magic-link locally via the shared token contract, and
+// Auth0 JWTs). Kept pending removal; no longer wired into the handler.
 // Pilot-grade: verifies the O2-issued token's claim. O5 does NOT import O2 code (ADR-002);
 // it calls O2's verify endpoint over HTTP, OR verifies via the shared token contract.
 // For the Pilot, verify against O2's /identities/verify (network call, not a code import).

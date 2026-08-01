@@ -2,7 +2,10 @@ import { Hono } from 'hono';
 import { handle } from 'hono/aws-lambda';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { withCorrelation, makeDocClient, EventBridgeEventPublisher, toHttpError, busName, resourceName } from '@playfusion/platform-lib';
+import {
+  withCorrelation, makeDocClient, EventBridgeEventPublisher, toHttpError, busName, resourceName,
+  auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, getIdentity,
+} from '@playfusion/platform-lib';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { DynamoDbEventStore } from './adapters/dynamodb-event-store.js';
 import { listEvents, getEvent } from './read-model.js';
@@ -11,10 +14,14 @@ const db = makeDocClient();
 const publisher = new EventBridgeEventPublisher(busName());
 const store = new DynamoDbEventStore(db);
 const app = new Hono();
-const orgOf = (c: any) => c.req.header('x-organization-id') ?? 'org-pilot';
+const orgOf = (c: any) => getIdentity(c)?.organizationId ?? c.req.header('x-organization-id') ?? 'org-pilot';
 const body = z.object({ sport: z.string(), categorie: z.array(z.string()), dates: z.object({ from: z.string(), to: z.string() }) });
 
-app.post('/events', async (c) => {
+// S2.4: creating an event is an organizer mutation.
+const auth0cfg = auth0ConfigFromEnv();
+const organizer = requireOrganizer({ auth0: auth0cfg ? createAuth0Verifier(auth0cfg) : undefined });
+
+app.post('/events', organizer, async (c) => {
   const b = body.parse(await c.req.json());
   const sportEventId = randomUUID();
   const organizationId = orgOf(c);

@@ -15,7 +15,8 @@
         "RequestBody.$": "$.createEventPayload",
         "Headers": {
           "Content-Type": ["application/json"],
-          "x-organization-id.$": "States.Array($.organizationId)"
+          "x-organization-id.$": "States.Array($.organizationId)",
+          "x-approver-token.$": "States.Array($.approverToken)"
         }
       },
       "ResultSelector": {
@@ -48,7 +49,8 @@
         "Stage.$": "$.stage",
         "AuthType": "NO_AUTH",
         "Headers": {
-          "x-organization-id.$": "States.Array($.organizationId)"
+          "x-organization-id.$": "States.Array($.organizationId)",
+          "x-approver-token.$": "States.Array($.approverToken)"
         }
       },
       "ResultPath": "$.openWindowResult",

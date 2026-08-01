@@ -40,12 +40,14 @@ async function postUntil(
 }
 
 async function seedAndOpen() {
+  // S2.4: create-event + open-window are organizer mutations (RegistrationManager bridge).
+  const org = await approverToken();
   // O4 owns the participant identity: it assigns the participantId. Use the one it
   // returns as the registration's participantRef (the event carries this same id to O5).
   const participant = await j(await post('/o4/participants', { type: 'atleta', categoria: 'U15' }));
   const participantRef = participant.participantId as string;
-  const evt = await j(await post('/o3/events', { sport: 'Volleyball', categorie: ['U15'], dates: { from: '2026-09-01', to: '2026-09-30' } }));
-  await post(`/o5/events/${evt.sportEventId}/registration-window:open`);
+  const evt = await j(await post('/o3/events', { sport: 'Volleyball', categorie: ['U15'], dates: { from: '2026-09-01', to: '2026-09-30' } }, { authorization: org }));
+  await post(`/o5/events/${evt.sportEventId}/registration-window:open`, undefined, { authorization: org });
   return { participantRef, sportEventId: evt.sportEventId };
 }
 
@@ -54,10 +56,16 @@ async function approverToken(): Promise<string> {
   return res.token as string;
 }
 
+// S2.4: apply needs the coach's magic-link (no organizer role).
+async function coachToken(): Promise<string> {
+  const res = await j(await post('/o2/identities/magic-link', { contact: `${randomUUID()}@example.com`, roles: ['coach'], purpose: 'coach-enrollment' }));
+  return res.token as string;
+}
+
 run('test_e2e_applyThenConfirm_reachesConfirmed (criteria 1,2)', async () => {
   const { participantRef, sportEventId } = await seedAndOpen();
   // Apply is eventually consistent on the participant directory — poll until it propagates.
-  const apply = await postUntil('/o5/registrations', { participantRef, sportEventId, categoria: 'U15' }, 201);
+  const apply = await postUntil('/o5/registrations', { participantRef, sportEventId, categoria: 'U15' }, 201, { headers: { authorization: await coachToken() } });
   expect(apply.status).toBe(201);
   const applied = await j(apply);
   expect(applied).toMatchObject({ status: 'Applied' });
@@ -70,7 +78,7 @@ run('test_e2e_applyThenConfirm_reachesConfirmed (criteria 1,2)', async () => {
 
 run('test_e2e_applyThenReject_reachesRejected (criterion 4: rejection)', async () => {
   const { participantRef, sportEventId } = await seedAndOpen();
-  const apply = await postUntil('/o5/registrations', { participantRef, sportEventId, categoria: 'U15' }, 201);
+  const apply = await postUntil('/o5/registrations', { participantRef, sportEventId, categoria: 'U15' }, 201, { headers: { authorization: await coachToken() } });
   expect(apply.status).toBe(201);
   const applied = await j(apply);
 

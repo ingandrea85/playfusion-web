@@ -1,7 +1,7 @@
 import { test, expect, beforeAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
 process.env.AWS_ENDPOINT_URL = 'http://localhost:4566';
-import { makeDocClient, resourceName, busName, EVENT_SOURCE } from '@playfusion/platform-lib';
+import { makeDocClient, resourceName, busName, EVENT_SOURCE, signMagicLink } from '@playfusion/platform-lib';
 import { PutCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { EventBridgeClient, PutRuleCommand, PutTargetsCommand } from '@aws-sdk/client-eventbridge';
 import { SQSClient, CreateQueueCommand, ReceiveMessageCommand, DeleteMessageCommand, GetQueueAttributesCommand, GetQueueUrlCommand } from '@aws-sdk/client-sqs';
@@ -68,7 +68,7 @@ async function pollForDetail(predicate: (detail: any) => boolean, attempts = 15)
 
 test('test_paymentFirst_autoConfirmsOnFeePaid', async () => {
   // apply
-  const applyRes = await o5.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ participantRef, sportEventId, categoria: 'U15' }) });
+  const applyRes = await o5.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json', authorization: signMagicLink({ subject: 'it-coach', roles: ['coach'] }) }, body: JSON.stringify({ participantRef, sportEventId, categoria: 'U15' }) });
   const { registrationId } = await applyRes.json();
   // O12 reacts to RegistrationApplied (simulated delivery of the event to the consumer)
   await o12Consumer({ 'detail-type': 'RegistrationApplied', detail: { registrationId, participantRef, envelope: { organizationId: 'org-pilot', eventId: 'e1-' + randomUUID(), correlationId: 'c1' } } });

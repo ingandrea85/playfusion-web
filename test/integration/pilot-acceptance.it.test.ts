@@ -113,14 +113,14 @@ test('test_pilotAcceptance_coachCanApplyForMemorial_registrationApplied', async 
   const o5Consumer = (await import('../../services/o5-registration/src/consumer.js') as any).handler;
 
   const participantRes = await o4.request('/participants', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: regManagerToken },
     body: JSON.stringify({ type: 'squadra', categoria: 'U15' }),
   });
   expect(participantRes.status).toBe(201);
   const { participantId: participantRef } = await participantRes.json();
 
   const eventRes = await o3.request('/events', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: regManagerToken },
     body: JSON.stringify({ sport: 'Memorial Volley', categorie: ['U15'], dates: { from: '2026-10-01', to: '2026-10-03' } }),
   });
   expect(eventRes.status).toBe(201);
@@ -132,13 +132,13 @@ test('test_pilotAcceptance_coachCanApplyForMemorial_registrationApplied', async 
   await o5Consumer({ 'detail-type': 'ParticipantCreated', detail: { participantId: participantRef, envelope: { organizationId: 'org-pilot', eventId: 'acc-pc-' + randomUUID(), correlationId: 'acc-' + participantRef } } });
   await o5Consumer({ 'detail-type': 'EventPublished', detail: { sportEventId, envelope: { organizationId: 'org-pilot', eventId: 'acc-ep-' + randomUUID(), correlationId: 'acc-' + sportEventId } } });
 
-  const openRes = await o5.request(`/events/${sportEventId}/registration-window:open`, { method: 'POST' });
+  const openRes = await o5.request(`/events/${sportEventId}/registration-window:open`, { method: 'POST', headers: { authorization: regManagerToken } });
   expect(openRes.status).toBe(200);
   expect(await openRes.json()).toMatchObject({ state: 'Open' });
 
   // Act: the coach applies for the memorial.
   const applyRes = await o5.request('/registrations', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
+    method: 'POST', headers: { 'content-type': 'application/json', authorization: regManagerToken },
     body: JSON.stringify({ participantRef, sportEventId, categoria: 'U15' }),
   });
 
@@ -209,19 +209,19 @@ test('test_pilotAcceptance_happyRejectionAndDoubleApply_allBehaveCorrectly', asy
   const o5Consumer = (await import('../../services/o5-registration/src/consumer.js') as any).handler;
 
   async function setUpOpenWindowWithParticipant(): Promise<{ sportEventId: string; participantRef: string }> {
-    const participantRes = await o4.request('/participants', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ type: 'squadra', categoria: 'U15' }) });
+    const participantRes = await o4.request('/participants', { method: 'POST', headers: { 'content-type': 'application/json', authorization: regManagerToken }, body: JSON.stringify({ type: 'squadra', categoria: 'U15' }) });
     const { participantId: participantRef } = await participantRes.json();
-    const eventRes = await o3.request('/events', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sport: 'Memorial Volley', categorie: ['U15'], dates: { from: '2026-11-01', to: '2026-11-03' } }) });
+    const eventRes = await o3.request('/events', { method: 'POST', headers: { 'content-type': 'application/json', authorization: regManagerToken }, body: JSON.stringify({ sport: 'Memorial Volley', categorie: ['U15'], dates: { from: '2026-11-01', to: '2026-11-03' } }) });
     const { sportEventId } = await eventRes.json();
     await o5Consumer({ 'detail-type': 'ParticipantCreated', detail: { participantId: participantRef, envelope: { organizationId: 'org-pilot', eventId: 'acc-pc-' + randomUUID(), correlationId: 'acc-' + participantRef } } });
     await o5Consumer({ 'detail-type': 'EventPublished', detail: { sportEventId, envelope: { organizationId: 'org-pilot', eventId: 'acc-ep-' + randomUUID(), correlationId: 'acc-' + sportEventId } } });
-    await o5.request(`/events/${sportEventId}/registration-window:open`, { method: 'POST' });
+    await o5.request(`/events/${sportEventId}/registration-window:open`, { method: 'POST', headers: { authorization: regManagerToken } });
     return { sportEventId, participantRef };
   }
 
   // Act + Assert (happy path, part of criterion 4): apply then confirm succeeds.
   const happy = await setUpOpenWindowWithParticipant();
-  const happyApply = await o5.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ participantRef: happy.participantRef, sportEventId: happy.sportEventId, categoria: 'U15' }) });
+  const happyApply = await o5.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json', authorization: regManagerToken }, body: JSON.stringify({ participantRef: happy.participantRef, sportEventId: happy.sportEventId, categoria: 'U15' }) });
   expect(happyApply.status).toBe(201);
   const { registrationId: happyRegistrationId } = await happyApply.json();
   const happyConfirm = await o5.request(`/registrations/${happyRegistrationId}/confirm`, { method: 'POST', headers: { authorization: regManagerToken } });
@@ -230,7 +230,7 @@ test('test_pilotAcceptance_happyRejectionAndDoubleApply_allBehaveCorrectly', asy
 
   // Act + Assert (rejection scenario, part of criterion 4): apply then reject.
   const rejection = await setUpOpenWindowWithParticipant();
-  const rejectApply = await o5.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ participantRef: rejection.participantRef, sportEventId: rejection.sportEventId, categoria: 'U15' }) });
+  const rejectApply = await o5.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json', authorization: regManagerToken }, body: JSON.stringify({ participantRef: rejection.participantRef, sportEventId: rejection.sportEventId, categoria: 'U15' }) });
   expect(rejectApply.status).toBe(201);
   const { registrationId: rejectRegistrationId } = await rejectApply.json();
   const rejectRes = await o5.request(`/registrations/${rejectRegistrationId}/reject`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: regManagerToken }, body: JSON.stringify({ reason: 'roster incompleto' }) });
@@ -244,9 +244,9 @@ test('test_pilotAcceptance_happyRejectionAndDoubleApply_allBehaveCorrectly', asy
   // same participant+event 409s on the second attempt.
   const dup = await setUpOpenWindowWithParticipant();
   const dupBody = JSON.stringify({ participantRef: dup.participantRef, sportEventId: dup.sportEventId, categoria: 'U15' });
-  const dupFirst = await o5.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json' }, body: dupBody });
+  const dupFirst = await o5.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json', authorization: regManagerToken }, body: dupBody });
   expect(dupFirst.status).toBe(201);
-  const dupSecond = await o5.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json' }, body: dupBody });
+  const dupSecond = await o5.request('/registrations', { method: 'POST', headers: { 'content-type': 'application/json', authorization: regManagerToken }, body: dupBody });
   expect(dupSecond.status).toBe(409);
   expect(await dupSecond.json()).toMatchObject({ code: 'DOUBLE_APPLY' });
 
