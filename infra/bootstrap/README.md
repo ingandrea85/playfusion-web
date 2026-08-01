@@ -47,8 +47,13 @@ One-time manual AWS setup that lets the GitHub Actions workflows
 
 The deploy role (`playfusion2-gha-deploy`) trusts only:
 
-- `repo:ingandrea85/playfusion-web:ref:refs/heads/stage` — the collaudo (`stg`) deploys, and
+- `repo:ingandrea85/playfusion-web:ref:refs/tags/stg-*` — the collaudo (`stg`) deploys, and
 - `repo:ingandrea85/playfusion-web:ref:refs/tags/v*` — the produzione (`pr`) deploys.
+
+Both envs are tag-triggered (the immutable `@<owner_id>/@<repo_id>` subject variants are
+also allowed). **After changing these subjects, re-run the `aws cloudformation deploy`
+above to update the live role's trust policy** — the template alone has no effect until
+the stack is updated.
 
 It is least-privilege: it may only `sts:AssumeRole` the `cdk-*` bootstrap roles (which hold
 the actual deploy permissions) and read CloudFormation stack state. A single account can

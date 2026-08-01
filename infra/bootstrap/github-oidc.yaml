@@ -52,14 +52,15 @@ Resources:
                 # Stable whatever the subject-claim format is (guards the wildcards below).
                 token.actions.githubusercontent.com:repository: !Sub ${GitHubOrg}/${GitHubRepo}
               StringLike:
-                # collaudo deploys from the `stage` branch; produzione from `v*` tags.
-                # NOTE: this org emits IMMUTABLE subject claims — the sub is
-                # `repo:<owner>@<owner_id>/<repo>@<repo_id>:ref:...`, not the bare
+                # collaudo deploys from `stg-*` tags; produzione from `v*` tags (both
+                # tag-triggered). NOTE: this org emits IMMUTABLE subject claims — the sub
+                # is `repo:<owner>@<owner_id>/<repo>@<repo_id>:ref:...`, not the bare
                 # `repo:<owner>/<repo>:ref:...`. Match both forms (@id wildcarded) so the
-                # trust works with or without immutable subjects.
+                # trust works with or without immutable subjects. Tag refs are
+                # `refs/tags/<tag>`, NOT `refs/heads/<branch>`.
                 token.actions.githubusercontent.com:sub:
-                  - !Sub repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/stage
-                  - !Sub repo:${GitHubOrg}@*/${GitHubRepo}@*:ref:refs/heads/stage
+                  - !Sub repo:${GitHubOrg}/${GitHubRepo}:ref:refs/tags/stg-*
+                  - !Sub repo:${GitHubOrg}@*/${GitHubRepo}@*:ref:refs/tags/stg-*
                   - !Sub repo:${GitHubOrg}/${GitHubRepo}:ref:refs/tags/v*
                   - !Sub repo:${GitHubOrg}@*/${GitHubRepo}@*:ref:refs/tags/v*
       Policies:
