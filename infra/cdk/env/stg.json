@@ -3,9 +3,10 @@
   "environmentName": "collaudo",
   "region": "eu-south-1",
   "auth0": {
-    "issuer": "",
-    "audience": "",
-    "rolesClaim": "https://playfusion/roles",
+    "issuer": "https://dev-c6din8ya.eu.auth0.com/",
+    "audience": "https://plafusionapi.it",
+    "clientId": "65atFepkIh2jiMeaDqZlqgD63ccd2Gw1",
+    "rolesClaim": "https://plafusionapi.it/roles",
     "orgClaim": "org_id"
   }
 }

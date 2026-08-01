@@ -29,6 +29,15 @@ npm run storybook      # serve the PS-B component gallery on :6006
 npm run build-storybook  # build the static Storybook
 ```
 
+### Frontends (S3)
+
+- E1 (organizer): `cp apps/e1-web/.env.example apps/e1-web/.env.local` then
+  `npm run serve -w @playfusion/e1-web` (Auth0 login gate; add localhost to the tenant's
+  allowed URLs — see [docs/runbooks/auth0-spa-e1.md](docs/runbooks/auth0-spa-e1.md)).
+- E3 (public): `npm run serve -w @playfusion/e3-web` — open `#/events/<id>`; coaches
+  arrive via `?token=<magic-link>`.
+- Both need a backend: set `VITE_API_BASE_URL` to the deployed API or a local stack.
+
 ## Development
 
 A devcontainer (`.devcontainer/`, Node 20) and VS Code tasks (`.vscode/tasks.json`,
