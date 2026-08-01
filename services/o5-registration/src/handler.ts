@@ -33,9 +33,13 @@ app.post('/registrations', async (c) => {
   return c.json(reg, 201);
 });
 
+// The approver token arrives in `authorization` from normal callers; Step Functions'
+// apigateway:invoke forbids that reserved header, so also accept `x-approver-token`.
+const approverTokenOf = (c: any) => c.req.header('authorization') ?? c.req.header('x-approver-token') ?? '';
+
 app.post('/registrations/:id/confirm', async (c) => {
   const reg = await confirmRegistration({ repo, publisher, authorizer })({
-    registrationId: c.req.param('id'), approverToken: c.req.header('authorization') ?? '', organizationId: orgOf(c),
+    registrationId: c.req.param('id'), approverToken: approverTokenOf(c), organizationId: orgOf(c),
   });
   return c.json(reg);
 });
@@ -43,7 +47,7 @@ app.post('/registrations/:id/confirm', async (c) => {
 app.post('/registrations/:id/reject', async (c) => {
   const { reason } = z.object({ reason: z.string() }).parse(await c.req.json());
   const reg = await rejectRegistration({ repo, publisher, authorizer })({
-    registrationId: c.req.param('id'), reason, approverToken: c.req.header('authorization') ?? '', organizationId: orgOf(c),
+    registrationId: c.req.param('id'), reason, approverToken: approverTokenOf(c), organizationId: orgOf(c),
   });
   return c.json(reg);
 });
