@@ -1,5 +1,6 @@
 import type { EventSummary } from '@playfusion/rest-client'
 import { renderOrganizerTopbar, esc } from '@playfusion/app-shell'
+import type { Screen } from '../view.js'
 
 export function renderDashboard(events: EventSummary[]): string {
   const cards = events.length
@@ -14,4 +15,9 @@ export function renderDashboard(events: EventSummary[]): string {
       <div class="pf-pagehead"><div class="pf-eyebrow">Stagione 2026</div><h1>I tuoi tornei</h1></div>
       <div class="pf-stack">${cards}</div>
     </main>`
+}
+
+export const dashboardScreen: Screen<EventSummary[]> = {
+  load: (ctx) => ctx.client.o3.listEvents(),
+  render: renderDashboard,
 }

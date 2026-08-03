@@ -1,9 +1,11 @@
 import type { EventDetail } from '@playfusion/rest-client'
 import { renderOrganizerWorkspace, esc, type WorkspaceTab } from '@playfusion/app-shell'
+import type { Screen } from '../view.js'
 
 const tabs = (id: string): WorkspaceTab[] => [
   { key: 'overview', label: 'Panoramica', href: `#/events/${encodeURIComponent(id)}` },
   { key: 'enroll', label: 'Iscrizioni', href: `#/events/${encodeURIComponent(id)}/enroll` },
+  { key: 'participants', label: 'Partecipanti', href: `#/events/${encodeURIComponent(id)}/participants` },
 ]
 
 export function renderWorkspace(event: EventDetail, activeTab: string): string {
@@ -15,4 +17,9 @@ export function renderWorkspace(event: EventDetail, activeTab: string): string {
     <main class="pf-container">
       <div class="pf-card pf-muted">Questa sezione arriva in S4+ (schermate feature).</div>
     </main>`
+}
+
+export const workspaceScreen: Screen<EventDetail> = {
+  load: (ctx, p) => ctx.client.o3.getEvent(p.id),
+  render: (e) => renderWorkspace(e, 'overview'),
 }

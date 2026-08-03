@@ -4,17 +4,16 @@ import '@playfusion/ui'
 import { HashRouter } from '@playfusion/app-shell'
 import { createClient } from '@playfusion/rest-client'
 import { readConfig } from './config.js'
-import { renderDashboard } from './views/dashboard.js'
-import { renderWorkspace } from './views/workspace.js'
+import { runScreen, errorCard, type ViewCtx, type Screen } from './view.js'
+import { dashboardScreen } from './views/dashboard.js'
+import { createEventScreen } from './views/create-event.js'
+import { workspaceScreen } from './views/workspace.js'
+import { enrollScreen } from './views/enroll.js'
+import { participantsScreen } from './views/participants.js'
 import { createAuth0Adapter, ensureAuthenticated, authProviderFrom } from './auth/auth0.js'
 
 const cfg = readConfig(import.meta.env)
 const app = document.getElementById('app')!
-
-/** Renders a small error card into #app so a rejected call never leaves a blank page. */
-function errorCard(msg: string): string {
-  return `<main class="pf-container"><div class="pf-card">${msg}</div></main>`
-}
 
 async function boot() {
   try {
@@ -23,18 +22,24 @@ async function boot() {
     if (!(await ensureAuthenticated(port))) return // redirecting to Auth0
     const orgId = (await port.getOrgId()) ?? cfg.orgId
     const client = createClient({ baseUrl: cfg.apiBaseUrl, orgId, auth: authProviderFrom(port) })
+
+    let current: () => Promise<void> = async () => {}
+    const ctx: ViewCtx = {
+      client, orgId, e3BaseUrl: cfg.e3BaseUrl,
+      navigate: (hash) => { window.location.hash = hash },
+      refresh: () => { void current() },
+    }
+    const route = <D>(screen: Screen<D>, params: Record<string, string>) => {
+      current = () => runScreen(app, ctx, params, screen)
+      return current()
+    }
     new HashRouter()
-      .on('#/', async () => {
-        try { app.innerHTML = renderDashboard(await client.o3.listEvents()) }
-        catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
-      })
-      .on('#/events/:id', async ({ id }) => {
-        try { app.innerHTML = renderWorkspace(await client.o3.getEvent(id), 'overview') }
-        catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
-      })
+      .on('#/', () => route(dashboardScreen, {}))
+      .on('#/events/new', () => route(createEventScreen, {}))
+      .on('#/events/:id/enroll', (p) => route(enrollScreen, p))
+      .on('#/events/:id/participants', (p) => route(participantsScreen, p))
+      .on('#/events/:id', (p) => route(workspaceScreen, p))
       .start()
-  } catch {
-    app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.')
-  }
+  } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
 }
 boot()
