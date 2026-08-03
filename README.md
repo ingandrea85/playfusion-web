@@ -37,6 +37,10 @@ npm run build-storybook  # build the static Storybook
 - E3 (public): `npm run serve -w @playfusion/e3-web` — open `#/events/<id>`; coaches
   arrive via `?token=<magic-link>`.
 - Both need a backend: set `VITE_API_BASE_URL` to the deployed API or a local stack.
+- S4 (E1 Bundle Enrollment): the full organizer flow — dashboard → create event → open a
+  registration window with a per-category cap → copy the shareable link → confirm/reject
+  from the Iscrizioni inbox → Partecipanti tab with fee status → mark a fee paid — is now
+  in `apps/e1-web` (view-controller screens over `libs/rest-client`'s `o5`/`o12` methods).
 
 ## Development
 
