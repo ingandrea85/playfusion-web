@@ -74,10 +74,17 @@ await ddb.send(new CreateTableCommand({
 
 console.log('provision: O2 table (o2-identities) ensured on', endpoint);
 
+// O12 fees: + event-index GSI so S4 can list fee status per event.
 await ddb.send(new CreateTableCommand({
   TableName: resourceName('o12-fees'), BillingMode: 'PAY_PER_REQUEST',
-  AttributeDefinitions: [{ AttributeName: 'registrationId', AttributeType: 'S' }],
+  AttributeDefinitions: [
+    { AttributeName: 'registrationId', AttributeType: 'S' },
+    { AttributeName: 'sportEventId', AttributeType: 'S' },
+  ],
   KeySchema: [{ AttributeName: 'registrationId', KeyType: 'HASH' }],
+  GlobalSecondaryIndexes: [
+    { IndexName: 'event-index', KeySchema: [{ AttributeName: 'sportEventId', KeyType: 'HASH' }], Projection: { ProjectionType: 'ALL' } },
+  ],
 })).catch(ignoreExists);
 
 await ddb.send(new CreateTableCommand({

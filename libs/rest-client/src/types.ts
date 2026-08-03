@@ -32,3 +32,7 @@ export interface VerifyResult { subject: string; roles: string[]; organizationId
 // the handler's zod body is exactly `{ type: 'squadra' | 'atleta', categoria: string }`,
 // no `name` field, so the DTO mirrors that verbatim rather than the brief's placeholder shape.
 export interface CreateParticipantInput { type: 'squadra' | 'atleta'; categoria: string }
+
+// o12 fee read (S4)
+export type FeeStatus = 'Requested' | 'Paid'
+export interface FeeView { registrationId: string; status: FeeStatus }
