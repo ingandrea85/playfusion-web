@@ -13,6 +13,9 @@ describe('e1 views', () => {
   it('dashboard shows an empty-state when there are no events', () => {
     expect(renderDashboard([])).toMatch(/Nessun torneo/i)
   })
+  it('dashboard shows a create-event CTA', () => {
+    expect(renderDashboard([])).toContain('#/events/new')
+  })
   it('workspace renders the chrome hero + a placeholder tab body', () => {
     const html = renderWorkspace(ev, 'overview')
     expect(html).toContain('pf-whero')

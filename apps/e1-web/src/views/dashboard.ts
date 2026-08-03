@@ -12,7 +12,10 @@ export function renderDashboard(events: EventSummary[]): string {
     : `<div class="pf-card pf-muted">Nessun torneo ancora.</div>`
   return `${renderOrganizerTopbar('dashboard')}
     <main class="pf-container">
-      <div class="pf-pagehead"><div class="pf-eyebrow">Stagione 2026</div><h1>I tuoi tornei</h1></div>
+      <div class="pf-row" style="margin-bottom:var(--space-lg)">
+        <div class="pf-pagehead" style="margin-bottom:0"><div class="pf-eyebrow">Stagione 2026</div><h1>I tuoi tornei</h1></div>
+        <a class="pf-btn pf-btn--primary" href="#/events/new">＋ Crea evento</a>
+      </div>
       <div class="pf-stack">${cards}</div>
     </main>`
 }
