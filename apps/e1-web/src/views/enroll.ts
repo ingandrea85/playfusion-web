@@ -38,7 +38,7 @@ export function renderEnroll(d: EnrollData): string {
         <button class="pf-btn pf-btn--primary" data-open>${open ? 'Aggiorna posti' : 'Apri iscrizioni'}</button></div>
       ${shareCard}
       <div class="pf-pagehead" style="margin-top:var(--space-lg)"><h2>Richieste in attesa</h2></div>
-      <ul class="pf-stack" style="list-style:none;padding:0">${inbox}</ul>
+      <ul id="inbox" class="pf-stack" style="list-style:none;padding:0">${inbox}</ul>
     </main>`
 }
 
@@ -69,7 +69,7 @@ export const enrollScreen: Screen<EnrollData> = {
       const el = root.querySelector('#copied')
       if (el) el.textContent = ok ? 'Copiato ✓' : 'Copia manuale'
     })
-    root.addEventListener('click', async (e) => {
+    root.querySelector('#inbox')?.addEventListener('click', async (e) => {
       const t = e.target as HTMLElement
       const cId = t.closest('[data-confirm]')?.getAttribute('data-confirm')
       const rId = t.closest('[data-reject]')?.getAttribute('data-reject')

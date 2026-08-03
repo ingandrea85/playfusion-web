@@ -27,7 +27,7 @@ export function renderParticipants(d: ParticipantsData): string {
     <main class="pf-container">
       <div id="err"></div>
       <div class="pf-pagehead"><h1>Partecipanti confermati</h1></div>
-      <ul class="pf-stack" style="list-style:none;padding:0">${rows}</ul>
+      <ul id="participants-list" class="pf-stack" style="list-style:none;padding:0">${rows}</ul>
     </main>`
 }
 
@@ -43,7 +43,7 @@ export const participantsScreen: Screen<ParticipantsData> = {
   },
   render: renderParticipants,
   mount(root, ctx) {
-    root.addEventListener('click', async (e) => {
+    root.querySelector('#participants-list')?.addEventListener('click', async (e) => {
       const rId = (e.target as HTMLElement).closest('[data-pay]')?.getAttribute('data-pay')
       if (!rId) return
       try { await ctx.client.o12.payFee(rId); ctx.refresh() }
