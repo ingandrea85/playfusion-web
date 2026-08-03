@@ -108,3 +108,12 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-wtabs { display: flex; gap: 2px; max-width: 960px; margin: 0 auto; padding: 0 var(--space-md); overflow-x: auto; }
 .pf-wtab { padding: 10px 14px; font-weight: 700; font-size: 14px; color: var(--color-text-soft); text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap; }
 .pf-wtab--active { color: var(--color-action-primary); border-bottom-color: var(--color-action-primary); }
+
+/* ---------- Form primitives (create-event + enroll forms) ---------- */
+.pf-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-md); }
+.pf-field label { font-weight: 700; font-size: 13px; color: var(--color-text-soft); }
+.pf-field input, .pf-field select, .pf-field textarea { padding: 11px 12px; border: 1px solid var(--color-border-strong); border-radius: 8px; font: inherit; background: var(--color-surface-default); color: var(--color-text-default); }
+.pf-field textarea { resize: vertical; }
+.pf-field input:focus, .pf-field select:focus, .pf-field textarea:focus { outline: none; border-color: var(--color-action-primary); }
+.pf-switch { display: inline-flex; align-items: center; gap: var(--space-sm); }
+.pf-switch input { width: 18px; height: 18px; accent-color: var(--color-action-primary); }
