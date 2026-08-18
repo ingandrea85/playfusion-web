@@ -68,6 +68,15 @@ export function autoSplit(teams: string[], groupsCount: number): ResolvedGroup[]
   return groups;
 }
 
+/** A single match's placement — the patch a reschedule applies. */
+export interface SlotPatch { day: string; time: string; field: string }
+
+/** True when some *other* match already occupies the target slot (same day+time+field).
+ *  Two matches on the same field at the same day+time is the conflict S9 blocks. */
+export function slotConflict(matches: ScheduledMatch[], matchId: string, patch: SlotPatch): boolean {
+  return matches.some((m) => m.id !== matchId && m.day === patch.day && m.time === patch.time && m.field === patch.field);
+}
+
 export function defaultConfig(): ScheduleConfig {
   return { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', slotsPerDay: 8, groupsCount: 1, legs: 'SINGLE' };
 }
