@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { handle } from 'hono/aws-lambda';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
@@ -14,6 +15,10 @@ const db = makeDocClient();
 const publisher = new EventBridgeEventPublisher(busName());
 const store = new DynamoDbEventStore(db);
 const app = new Hono();
+// Actual (non-preflight) responses need CORS headers too: API Gateway's
+// defaultCorsPreflightOptions only answers OPTIONS, so browsers block GET/POST replies
+// unless the Lambda sets Access-Control-Allow-Origin itself.
+app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'OPTIONS'] }));
 const orgOf = (c: any) => getIdentity(c)?.organizationId ?? c.req.header('x-organization-id') ?? 'org-pilot';
 const body = z.object({ sport: z.string(), categorie: z.array(z.string()), dates: z.object({ from: z.string(), to: z.string() }) });
 

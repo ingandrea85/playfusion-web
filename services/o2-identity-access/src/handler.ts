@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { handle } from 'hono/aws-lambda';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
@@ -8,6 +9,10 @@ import { signToken, verifyToken } from './token.js';
 
 const db = makeDocClient();
 const app = new Hono();
+// Actual (non-preflight) responses need CORS headers too: API Gateway's
+// defaultCorsPreflightOptions only answers OPTIONS, so browsers block GET/POST replies
+// unless the Lambda sets Access-Control-Allow-Origin itself.
+app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'OPTIONS'] }));
 const body = z.object({
   contact: z.string(),
   roles: z.array(z.string()).default([]),
