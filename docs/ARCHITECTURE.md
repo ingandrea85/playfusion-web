@@ -438,6 +438,13 @@ the o3 event (`gironi` map, per S6's O6-on-o3 decision — `services/o3-sport-ev
 was refactored to consume the resolved groups, so `generate` follows the composition when present
 and falls back to the S7 auto-split otherwise.
 
+**Phase S9 (Calendar editor / reschedule, O7) — complete.** The organizer can reschedule a single
+match (day/time/field) from the E1 calendar editor (`PUT /o7/events/:id/matches/:matchId`), with
+**slot-conflict detection** (same day+time+field as another match → 409 SLOT_CONFLICT). Reschedule
+is allowed in any status incl. PUBLISHED and never changes the status (distinct from the mass
+regenerate S7 locks after APPROVED). `renderCalendar` gained an `editable` flag so only E1 shows the
+per-match "Modifica" control; E3 stays read-only.
+
 ## 13. Where to read more
 
 - [`README.md`](../README.md) — quick start.
