@@ -25,4 +25,6 @@ export interface SportEvent {
   startTime?: string;
   tieBreak?: TieBreakCriterion[];
   playbook?: Playbook;
+  /** S8: per-category group composition (O6). Optional; absent on pre-S8 events. */
+  gironi?: import('./gironi.js').GironiMap;
 }

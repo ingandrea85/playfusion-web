@@ -9,11 +9,17 @@ import {
 } from '@playfusion/platform-lib';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { DynamoDbEventStore } from './adapters/dynamodb-event-store.js';
+import { DynamoDbGironiRepository } from './adapters/dynamodb-gironi-repository.js';
+import { HttpTeamSource } from './adapters/http-team-source.js';
+import { drawGironi } from './application/draw-gironi.js';
+import { saveGironi, getGironi } from './application/save-gironi.js';
 import { listEvents, getEvent } from './read-model.js';
 
 const db = makeDocClient();
 const publisher = new EventBridgeEventPublisher(busName());
 const store = new DynamoDbEventStore(db);
+const gironiRepo = new DynamoDbGironiRepository(db);
+const teamSource = new HttpTeamSource();
 const app = new Hono();
 // Actual (non-preflight) responses need CORS headers too: API Gateway's
 // defaultCorsPreflightOptions only answers OPTIONS, so browsers block GET/POST replies
@@ -54,6 +60,28 @@ app.get('/events/:id', async (c) => {
   if (!detail) return c.json({ error: 'EventNotFound', sportEventId: c.req.param('id') }, 404);
   return c.json(detail);
 });
+
+// S8: gironi (O6 group composition) on the event. Draw + save are organizer mutations; the
+// composition read is public (E1 editor + downstream o7/standings).
+const drawBody = z.object({ categoria: z.string(), groupsCount: z.number().int().positive().default(2) });
+const groupSchema = z.object({ label: z.string(), teams: z.array(z.string()) });
+const saveGironiBody = z.object({ groups: z.array(groupSchema), locked: z.boolean().default(false) });
+
+app.post('/events/:id/gironi:draw', organizer, async (c) => {
+  const sportEventId = c.req.param('id');
+  if (!(await getEvent(store)(sportEventId))) return c.json({ error: 'EventNotFound', sportEventId }, 404);
+  const b = drawBody.parse(await c.req.json().catch(() => ({})));
+  return c.json(await drawGironi({ gironi: gironiRepo, teams: teamSource })({ sportEventId, categoria: b.categoria, groupsCount: b.groupsCount }));
+});
+
+app.put('/events/:id/gironi/:categoria', organizer, async (c) => {
+  const sportEventId = c.req.param('id');
+  if (!(await getEvent(store)(sportEventId))) return c.json({ error: 'EventNotFound', sportEventId }, 404);
+  const b = saveGironiBody.parse(await c.req.json());
+  return c.json(await saveGironi(gironiRepo)({ sportEventId, categoria: c.req.param('categoria'), groups: b.groups, locked: b.locked }));
+});
+
+app.get('/events/:id/gironi', async (c) => c.json(await getGironi(gironiRepo)(c.req.param('id'))));
 
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
 
