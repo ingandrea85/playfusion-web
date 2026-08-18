@@ -6,6 +6,8 @@ import { resolve } from 'node:path'
 // builds still resolve the package via its built dist/ (package.json main).
 const alias = {
   '@playfusion/platform-lib': resolve(__dirname, 'libs/platform-lib/src/index.ts'),
+  '@playfusion/rest-client': resolve(__dirname, 'libs/rest-client/src/index.ts'),
+  '@playfusion/app-shell': resolve(__dirname, 'libs/app-shell/src/index.ts'),
 }
 
 export default defineConfig({
@@ -17,8 +19,9 @@ export default defineConfig({
         test: {
           name: 'unit',
           // Also picks up workspace-level unit tests under test/ (e.g. the S0.4
-          // lint-boundary proof); the excludes keep integration + e2e files out.
-          include: ['{services,libs}/*/test/**/*.test.ts', 'test/**/*.test.ts'],
+          // lint-boundary proof) and app-level unit tests (e.g. apps/e1-web view
+          // tests); the excludes keep integration + e2e files out.
+          include: ['{services,libs}/*/test/**/*.test.ts', 'apps/*/test/**/*.test.ts', 'test/**/*.test.ts'],
           exclude: ['**/*.it.test.ts', '**/*.e2e.test.ts'],
         },
       },

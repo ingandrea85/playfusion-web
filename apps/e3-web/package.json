@@ -1,0 +1,10 @@
+{
+  "name": "@playfusion/e3-web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "serve": "vite", "build": "vite build", "test": "vitest run", "lint": "eslint ." },
+  "dependencies": { "@playfusion/tokens": "*", "@playfusion/ui": "*", "@playfusion/app-shell": "*", "@playfusion/rest-client": "*" },
+  "devDependencies": { "vite": "^7.0.0" },
+  "nx": { "tags": ["scope:app", "type:app"] }
+}

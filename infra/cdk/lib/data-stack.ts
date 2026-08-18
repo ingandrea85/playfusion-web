@@ -60,7 +60,13 @@ export class DataStack extends Stack {
     this.tables['o3-events'] = events;
     this.tables['o4-participants'] = table('o4-participants', 'participantId');
     this.tables['o2-identities'] = table('o2-identities', 'subject');
-    this.tables['o12-fees'] = table('o12-fees', 'registrationId');
+    // O12 fees: + event-index GSI so S4 can list fee status per event.
+    const fees = table('o12-fees', 'registrationId');
+    fees.addGlobalSecondaryIndex({
+      indexName: 'event-index',
+      partitionKey: { name: 'sportEventId', type: AttributeType.STRING },
+    });
+    this.tables['o12-fees'] = fees;
 
     // Shared domain-event bus (source = EVENT_SOURCE, same across envs)
     this.bus = new EventBus(this, 'bus', { eventBusName: busName(env) });

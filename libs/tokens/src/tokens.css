@@ -6,11 +6,13 @@
   --color-action-primary: #0b5fff;
   --color-action-primary-hover: #0847c7;
   --color-action-accent: #ff6b00;
+  --color-action-accent-hover: #e35f00;
   --color-feedback-success: #16a34a;
   --color-feedback-warning: #f59e0b;
   --color-feedback-danger: #dc2626;
   --color-surface-bg: #f4f7fb;
   --color-surface-default: #ffffff;
+  --color-surface-sunken: #eef2f8;
   --color-text-default: #0f172a;
   --color-text-muted: #475569;
   --color-text-soft: #334155;
@@ -30,6 +32,11 @@
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-round: 50%;
+  --radius-pill: 999px;
+  --radius-xl: 16px;
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --font-display: 'Archivo Variable', system-ui, sans-serif;
+  --font-sans: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Spline Sans Mono Variable', ui-monospace, 'SF Mono', monospace;
 }
