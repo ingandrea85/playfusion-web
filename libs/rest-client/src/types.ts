@@ -52,3 +52,34 @@ export interface CreateParticipantInput { type: 'squadra' | 'atleta'; categoria:
 // o12 fee read (S4)
 export type FeeStatus = 'Requested' | 'Paid'
 export interface FeeView { registrationId: string; status: FeeStatus }
+
+// o7 scheduling (services/o7-scheduling/src/domain.ts) — S7
+export type ScheduleStatus = 'NONE' | 'GENERATED' | 'APPROVED' | 'PUBLISHED'
+export type Legs = 'SINGLE' | 'HOME_AWAY'
+export interface ScheduleConfig {
+  fields: string[]
+  periods: number
+  periodMinutes: number
+  breakMinutes: number
+  dailyStart: string // 'HH:mm'
+  slotsPerDay: number
+  groupsCount: number
+  legs: Legs
+}
+export interface ScheduleView {
+  sportEventId: string
+  organizationId: string
+  status: ScheduleStatus
+  config: ScheduleConfig
+}
+export interface ScheduledMatchView {
+  id: string
+  sportEventId: string
+  categoryId: string
+  groupLabel: string
+  day: string  // 'YYYY-MM-DD'
+  time: string // 'HH:mm'
+  field: string
+  home: string
+  away: string
+}

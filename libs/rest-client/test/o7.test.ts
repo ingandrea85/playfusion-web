@@ -1,0 +1,46 @@
+import { describe, it, expect, vi } from 'vitest'
+import { createClient } from '../src/client'
+import type { ScheduleConfig } from '../src/types'
+
+const res = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } })
+const config: ScheduleConfig = { fields: ['Campo A'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', slotsPerDay: 8, groupsCount: 1, legs: 'SINGLE' }
+
+describe('o7 api', () => {
+  it('getSchedule GETs /o7/events/:id/schedule', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ sportEventId: 'e1', organizationId: 'org', status: 'NONE', config }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o7.getSchedule('e1')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api/prod/o7/events/e1/schedule')
+    expect(out.status).toBe('NONE')
+  })
+
+  it('getMatches GETs /o7/events/:id/matches', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res([{ id: 'sm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Girone A', day: '2026-08-29', time: '09:00', field: 'Campo A', home: 'A', away: 'B' }]))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o7.getMatches('e1')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api/prod/o7/events/e1/matches')
+    expect(out[0].id).toBe('sm-1')
+  })
+
+  it('generateSchedule POSTs the config to /o7/events/:id/schedule:generate', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ sportEventId: 'e1', organizationId: 'org', status: 'GENERATED', config }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o7.generateSchedule('e1', config)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://api/prod/o7/events/e1/schedule:generate')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual(config)
+    expect(out.status).toBe('GENERATED')
+  })
+
+  it('approveSchedule and publishSchedule POST the status transitions', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(res({ sportEventId: 'e1', organizationId: 'org', status: 'APPROVED', config }))
+      .mockResolvedValueOnce(res({ sportEventId: 'e1', organizationId: 'org', status: 'PUBLISHED', config }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    expect((await c.o7.approveSchedule('e1')).status).toBe('APPROVED')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api/prod/o7/events/e1/schedule:approve')
+    expect((await c.o7.publishSchedule('e1')).status).toBe('PUBLISHED')
+    expect(fetchMock.mock.calls[1][0]).toBe('https://api/prod/o7/events/e1/schedule:publish')
+  })
+})
