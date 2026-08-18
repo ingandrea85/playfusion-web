@@ -1,7 +1,13 @@
 import { Stack, StackProps, RemovalPolicy } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { Bucket } from 'aws-cdk-lib/aws-s3';
-import { Distribution, ViewerProtocolPolicy } from 'aws-cdk-lib/aws-cloudfront';
+import {
+  Distribution,
+  ViewerProtocolPolicy,
+  Function as CloudFrontFunction,
+  FunctionCode,
+  FunctionEventType,
+} from 'aws-cdk-lib/aws-cloudfront';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
 import { resourceName } from './naming.js';
@@ -43,16 +49,47 @@ export class HostingStack extends Stack {
     });
 
     const origin = S3BucketOrigin.withOriginAccessControl(bucket);
-    const behaviour = { origin, viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS };
+
+    // Directory-index rewriter. S3 behind OAC serves objects literally — unlike a website
+    // endpoint it does NOT resolve `<prefix>/` to `<prefix>/index.html`, and
+    // `defaultRootObject` only applies to the distribution root (`/`), not per-app
+    // prefixes. Without this, `/e1` and `/e1/` request non-existent keys, 403, and get
+    // swallowed by the global error fallback below → the wrong app is served. This viewer-
+    // request function maps directory-style URIs to the app's index.html so each
+    // Experience actually loads at its own path.
+    const indexRewrite = new CloudFrontFunction(this, 'index-rewrite', {
+      functionName: resourceName('web-index-rewrite', env),
+      comment: 'Resolve <prefix>/ and extension-less paths to <prefix>/index.html',
+      code: FunctionCode.fromInline(`function handler(event) {
+  var request = event.request;
+  var uri = request.uri;
+  if (uri === '/') { return request; } // defaultRootObject handles the root
+  if (uri.endsWith('/')) {
+    request.uri = uri + 'index.html';
+  } else {
+    var seg = uri.substring(uri.lastIndexOf('/') + 1);
+    if (seg.indexOf('.') === -1) { request.uri = uri + '/index.html'; }
+  }
+  return request;
+}`),
+    });
+
+    const behaviour = {
+      origin,
+      viewerProtocolPolicy: ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+      functionAssociations: [{ function: indexRewrite, eventType: FunctionEventType.VIEWER_REQUEST }],
+    };
 
     new Distribution(this, 'cdn', {
       comment: resourceName('web', env),
       defaultRootObject: 'e3/index.html',
       defaultBehavior: behaviour,
       additionalBehaviors: Object.fromEntries(APPS.map((a) => [`${a.prefix}/*`, behaviour])),
-      // 403/404 → /e3/index.html assumes hash routing (the server only ever needs to
-      // resolve /e1/ and /e3/, which exist); history/path-based routing inside an app
-      // would need its own per-path fallback, not a single global one.
+      // Last-resort fallback for genuinely missing objects. The index-rewrite function
+      // above already resolves `/e1`, `/e1/`, `/e3`, `/e3/` to a real index.html, so this
+      // no longer masks a whole app; it only catches truly-unknown paths (both apps are
+      // hash-routed, so no server-side deep paths exist). Kept global — CloudFront error
+      // responses are distribution-level, not per-behaviour.
       errorResponses: [
         { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/e3/index.html' },
         { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/e3/index.html' },
