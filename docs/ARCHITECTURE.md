@@ -430,6 +430,14 @@ published a read-only public calendar (`apps/e3-web/src/views/calendar.ts`) appe
 E3 landing. O7 reads o3/o5 over HTTP (ADR-002); teams are labelled by `participantRef` and
 group structure comes from the schedule config (default 1 group) until the S8 gironi editor.
 
+**Phase S8 (Gironi editor, O6) — complete.** Group composition is now **explicit and editable**:
+the organizer draws groups (server-side round-robin of confirmed teams), moves teams between them
+and locks, from the E1 **Gironi** tab (`apps/e1-web/src/views/gironi.ts`). The composition lives on
+the o3 event (`gironi` map, per S6's O6-on-o3 decision — `services/o3-sport-events/src/gironi.ts` +
+`POST /o3/events/:id/gironi:draw` / `PUT …/gironi/:categoria` / `GET …/gironi`). O7's `buildFixtures`
+was refactored to consume the resolved groups, so `generate` follows the composition when present
+and falls back to the S7 auto-split otherwise.
+
 ## 13. Where to read more
 
 - [`README.md`](../README.md) — quick start.

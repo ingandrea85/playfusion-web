@@ -13,8 +13,8 @@ export class HttpEventSource implements EventSource {
     const res = await this.doFetch(`${this.base}/o3/events/${encodeURIComponent(sportEventId)}`);
     if (res.status === 404) return undefined;
     if (!res.ok) return undefined;
-    const e = (await res.json()) as { sportEventId: string; dates: { from: string; to: string }; categorie: string[] };
-    return { sportEventId: e.sportEventId, dates: e.dates, categorie: e.categorie ?? [] };
+    const e = (await res.json()) as EventView;
+    return { sportEventId: e.sportEventId, dates: e.dates, categorie: e.categorie ?? [], gironi: e.gironi };
   }
 }
 

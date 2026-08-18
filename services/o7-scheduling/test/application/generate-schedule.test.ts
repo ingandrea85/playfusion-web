@@ -71,3 +71,19 @@ test('test_homeAwayDoublesFixtures', async () => {
   // U10: 3 pairs ×2 = 6; U12: 1 pair ×2 = 2 → 8.
   expect(await listMatches(matches)('evt-1')).toHaveLength(8);
 });
+
+test('test_generate_usesExplicitGironiCompositionWhenPresent', async () => {
+  // o3 gironi splits U10 into two groups; the fixtures must follow that composition, not
+  // the auto-split. U10 groups [A,B] & [C] → 1 pair (A-B) + 0; U12 has no composition →
+  // auto-split of its 2 confirmed teams → 1 pair. Total 2.
+  events = new FakeEventSource({ 'evt-1': {
+    sportEventId: 'evt-1', dates: { from: '2026-08-29', to: '2026-08-30' }, categorie: ['U10', 'U12'],
+    gironi: { U10: { groups: [{ label: 'Girone A', teams: ['A', 'B'] }, { label: 'Girone B', teams: ['C'] }], locked: false } },
+  } });
+  await generateSchedule(deps())({ sportEventId: 'evt-1', organizationId: 'org-1', config: { ...config, groupsCount: 1 } });
+  const m = await listMatches(matches)('evt-1');
+  const u10 = m.filter((x) => x.categoryId === 'U10');
+  expect(u10).toHaveLength(1);
+  expect(u10[0]).toMatchObject({ groupLabel: 'Girone A', home: 'A', away: 'B' });
+  expect(m.filter((x) => x.categoryId === 'U12')).toHaveLength(1); // auto-split fallback
+});

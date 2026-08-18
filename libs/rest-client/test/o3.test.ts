@@ -42,3 +42,34 @@ describe('o3 api', () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(input)
   })
 })
+
+describe('o3 gironi (S8)', () => {
+  it('getGironi GETs /o3/events/:id/gironi', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ U10: { groups: [{ label: 'Girone A', teams: ['A'] }], locked: false } }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o3.getGironi('e1')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api/prod/o3/events/e1/gironi')
+    expect(out.U10.groups[0].teams).toEqual(['A'])
+  })
+
+  it('drawGironi POSTs categoria + groupsCount to /gironi:draw', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ groups: [{ label: 'Girone A', teams: ['A'] }], locked: false }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    await c.o3.drawGironi('e1', 'U10', 2)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://api/prod/o3/events/e1/gironi:draw')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ categoria: 'U10', groupsCount: 2 })
+  })
+
+  it('saveGironi PUTs groups + locked to /gironi/:categoria', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ groups: [], locked: true }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const groups = [{ label: 'Girone A', teams: ['A', 'B'] }]
+    await c.o3.saveGironi('e1', 'U10', groups, true)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://api/prod/o3/events/e1/gironi/U10')
+    expect(init.method).toBe('PUT')
+    expect(JSON.parse(init.body)).toEqual({ groups, locked: true })
+  })
+})
