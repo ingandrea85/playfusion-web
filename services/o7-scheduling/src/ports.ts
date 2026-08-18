@@ -1,4 +1,4 @@
-import type { Schedule, ScheduledMatch } from './domain.js';
+import type { ResolvedGroup, Schedule, ScheduledMatch } from './domain.js';
 
 /** Persistence seam for the Schedule aggregate (one per event). */
 export interface ScheduleRepository {
@@ -19,6 +19,9 @@ export interface EventView {
   sportEventId: string;
   dates: { from: string; to: string };
   categorie: string[];
+  /** S8: explicit per-category group composition from o3 (structural — o7 must not import
+   *  o3's type, ADR-002). When present for a category, it overrides the auto-split. */
+  gironi?: Record<string, { groups: ResolvedGroup[]; locked: boolean }>;
 }
 export interface EventSource {
   get(sportEventId: string): Promise<EventView | undefined>;

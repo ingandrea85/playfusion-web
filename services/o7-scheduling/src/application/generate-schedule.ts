@@ -1,5 +1,5 @@
 import { buildFixtures } from '../fixtures.js';
-import { canGenerate, defaultConfig, type FixtureCategory, type Schedule, type ScheduleConfig } from '../domain.js';
+import { autoSplit, canGenerate, defaultConfig, type FixtureCategory, type Schedule, type ScheduleConfig } from '../domain.js';
 import { EventNotFoundError } from '../errors.js';
 import type { EventSource, MatchRepository, ScheduleRepository, TeamSource } from '../ports.js';
 
@@ -32,11 +32,15 @@ export function generateSchedule(deps: GenerateScheduleDeps) {
     if (!event) throw new EventNotFoundError(input.sportEventId);
     const byCategory = await teams.confirmedByCategory(input.sportEventId);
 
-    const cats: FixtureCategory[] = event.categorie.map((categoria) => ({
-      id: categoria, name: categoria,
-      groupsCount: input.config.groupsCount, legs: input.config.legs,
-      teams: byCategory.get(categoria) ?? [],
-    }));
+    // Resolve each category's groups: the explicit o3 gironi composition (S8) when it exists
+    // and is non-empty, otherwise the S7 auto-split of confirmed teams by config.groupsCount.
+    const cats: FixtureCategory[] = event.categorie.map((categoria) => {
+      const composed = event.gironi?.[categoria]?.groups;
+      const groups = composed?.some((g) => g.teams.length)
+        ? composed
+        : autoSplit(byCategory.get(categoria) ?? [], input.config.groupsCount);
+      return { id: categoria, name: categoria, legs: input.config.legs, groups };
+    });
     const fixtures = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config, cats);
     await matches.replace(input.sportEventId, fixtures);
 

@@ -8,8 +8,6 @@ function pairs(teams: string[]): Array<[string, string]> {
   return out;
 }
 
-function groupLabel(i: number): string { return `Girone ${String.fromCharCode(65 + i)}`; }
-
 /** Inclusive list of ISO days from start to end (UTC, no time zone drift). */
 function dateRange(start: string, end: string): string[] {
   const out: string[] = [];
@@ -26,24 +24,21 @@ function addMinutes(hhmm: string, mins: number): string {
   return `${String(hh).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
-/** Deterministic "plausible" fixture generator: split each category's teams into groups
- *  (round-robin i → group i % groupsCount), build each group's round-robin (doubled for
- *  HOME_AWAY), then place matches on fields/slots/days by rotating field → slot → day.
- *  No conflict avoidance, no `Math.random`; ids are `sm-${n}`. */
+/** Deterministic "plausible" fixture generator: for each category's resolved groups (the
+ *  gironi composition — S8), build each group's round-robin (doubled for HOME_AWAY), then
+ *  place matches on fields/slots/days by rotating field → slot → day. No conflict avoidance,
+ *  no `Math.random`; ids are `sm-${n}`. */
 export function buildFixtures(
   eventId: string, startDate: string, endDate: string, config: ScheduleConfig, cats: FixtureCategory[],
 ): ScheduledMatch[] {
   const raw: Array<{ categoryId: string; groupLabel: string; home: string; away: string }> = [];
   for (const cat of cats) {
-    const groups = Math.max(1, cat.groupsCount);
-    const buckets: string[][] = Array.from({ length: groups }, () => []);
-    cat.teams.forEach((t, i) => buckets[i % groups]!.push(t));
-    buckets.forEach((bucket, gi) => {
-      for (const [home, away] of pairs(bucket)) {
-        raw.push({ categoryId: cat.id, groupLabel: groupLabel(gi), home, away });
-        if (cat.legs === 'HOME_AWAY') raw.push({ categoryId: cat.id, groupLabel: groupLabel(gi), home: away, away: home });
+    for (const group of cat.groups) {
+      for (const [home, away] of pairs(group.teams)) {
+        raw.push({ categoryId: cat.id, groupLabel: group.label, home, away });
+        if (cat.legs === 'HOME_AWAY') raw.push({ categoryId: cat.id, groupLabel: group.label, home: away, away: home });
       }
-    });
+    }
   }
 
   const days = dateRange(startDate, endDate);

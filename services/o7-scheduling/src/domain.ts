@@ -46,13 +46,26 @@ export interface ScheduledMatch {
   away: string;
 }
 
-/** One category's teams + its (uniform, for S7) group structure, fed to buildFixtures. */
+/** A resolved group: its label + the teams composing it. */
+export interface ResolvedGroup { label: string; teams: string[] }
+
+/** One category fed to buildFixtures: its resolved groups (from the o3 gironi composition
+ *  when present, else auto-split — S8) + the leg count. */
 export interface FixtureCategory {
   id: string;
   name: string;
-  groupsCount: number;
   legs: Legs;
-  teams: string[];
+  groups: ResolvedGroup[];
+}
+
+/** Round-robin auto-seed used when a category has no explicit gironi composition (S7
+ *  fallback): team i → group `i % groupsCount`. Mirrors o3's `autoDraw` (ADR-002: BCs
+ *  cannot share code, and this trivial split is duplicated by design). */
+export function autoSplit(teams: string[], groupsCount: number): ResolvedGroup[] {
+  const n = Math.max(1, Math.floor(groupsCount));
+  const groups: ResolvedGroup[] = Array.from({ length: n }, (_, i) => ({ label: `Girone ${String.fromCharCode(65 + i)}`, teams: [] }));
+  teams.forEach((t, i) => groups[i % n]!.teams.push(t));
+  return groups;
 }
 
 export function defaultConfig(): ScheduleConfig {
