@@ -44,3 +44,23 @@ describe('o7 api', () => {
     expect(fetchMock.mock.calls[1][0]).toBe('https://api/prod/o7/events/e1/schedule:publish')
   })
 })
+
+describe('o7 reschedule (S9)', () => {
+  it('rescheduleMatch PUTs the patch to /o7/events/:id/matches/:matchId', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ id: 'sm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Girone A', day: '2026-08-30', time: '10:00', field: 'Campo B', home: 'A', away: 'B' }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const patch = { day: '2026-08-30', time: '10:00', field: 'Campo B' }
+    const out = await c.o7.rescheduleMatch('e1', 'sm-1', patch)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://api/prod/o7/events/e1/matches/sm-1')
+    expect(init.method).toBe('PUT')
+    expect(JSON.parse(init.body)).toEqual(patch)
+    expect(out.time).toBe('10:00')
+  })
+
+  it('propagates a 409 slot conflict as a RestError', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ code: 'SLOT_CONFLICT', message: 'taken' }, 409))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    await expect(c.o7.rescheduleMatch('e1', 'sm-1', { day: 'd', time: 't', field: 'f' })).rejects.toMatchObject({ status: 409, code: 'SLOT_CONFLICT' })
+  })
+})
