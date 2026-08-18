@@ -25,6 +25,10 @@ export interface CreateEventInput {
   playbook?: Playbook
 }
 export interface CreateEventResult { sportEventId: string; status: 'Published' }
+// o6 gironi (composition on the o3 event) — S8
+export interface Group { label: string; teams: string[] }
+export interface CategoryGironi { groups: Group[]; locked: boolean }
+export type GironiMap = Record<string, CategoryGironi>
 
 // o5 (services/o5-registration/src/domain/registration.ts + application/*)
 export type RegistrationStatus = 'Applied' | 'Confirmed' | 'Rejected'
