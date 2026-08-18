@@ -20,18 +20,30 @@ const app = new Hono();
 // unless the Lambda sets Access-Control-Allow-Origin itself.
 app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'OPTIONS'] }));
 const orgOf = (c: any) => getIdentity(c)?.organizationId ?? c.req.header('x-organization-id') ?? 'org-pilot';
-const body = z.object({ sport: z.string(), categorie: z.array(z.string()), dates: z.object({ from: z.string(), to: z.string() }) });
+const tieBreakCriterion = z.enum(['HEAD_TO_HEAD', 'GOAL_DIFFERENCE', 'GOALS_FOR']);
+// S6.1: competition config is added additively — dates stay start/end date, the rest is
+// optional (pre-S6 clients keep working) and `playbook` defaults to PB-1.
+export const createEventBody = z.object({
+  sport: z.string(),
+  categorie: z.array(z.string()),
+  dates: z.object({ from: z.string(), to: z.string() }),
+  name: z.string().optional(),
+  location: z.string().optional(),
+  startTime: z.string().optional(),
+  tieBreak: z.array(tieBreakCriterion).optional(),
+  playbook: z.enum(['PB-1', 'PB-2']).default('PB-1'),
+});
 
 // S2.4: creating an event is an organizer mutation.
 const auth0cfg = auth0ConfigFromEnv();
 const organizer = requireOrganizer({ auth0: auth0cfg ? createAuth0Verifier(auth0cfg) : undefined });
 
 app.post('/events', organizer, async (c) => {
-  const b = body.parse(await c.req.json());
+  const b = createEventBody.parse(await c.req.json());
   const sportEventId = randomUUID();
   const organizationId = orgOf(c);
   await db.send(new PutCommand({ TableName: resourceName('o3-events'), Item: { sportEventId, organizationId, ...b, status: 'Published' } }));
-  await publisher.publish('EventPublished', { sportEventId, sport: b.sport, categorie: b.categorie, dates: b.dates }, organizationId);
+  await publisher.publish('EventPublished', { sportEventId, sport: b.sport, categorie: b.categorie, dates: b.dates, playbook: b.playbook }, organizationId);
   return c.json({ sportEventId, status: 'Published' }, 201);
 });
 

@@ -29,4 +29,16 @@ describe('o3 api', () => {
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body)).toEqual({ sport: 'calcio', categorie: ['U10'], dates: { from: 'a', to: 'b' } })
   })
+
+  it('createEvent POSTs the full competition config when provided', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ sportEventId: 'new', status: 'Published' }, 201))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const input = {
+      sport: 'Calcio', categorie: ['U10'], dates: { from: 'a', to: 'b' },
+      name: 'Torneo', location: 'Rivalta', startTime: '09:00',
+      tieBreak: ['HEAD_TO_HEAD' as const], playbook: 'PB-2' as const,
+    }
+    await c.o3.createEvent(input)
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(input)
+  })
 })
