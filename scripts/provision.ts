@@ -95,6 +95,17 @@ await ddb.send(new CreateTableCommand({
 
 console.log('provision: O12/O5-consumer tables (o12-fees, o5-processed-events) ensured on', endpoint);
 
+// O7 scheduling (S7): schedule aggregate + fixtures, both keyed by sportEventId.
+for (const t of ['o7-schedules', 'o7-matches'] as const) {
+  await ddb.send(new CreateTableCommand({
+    TableName: resourceName(t), BillingMode: 'PAY_PER_REQUEST',
+    AttributeDefinitions: [{ AttributeName: 'sportEventId', AttributeType: 'S' }],
+    KeySchema: [{ AttributeName: 'sportEventId', KeyType: 'HASH' }],
+  })).catch(ignoreExists);
+}
+
+console.log('provision: O7 tables (o7-schedules, o7-matches) ensured on', endpoint);
+
 // NOTE on EventBridge rules (decision-4 pragmatic path): the plan calls for rules
 // routing `detail-type` (ParticipationFeePaid/ParticipantCreated/EventPublished → O5
 // consumer; RegistrationApplied → O12 consumer) with Lambda targets. No Lambdas are

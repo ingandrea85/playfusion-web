@@ -417,6 +417,19 @@ in platform-lib), S2.3 (hardened magic-link), S2.4 (enforcement on O3/O5, dual-a
 bridge) — see §5c. S2.1 ships the Auth0 config plumbing + [setup runbook](runbooks/auth0-setup.md);
 live organizer login is deferred until the tenant + E1 SPA (S3) exist.
 
+**Phases S3–S6 (Experience SPAs) — complete.** S3 (frontend foundation: `app-shell`,
+`rest-client` seam, E1/E3 shells, Auth0 + magic-link), S4/S5 (E1↔E3 Bundle Enrollment
+screens), S6 (Competition config O6: full create-event + Panoramica/Competition/Categorie
+tabs). See the per-slice specs under `docs/superpowers/specs/`.
+
+**Phase S7 (Scheduling + public calendar, O7) — complete.** New `o7-scheduling` BC
+(`services/o7-scheduling/`, mounted at `/o7`): generate a group-stage calendar from the
+confirmed teams (o5) and event categories (o3), then approve and publish it. The organizer
+drives it from the E1 **Calendario** tab (`apps/e1-web/src/views/schedule.ts`); once
+published a read-only public calendar (`apps/e3-web/src/views/calendar.ts`) appears on the
+E3 landing. O7 reads o3/o5 over HTTP (ADR-002); teams are labelled by `participantRef` and
+group structure comes from the schedule config (default 1 group) until the S8 gironi editor.
+
 ## 13. Where to read more
 
 - [`README.md`](../README.md) — quick start.

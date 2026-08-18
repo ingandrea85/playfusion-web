@@ -3,7 +3,8 @@ import { renderPublicTopbar, renderCategoryTag, esc } from '@playfusion/app-shel
 
 export { renderParticipants } from './participants.js'
 
-export function renderLanding(event: EventDetail, window: RegistrationWindowView): string {
+/** `published` (S7): shows a public "Calendario" link once the schedule is published. */
+export function renderLanding(event: EventDetail, window: RegistrationWindowView, published = false): string {
   const capOf = (c: string) => window.categories.find((x) => x.categoria === c)
   const cats = event.categorie.map((c) => { const w = capOf(c); return renderCategoryTag(c, w?.count ?? 0, w?.cap ?? 0) }).join('')
   const id = encodeURIComponent(event.sportEventId)
@@ -12,12 +13,15 @@ export function renderLanding(event: EventDetail, window: RegistrationWindowView
   const applyCta = window.state === 'Open'
     ? `<a class="pf-btn pf-btn--primary" href="#/events/${id}/apply">Iscrivi la tua squadra →</a>`
     : ''
+  const calendarCta = published
+    ? `<a class="pf-btn" href="#/events/${id}/calendar">Calendario →</a>`
+    : ''
   return `${renderPublicTopbar()}
     <section class="pf-hero"><div class="pf-hero__inner">
       <div class="pf-eyebrow">Evento</div>
       <h1>${esc(event.sport)}</h1>
       <div class="pf-hero__meta">${esc(event.dates.from)} → ${esc(event.dates.to)}</div>
       <ul class="pf-catlist">${cats}</ul>
-      <div class="pf-row">${applyCta}<a class="pf-btn" href="#/events/${id}/participants">Vedi le squadre iscritte →</a></div>
+      <div class="pf-row">${applyCta}<a class="pf-btn" href="#/events/${id}/participants">Vedi le squadre iscritte →</a>${calendarCta}</div>
     </div></section>`
 }

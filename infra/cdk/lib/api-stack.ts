@@ -56,6 +56,8 @@ const BCS: BcSpec[] = [
     tables: ['o12-fees'],
     consumer: { tables: ['o12-fees'], detailTypes: ['RegistrationApplied'] },
   },
+  // O7 scheduling (S7): reads o3/o5 over HTTP (PF_API_BASE_URL), no consumer.
+  { key: 'o7-scheduling', route: 'o7', tables: ['o7-schedules', 'o7-matches'] },
 ];
 
 /**
@@ -116,10 +118,15 @@ export class ApiStack extends Stack {
     // verify endpoint get its base URL here. Built from restApiId (not api.url) to avoid a
     // Lambda→Stage→Deployment→Method→Lambda circular dependency; stage name is the default 'prod'.
     const o2BaseUrl = `https://${api.restApiId}.execute-api.${this.region}.amazonaws.com/prod/o2`;
+    // Stage root (no BC suffix): O7 prefixes /o3 and /o5 itself to read events + confirmed
+    // teams over HTTP (ADR-002 no code imports). Same restApiId construction as o2BaseUrl to
+    // avoid the Lambda→Stage→Deployment circular dependency.
+    const apiBaseUrl = `https://${api.restApiId}.execute-api.${this.region}.amazonaws.com/prod`;
 
     for (const bc of BCS) {
       const handler = lambda(`${bc.route}-handler`, resolve(SERVICES, bc.key, 'src/handler.ts'));
       handler.addEnvironment('O2_BASE_URL', o2BaseUrl);
+      handler.addEnvironment('PF_API_BASE_URL', apiBaseUrl);
       for (const t of bc.tables) props.data.tables[t]!.grantReadWriteData(handler);
       props.data.bus.grantPutEventsTo(handler);
 
