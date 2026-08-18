@@ -16,9 +16,9 @@ describe('e1 views', () => {
   it('dashboard shows a create-event CTA', () => {
     expect(renderDashboard([])).toContain('#/events/new')
   })
-  it('workspace renders the chrome hero + a placeholder tab body', () => {
+  it('workspace renders the chrome hero + the competition config (S6)', () => {
     const html = renderWorkspace(ev, 'overview')
     expect(html).toContain('pf-whero')
-    expect(html).toMatch(/S4/) // "arriving in S4+" placeholder
+    expect(html).toContain('PB-1') // persisted playbook, no longer a placeholder
   })
 })
