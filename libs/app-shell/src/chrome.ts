@@ -25,6 +25,28 @@ export function renderPublicTopbar(brandHtml?: string): string {
   return `<header class="pf-publicbar"><a class="pf-brand" href="#/">${brandHtml ?? 'play<b>fusion</b>'}</a></header>`
 }
 
+/** Structural shape of a scheduled match for rendering — kept local so app-shell needs
+ *  no dependency on rest-client (rest-client's ScheduledMatchView satisfies it). */
+export interface CalendarMatch { categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string }
+
+/** Calendar rendering — grouped by day, matches sorted by time then field. Shared by the
+ *  E1 organizer schedule screen and the E3 public calendar so the two never drift. */
+export function renderCalendar(matches: CalendarMatch[], catName: (id: string) => string): string {
+  if (!matches.length) return `<p class="pf-muted">Nessuna partita in calendario.</p>`
+  const days = [...new Set(matches.map((m) => m.day))].sort()
+  return days.map((day) => {
+    const rows = matches.filter((m) => m.day === day)
+      .sort((a, b) => a.time.localeCompare(b.time) || a.field.localeCompare(b.field))
+      .map((m) => `<li class="pf-match">
+        <span class="pf-match__time pf-mono">${esc(m.time)}</span>
+        <span class="pf-match__field pf-mono">${esc(m.field)}</span>
+        <span class="pf-match__cat">${esc(catName(m.categoryId))} · ${esc(m.groupLabel)}</span>
+        <span class="pf-match__teams">${esc(m.home)} <b>vs</b> ${esc(m.away)}</span>
+      </li>`).join('')
+    return `<div class="pf-calday"><div class="pf-calday__head pf-mono">${esc(day)}</div><ul class="pf-callist">${rows}</ul></div>`
+  }).join('')
+}
+
 export function renderCategoryTag(name: string, count: number, maxTeams: number): string {
   const full = maxTeams > 0 && count >= maxTeams
   const pct = maxTeams > 0 ? Math.min(100, Math.round((count / maxTeams) * 100)) : 0

@@ -3,12 +3,13 @@ import { renderOrganizerWorkspace, esc, type WorkspaceTab } from '@playfusion/ap
 import type { Screen } from '../view.js'
 import { criterionLabel } from './tiebreak.js'
 
-const tabs = (id: string): WorkspaceTab[] => {
+export const workspaceTabs = (id: string): WorkspaceTab[] => {
   const e = encodeURIComponent(id)
   return [
     { key: 'overview', label: 'Panoramica', href: `#/events/${e}` },
     { key: 'competition', label: 'Competizione', href: `#/events/${e}/competition` },
     { key: 'categorie', label: 'Categorie', href: `#/events/${e}/categorie` },
+    { key: 'schedule', label: 'Calendario', href: `#/events/${e}/schedule` },
     { key: 'enroll', label: 'Iscrizioni', href: `#/events/${e}/enroll` },
     { key: 'participants', label: 'Partecipanti', href: `#/events/${e}/participants` },
   ]
@@ -29,13 +30,14 @@ const heroMeta = (e: EventDetail): string => {
   return `${e.sport} · ${start} → ${e.dates.to}`
 }
 
-function shell(event: EventDetail, activeTab: string, body: string): string {
+export function workspaceShell(event: EventDetail, activeTab: string, body: string): string {
   const hero = renderOrganizerWorkspace(
     { name: esc(eventTitle(event)), meta: esc(heroMeta(event)) },
-    tabs(event.sportEventId), activeTab,
+    workspaceTabs(event.sportEventId), activeTab,
   )
   return `${hero}<main class="pf-container">${body}</main>`
 }
+const shell = workspaceShell
 
 const row = (label: string, value: string): string =>
   `<div class="pf-deflist__row"><dt>${esc(label)}</dt><dd>${value}</dd></div>`
