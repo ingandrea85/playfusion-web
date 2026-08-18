@@ -80,7 +80,7 @@ export class HostingStack extends Stack {
       functionAssociations: [{ function: indexRewrite, eventType: FunctionEventType.VIEWER_REQUEST }],
     };
 
-    new Distribution(this, 'cdn', {
+    const distribution = new Distribution(this, 'cdn', {
       comment: resourceName('web', env),
       defaultRootObject: 'e3/index.html',
       defaultBehavior: behaviour,
@@ -100,15 +100,26 @@ export class HostingStack extends Stack {
     // Prerequisite: `apps/{e1,e3}-web/dist` must already exist at synth time — run
     // `npm run build -w @playfusion/e1-web -w @playfusion/e3-web` (or the Nx equivalent)
     // before `cdk synth`/`cdk deploy`, since Source.asset reads the built output on disk.
+    //
+    // `distribution` + `distributionPaths` make each deploy issue a CloudFront
+    // invalidation. Without it, a new deploy uploads fresh hashed bundles to S3 but the
+    // edge keeps serving the previously-cached index.html (which references the OLD
+    // bundle) until TTL (up to 24h) — so a shipped fix silently doesn't reach users. Only
+    // index.html needs busting (assets are content-hashed), but we invalidate the whole
+    // prefix for safety; the root `/` (defaultRootObject → e3) is refreshed with e3.
     new BucketDeployment(this, 'e1', {
       destinationBucket: bucket,
       destinationKeyPrefix: 'e1',
       sources: [Source.asset(resolve(REPO, 'apps/e1-web/dist'))],
+      distribution,
+      distributionPaths: ['/e1/*'],
     });
     new BucketDeployment(this, 'e3', {
       destinationBucket: bucket,
       destinationKeyPrefix: 'e3',
       sources: [Source.asset(resolve(REPO, 'apps/e3-web/dist'))],
+      distribution,
+      distributionPaths: ['/e3/*', '/'],
     });
   }
 }
