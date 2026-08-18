@@ -68,6 +68,11 @@ export class DataStack extends Stack {
     });
     this.tables['o12-fees'] = fees;
 
+    // O7 scheduling (S7): the Schedule aggregate + the event's fixtures, both keyed by
+    // sportEventId (matches stored as a single item holding the array — see the match repo).
+    this.tables['o7-schedules'] = table('o7-schedules', 'sportEventId');
+    this.tables['o7-matches'] = table('o7-matches', 'sportEventId');
+
     // Shared domain-event bus (source = EVENT_SOURCE, same across envs)
     this.bus = new EventBus(this, 'bus', { eventBusName: busName(env) });
   }
