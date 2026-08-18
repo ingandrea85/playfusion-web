@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderApply, openCategories, buildApplyInput } from '../src/views/apply'
 
-const ev = { sportEventId: 'e1', sport: 'calcio', categorie: ['U10', 'U12', 'U14'], dates: { from: '2026-09-01', to: '2026-09-02' }, status: 'Published' as const }
+const ev = { sportEventId: 'e1', sport: 'calcio', categorie: ['U10', 'U12', 'U14'], dates: { from: '2026-09-01', to: '2026-09-02' }, status: 'Published' as const, playbook: 'PB-1' as const }
 const win = {
   sportEventId: 'e1',
   state: 'Open' as const,
