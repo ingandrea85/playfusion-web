@@ -5,6 +5,7 @@ import { HashRouter } from '@playfusion/app-shell'
 import { createClient } from '@playfusion/rest-client'
 import { readConfig } from './config.js'
 import { renderLanding, renderParticipants } from './views/landing.js'
+import { renderPublicCalendar } from './views/calendar.js'
 import { renderApply, buildApplyInput } from './views/apply.js'
 import { captureMagicLink, magicLinkAuthProvider, storedToken, clearToken } from './auth/magic-link.js'
 
@@ -58,9 +59,15 @@ new HashRouter()
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/apply', ({ id }) => applyRoute(id))
-  .on('#/events/:id', async ({ id }) => {
-    try { const [ev, win] = await Promise.all([client.o3.getEvent(id), client.o5.getRegistrationWindow(id)]); app.innerHTML = renderLanding(ev, win) }
+  .on('#/events/:id/calendar', async ({ id }) => {
+    try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); app.innerHTML = renderPublicCalendar(ev, sched, matches) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
+  })
+  .on('#/events/:id', async ({ id }) => {
+    try {
+      const [ev, win, sched] = await Promise.all([client.o3.getEvent(id), client.o5.getRegistrationWindow(id), client.o7.getSchedule(id)])
+      app.innerHTML = renderLanding(ev, win, sched.status === 'PUBLISHED')
+    } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/', () => { app.innerHTML = '<main class="pf-container"><div class="pf-card pf-muted">Apri il link del tuo evento.</div></main>' })
   .start()
