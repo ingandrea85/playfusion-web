@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { renderEnroll } from '../src/views/enroll'
 
 const base = {
-  event: { sportEventId: 'e1', sport: 'calcio', categorie: ['U10', 'U12'], dates: { from: 'a', to: 'b' }, status: 'Published' as const },
+  event: { sportEventId: 'e1', sport: 'calcio', categorie: ['U10', 'U12'], dates: { from: 'a', to: 'b' }, status: 'Published' as const, playbook: 'PB-1' as const },
   e3BaseUrl: 'https://host',
 }
 

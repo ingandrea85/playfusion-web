@@ -8,7 +8,7 @@ describe('participants mount does not accumulate listeners across refresh', () =
     const refresh = vi.fn()
     const ctx = { client: { o12: { payFee } } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh }
     const data = {
-      event: { sportEventId: 'e1', sport: 's', categorie: ['U10'], dates: { from: 'a', to: 'b' }, status: 'Published' as const },
+      event: { sportEventId: 'e1', sport: 's', categorie: ['U10'], dates: { from: 'a', to: 'b' }, status: 'Published' as const, playbook: 'PB-1' as const },
       confirmed: [{ registrationId: 'r2', participantRef: 'B', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' as const }],
       fees: { r2: 'Requested' as const },
     }

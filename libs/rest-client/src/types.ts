@@ -1,13 +1,29 @@
 // o3 (services/o3-sport-events/src/read-model.ts + domain.ts)
+export type Playbook = 'PB-1' | 'PB-2'
+export type TieBreakCriterion = 'HEAD_TO_HEAD' | 'GOAL_DIFFERENCE' | 'GOALS_FOR'
 export interface EventDetail {
   sportEventId: string
   sport: string
   categorie: string[]
   dates: { from: string; to: string }
   status: 'Published'
+  playbook: Playbook
+  name?: string
+  location?: string
+  startTime?: string
+  tieBreak?: TieBreakCriterion[]
 }
 export type EventSummary = EventDetail
-export interface CreateEventInput { sport: string; categorie: string[]; dates: { from: string; to: string } }
+export interface CreateEventInput {
+  sport: string
+  categorie: string[]
+  dates: { from: string; to: string }
+  name?: string
+  location?: string
+  startTime?: string
+  tieBreak?: TieBreakCriterion[]
+  playbook?: Playbook
+}
 export interface CreateEventResult { sportEventId: string; status: 'Published' }
 
 // o5 (services/o5-registration/src/domain/registration.ts + application/*)

@@ -43,3 +43,19 @@ test('test_getEvent_undefinedWhenMissing', async () => {
   const store = new InMemoryEventStore();
   expect(await getEvent(store)('missing')).toBeUndefined();
 });
+
+test('test_getEvent_returnsCompetitionConfig', async () => {
+  const store = new InMemoryEventStore();
+  await store.add({
+    sportEventId: 'evt-cfg', organizationId: 'org-1', sport: 'Calcio', categorie: ['U15'],
+    dates: { from: '2027-06-01', to: '2027-06-03' }, status: 'Published',
+    name: 'Torneo Estivo', location: 'Centro Sportivo', startTime: '09:00',
+    tieBreak: ['HEAD_TO_HEAD', 'GOAL_DIFFERENCE'], playbook: 'PB-2',
+  });
+  const res = await getEvent(store)('evt-cfg');
+  expect(res).toMatchObject({
+    name: 'Torneo Estivo', location: 'Centro Sportivo', startTime: '09:00',
+    tieBreak: ['HEAD_TO_HEAD', 'GOAL_DIFFERENCE'], playbook: 'PB-2',
+  });
+  expect(res).not.toHaveProperty('organizationId');
+});

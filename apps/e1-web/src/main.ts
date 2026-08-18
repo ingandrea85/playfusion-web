@@ -7,7 +7,7 @@ import { readConfig } from './config.js'
 import { runScreen, errorCard, type ViewCtx, type Screen } from './view.js'
 import { dashboardScreen } from './views/dashboard.js'
 import { createEventScreen } from './views/create-event.js'
-import { workspaceScreen } from './views/workspace.js'
+import { workspaceScreen, competitionScreen, categorieScreen } from './views/workspace.js'
 import { enrollScreen } from './views/enroll.js'
 import { participantsScreen } from './views/participants.js'
 import { createAuth0Adapter, ensureAuthenticated, authProviderFrom } from './auth/auth0.js'
@@ -36,6 +36,8 @@ async function boot() {
     new HashRouter()
       .on('#/', () => route(dashboardScreen, {}))
       .on('#/events/new', () => route(createEventScreen, {}))
+      .on('#/events/:id/competition', (p) => route(competitionScreen, p))
+      .on('#/events/:id/categorie', (p) => route(categorieScreen, p))
       .on('#/events/:id/enroll', (p) => route(enrollScreen, p))
       .on('#/events/:id/participants', (p) => route(participantsScreen, p))
       .on('#/events/:id', (p) => route(workspaceScreen, p))

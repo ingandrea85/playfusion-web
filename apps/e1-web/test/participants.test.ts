@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { renderParticipants } from '../src/views/participants'
 
-const event = { sportEventId: 'e1', sport: 'calcio', categorie: ['U10'], dates: { from: 'a', to: 'b' }, status: 'Published' as const }
+const event = { sportEventId: 'e1', sport: 'calcio', categorie: ['U10'], dates: { from: 'a', to: 'b' }, status: 'Published' as const, playbook: 'PB-1' as const }
 
 describe('participants render', () => {
   it('lists confirmed participants with fee status and a pay button when unpaid', () => {
