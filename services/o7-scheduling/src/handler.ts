@@ -11,17 +11,20 @@ import {
 import { DIRECTOR_ROLE, DIRECTOR_PURPOSE, directorSubject, parseDirectorScope } from './director-token.js';
 import { DynamoDbScheduleRepository } from './adapters/dynamodb-schedule-repository.js';
 import { DynamoDbMatchRepository } from './adapters/dynamodb-match-repository.js';
+import { DynamoDbTieOverrideRepository } from './adapters/dynamodb-tie-override-repository.js';
 import { HttpEventSource, HttpTeamSource } from './adapters/http-sources.js';
 import { generateSchedule } from './application/generate-schedule.js';
 import { approveSchedule, publishSchedule } from './application/change-status.js';
 import { rescheduleMatch } from './application/reschedule-match.js';
 import { recordResult } from './application/record-result.js';
+import { setTieOverride } from './application/resolve-tie.js';
 import { startMatch, finishMatch, cancelMatch } from './application/transition-status.js';
 import { getScheduleOrDefault, listMatches, listStandings } from './application/read.js';
 
 const db = makeDocClient();
 const schedules = new DynamoDbScheduleRepository(db);
 const matches = new DynamoDbMatchRepository(db);
+const overrides = new DynamoDbTieOverrideRepository(db);
 const events = new HttpEventSource();
 const teams = new HttpTeamSource();
 
@@ -152,8 +155,26 @@ app.post('/events/:id/director-token', organizer, async (c) => {
   return c.json({ field, token });
 });
 
-// S10: live standings computed from results (public).
-app.get('/events/:id/standings', async (c) => c.json(await listStandings(matches)(c.req.param('id'))));
+// S10/S11: live standings computed from results, ranked by the event's tie-break policy with
+// manual overrides applied (public).
+app.get('/events/:id/standings', async (c) => c.json(await listStandings(matches, { overrides, events })(c.req.param('id'))));
+
+// S11: manual resolution of a group's residual tie (organizer). The path carries the category and
+// group label (URL-encoded — they contain spaces, e.g. "Girone A"); the body is the decided order.
+// `resolvedBy` is the organizer's identity, stored for audit (#44).
+const tieOverrideBody = z.object({ order: z.array(z.string().min(1)).min(1) });
+app.put('/events/:id/standings/:categoryId/:groupLabel/override', organizer, async (c) => {
+  const { order } = tieOverrideBody.parse(await c.req.json());
+  const resolvedBy = getIdentity(c)?.subject ?? 'organizer';
+  const saved = await setTieOverride(overrides)({
+    sportEventId: c.req.param('id'),
+    categoryId: c.req.param('categoryId'), // Hono URL-decodes path params
+    groupLabel: c.req.param('groupLabel'),
+    order,
+    resolvedBy,
+  });
+  return c.json(saved);
+});
 
 // Public reads: schedule status/config + the placed fixtures.
 app.get('/events/:id/schedule', async (c) =>

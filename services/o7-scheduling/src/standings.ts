@@ -42,6 +42,6 @@ export function computeStandings(matches: ScheduledMatch[]): GroupStanding[] {
     const rows = [...g.rows.values()].map((r) => ({ ...r, goalDiff: r.goalsFor - r.goalsAgainst }));
     rows.sort((a, b) =>
       b.points - a.points || b.goalDiff - a.goalDiff || b.goalsFor - a.goalsFor || a.team.localeCompare(b.team));
-    return { categoryId: g.categoryId, groupLabel: g.groupLabel, rows };
+    return { categoryId: g.categoryId, groupLabel: g.groupLabel, rows, unresolved: [] };
   });
 }

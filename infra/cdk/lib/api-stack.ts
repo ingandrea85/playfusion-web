@@ -57,7 +57,7 @@ const BCS: BcSpec[] = [
     consumer: { tables: ['o12-fees'], detailTypes: ['RegistrationApplied'] },
   },
   // O7 scheduling (S7): reads o3/o5 over HTTP (PF_API_BASE_URL), no consumer.
-  { key: 'o7-scheduling', route: 'o7', tables: ['o7-schedules', 'o7-matches'] },
+  { key: 'o7-scheduling', route: 'o7', tables: ['o7-schedules', 'o7-matches', 'o7-tie-overrides'] },
 ];
 
 /**

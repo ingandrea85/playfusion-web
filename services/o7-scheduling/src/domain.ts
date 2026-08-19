@@ -112,10 +112,35 @@ export interface StandingRow {
   goalDiff: number;
   points: number;
 }
+
+/** S11: the ordered tie-break criteria (points is always the implicit primary criterion, never
+ *  in the list). Defined locally — o7 must not import o3's identical type (ADR-002). Mirrors the
+ *  o3 event's `tieBreak` config (S6), which o7 reads over HTTP. */
+export type TieBreakCriterion = 'HEAD_TO_HEAD' | 'GOAL_DIFFERENCE' | 'GOALS_FOR';
+
+/** S11: an organizer's manual resolution of a residual perfect tie, keyed by (event, category,
+ *  group). `order` is the tied teams in the decided order. `resolvedBy`/`resolvedAt` are the audit
+ *  trail (#44: "registrato e auditabile"). Self-invalidating: the override only applies while it
+ *  still covers exactly the tied set (see ranking). */
+export interface TieOverride {
+  sportEventId: string;
+  categoryId: string;
+  groupLabel: string;
+  order: string[];
+  resolvedBy: string;
+  resolvedAt: string;
+}
+
 export interface GroupStanding {
   categoryId: string;
   groupLabel: string;
   rows: StandingRow[];
+  /** S11: sets of teams still perfectly tied after the policy was exhausted and no override
+   *  applied. Their mutual order in `rows` is name-based (arbitrary, non-sporting). Empty when the
+   *  group is fully resolved. */
+  unresolved: string[][];
+  /** S11: audit of the manual override applied to this group, if any. */
+  override?: { order: string[]; resolvedBy: string; resolvedAt: string };
 }
 
 /** A resolved group: its label + the teams composing it. */

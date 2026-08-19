@@ -72,6 +72,7 @@ export class DataStack extends Stack {
     // sportEventId (matches stored as a single item holding the array — see the match repo).
     this.tables['o7-schedules'] = table('o7-schedules', 'sportEventId');
     this.tables['o7-matches'] = table('o7-matches', 'sportEventId');
+    this.tables['o7-tie-overrides'] = table('o7-tie-overrides', 'sportEventId');
 
     // Shared domain-event bus (source = EVENT_SOURCE, same across envs)
     this.bus = new EventBus(this, 'bus', { eventBusName: busName(env) });
