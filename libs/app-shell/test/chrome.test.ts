@@ -102,3 +102,28 @@ describe('S25 score stepper', () => {
     expect(readStepper(root, 'home')).toBe(0)
   })
 })
+
+import { renderBracket, needsWinnerDecision, winnerSide } from '../src/chrome'
+
+describe('finals winner highlight + decide badge (chrome)', () => {
+  const cat = (c: string) => c
+  const base = { categoryId: 'U10', bracketLabel: 'Tabellone', round: 'F', order: 1, home: '1ª Girone A', away: '2ª Girone A', homeResolved: 'Alfa', awayResolved: 'Bravo', phase: 'FINAL' as const }
+  it('winnerSide by score, by decree on draw, none if undecided', () => {
+    expect(winnerSide({ ...base, status: 'FINISHED', homeScore: 2, awayScore: 1 })).toBe('HOME')
+    expect(winnerSide({ ...base, status: 'FINISHED', homeScore: 0, awayScore: 0, decidedWinner: 'AWAY' })).toBe('AWAY')
+    expect(winnerSide({ ...base, status: 'FINISHED', homeScore: 0, awayScore: 0 })).toBeNull()
+    expect(winnerSide({ ...base, status: 'SCHEDULED' })).toBeNull()
+  })
+  it('renderBracket highlights the winner of a finished final', () => {
+    const html = renderBracket([{ ...base, status: 'FINISHED', homeScore: 3, awayScore: 1 }], cat)
+    expect(html).toContain('pf-brk__win')
+    expect(html).toContain('✓ Alfa')
+  })
+  it('renderBracket shows "Chi passa?" on a drawn final without a decree', () => {
+    const html = renderBracket([{ ...base, status: 'FINISHED', homeScore: 1, awayScore: 1 }], cat)
+    expect(html).toContain('Chi passa?')
+    expect(needsWinnerDecision({ phase: 'FINAL', status: 'FINISHED', homeScore: 1, awayScore: 1 })).toBe(true)
+    expect(needsWinnerDecision({ phase: 'FINAL', status: 'FINISHED', homeScore: 1, awayScore: 1, decidedWinner: 'HOME' })).toBe(false)
+    expect(needsWinnerDecision({ phase: 'GROUP', status: 'FINISHED', homeScore: 1, awayScore: 1 })).toBe(false)
+  })
+})
