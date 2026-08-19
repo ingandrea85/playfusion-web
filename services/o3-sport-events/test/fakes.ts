@@ -3,6 +3,7 @@ import type { SportEvent } from '../src/domain.js';
 import type { GironiRepository } from '../src/ports/gironi-repository.js';
 import type { TeamSource } from '../src/ports/team-source.js';
 import type { CategoryGironi, GironiMap } from '../src/gironi.js';
+import type { FinalsConfig, FinalsConfigRepository } from '../src/ports/finals-config-repository.js';
 
 export class InMemoryEventStore implements EventReadStore {
   private byId = new Map<string, SportEvent>();
@@ -21,6 +22,11 @@ export class InMemoryGironiRepository implements GironiRepository {
     map[categoria] = gironi;
     this.byEvent.set(sportEventId, map);
   }
+}
+
+export class InMemoryFinalsConfigRepository implements FinalsConfigRepository {
+  public byEvent = new Map<string, FinalsConfig>();
+  async setFinalsConfig(sportEventId: string, config: FinalsConfig) { this.byEvent.set(sportEventId, config); }
 }
 
 export class FakeTeamSource implements TeamSource {
