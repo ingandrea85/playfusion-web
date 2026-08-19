@@ -176,6 +176,30 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-brk__slot { color: var(--color-text-muted); white-space: nowrap; }
 .pf-brk__teams { flex: 1; }
 .pf-brk__win { font-weight: 800; color: var(--color-feedback-success); }
+
+/* Graphical bracket tree (S13): one column per round + pure-CSS connectors. */
+.pf-brk-desktop { --brk-colw: 220px; --brk-gap: 44px; --brk-h: 560px; }
+.pf-brk-tree-wrap { overflow-x: auto; padding-bottom: 6px; }
+.pf-brk-heads { display: flex; gap: var(--brk-gap); min-width: max-content; margin-bottom: 8px; }
+.pf-brk-heads > div { flex: 0 0 var(--brk-colw); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-muted); }
+.pf-brk-tree { display: flex; gap: var(--brk-gap); min-width: max-content; }
+.pf-brk__col { flex: 0 0 var(--brk-colw); height: var(--brk-h); display: flex; flex-direction: column; justify-content: space-around; }
+.pf-brk__m { position: relative; background: var(--color-surface-default); border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); overflow: hidden; }
+.pf-brk__t { display: flex; align-items: center; gap: var(--space-sm); padding: 6px 9px; font-size: 13px; }
+.pf-brk__t + .pf-brk__t { border-top: 1px solid var(--color-border-default); }
+.pf-brk__t .nm { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pf-brk__t .sc { font-variant-numeric: tabular-nums; color: var(--color-text-muted); min-width: 1.3em; text-align: center; }
+.pf-brk__t--win { background: color-mix(in srgb, var(--color-feedback-success) 12%, transparent); }
+.pf-brk__t--win .nm { font-weight: 750; color: var(--color-feedback-success); }
+.pf-brk__t--win .sc { color: var(--color-feedback-success); font-weight: 700; }
+.pf-brk__t--tbd .nm { color: var(--color-text-muted); font-style: italic; }
+.pf-brk__badge { margin: 0 9px 8px; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); background: #fef3e2; color: #b45309; }
+.pf-brk__col:not(.pf-brk__col--last) .pf-brk__m::after { content: ""; position: absolute; left: 100%; top: 50%; width: var(--brk-gap); height: 2px; background: var(--color-border-strong); }
+.pf-brk__col:not(.pf-brk__col--last) .pf-brk__m:nth-child(odd)::before { content: ""; position: absolute; left: calc(100% + var(--brk-gap)); top: 50%; width: 2px; height: calc(var(--brk-h) / var(--n)); background: var(--color-border-strong); }
+/* Show the tree on wide screens, the per-round list on mobile. */
+.pf-brk-fallback { display: none; }
+@media (max-width: 640px) { .pf-brk-desktop { display: none; } .pf-brk-fallback { display: block; } }
+
 /* ---------- Final ranking (S13) ---------- */
 .pf-finrank { list-style: none; margin: var(--space-sm) 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
 .pf-finrank__row { display: flex; align-items: center; gap: var(--space-md); padding: 6px 10px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); }

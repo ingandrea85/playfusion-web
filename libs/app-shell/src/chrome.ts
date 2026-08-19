@@ -230,33 +230,68 @@ export function winnerSide(m: BracketMatch): 'HOME' | 'AWAY' | null {
 const ROUND_LABEL: Record<string, string> = { R64: 'Sedicesimi', R32: 'Sedicesimi', R16: 'Ottavi', QF: 'Quarti', SF: 'Semifinali', F: 'Finale' }
 export function roundLabel(round: string): string { return ROUND_LABEL[round] ?? round }
 
-/** S12/S13: the finals for one category, grouped bracket → round, each match showing the resolved
- *  team when known (`homeResolved ?? home`, incl. propagated winners) else the placeholder. Read-only;
- *  shared by the E1 Finali tab and the E3 public Tabellone. Rows carry time · field when scheduled.
- *  Includes FINAL_GROUP (the round-robin final group) as its own bracket section. */
+const CODE_ROUNDS = new Set(['R64', 'R32', 'R16', 'QF', 'SF', 'F'])
+const roundsInOrder = (ms: BracketMatch[]): string[] => { const o: string[] = []; for (const m of ms) { const r = m.round ?? ''; if (!o.includes(r)) o.push(r) } return o }
+const sortByOrder = (ms: BracketMatch[]): BracketMatch[] => [...ms].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+/** One match rendered as a stacked two-team card (used in the bracket tree). */
+function bracketCard(f: BracketMatch): string {
+  const w = winnerSide(f)
+  const side = (raw: string, resolved: string | undefined, score: number | null | undefined, isWin: boolean) =>
+    `<div class="pf-brk__t${isWin ? ' pf-brk__t--win' : ''}${resolved ? '' : ' pf-brk__t--tbd'}">
+      <span class="nm">${isWin ? '✓ ' : ''}${esc(resolved ?? raw)}</span>
+      <span class="sc pf-mono">${score != null ? esc(score) : '—'}</span>
+    </div>`
+  return `<div class="pf-brk__m">
+    ${side(f.home, f.homeResolved, f.homeScore, w === 'HOME')}
+    ${side(f.away, f.awayResolved, f.awayScore, w === 'AWAY')}
+    ${needsWinnerDecision(f) ? '<div class="pf-brk__badge">⚠ Chi passa?</div>' : ''}
+  </div>`
+}
+
+/** The per-round list (mobile fallback + non-tree brackets: placement finals, final group). */
+function bracketList(inBracket: BracketMatch[], rounds: string[]): string {
+  return rounds.map((rd) => {
+    const rows = sortByOrder(inBracket.filter((f) => (f.round ?? '') === rd)).map((f) => {
+      const w = winnerSide(f)
+      const hn = esc(f.homeResolved ?? f.home), an = esc(f.awayResolved ?? f.away)
+      const mid = f.homeScore != null && f.awayScore != null ? `${esc(f.homeScore)}–${esc(f.awayScore)}` : 'vs'
+      const decide = needsWinnerDecision(f) ? ' <span class="pf-mstatus pf-mstatus--decide">⚠ Chi passa?</span>' : ''
+      return `<li class="pf-brk__match">
+        ${f.time || f.field ? `<span class="pf-brk__slot pf-mono">${esc([f.time, f.field].filter(Boolean).join(' · '))}</span>` : ''}
+        <span class="pf-brk__teams"><span class="${w === 'HOME' ? 'pf-brk__win' : ''}">${w === 'HOME' ? '✓ ' : ''}${hn}</span> <b>${mid}</b> <span class="${w === 'AWAY' ? 'pf-brk__win' : ''}">${w === 'AWAY' ? '✓ ' : ''}${an}</span>${decide}</span>
+      </li>`
+    }).join('')
+    return `${rd ? `<div class="pf-brk__round pf-mono">${esc(roundLabel(rd))}</div>` : ''}<ul class="pf-brk__list">${rows}</ul>`
+  }).join('')
+}
+
+/** The graphical bracket tree: one column per round, connectors in pure CSS. */
+function bracketTree(inBracket: BracketMatch[], rounds: string[]): string {
+  const heads = rounds.map((rd) => `<div>${esc(roundLabel(rd))}</div>`).join('')
+  const cols = rounds.map((rd, i) => {
+    const ms = sortByOrder(inBracket.filter((f) => (f.round ?? '') === rd))
+    return `<div class="pf-brk__col${i === rounds.length - 1 ? ' pf-brk__col--last' : ''}" style="--n:${ms.length}">${ms.map(bracketCard).join('')}</div>`
+  }).join('')
+  return `<div class="pf-brk-tree-wrap"><div class="pf-brk-heads">${heads}</div><div class="pf-brk-tree">${cols}</div></div>`
+}
+
+/** S12/S13: the finals for one category. Multi-round knockout brackets render as a graphical tree
+ *  (with a per-round list fallback on mobile); single-match placement finals and the round-robin
+ *  final group render as a list. Winner highlighted (✓), drawn KO flagged "⚠ Chi passa?", unresolved
+ *  slots shown muted. Read-only; shared by the E1 Finali tab and the E3 public Tabellone. */
 export function renderBracket(finals: BracketMatch[], catName: (id: string) => string): string {
   if (!finals.length) return `<p class="pf-muted">Nessun tabellone: configura la fase finale e genera il calendario.</p>`
   const brackets = [...new Set(finals.map((f) => f.bracketLabel ?? 'Finali'))]
   return brackets.map((bl) => {
     const inBracket = finals.filter((f) => (f.bracketLabel ?? 'Finali') === bl)
-    const rounds = [...new Set(inBracket.map((f) => f.round ?? ''))]
-    const body = rounds.map((rd) => {
-      const rows = inBracket.filter((f) => (f.round ?? '') === rd)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        .map((f) => {
-          const w = winnerSide(f)
-          const hn = esc(f.homeResolved ?? f.home), an = esc(f.awayResolved ?? f.away)
-          const mid = f.homeScore != null && f.awayScore != null ? `${esc(f.homeScore)}–${esc(f.awayScore)}` : 'vs'
-          const decide = needsWinnerDecision(f) ? ' <span class="pf-mstatus pf-mstatus--decide">⚠ Chi passa?</span>' : ''
-          return `<li class="pf-brk__match">
-          ${f.time || f.field ? `<span class="pf-brk__slot pf-mono">${esc([f.time, f.field].filter(Boolean).join(' · '))}</span>` : ''}
-          <span class="pf-brk__teams"><span class="${w === 'HOME' ? 'pf-brk__win' : ''}">${w === 'HOME' ? '✓ ' : ''}${hn}</span> <b>${mid}</b> <span class="${w === 'AWAY' ? 'pf-brk__win' : ''}">${w === 'AWAY' ? '✓ ' : ''}${an}</span>${decide}</span>
-        </li>`
-        }).join('')
-      return `${rd ? `<div class="pf-brk__round pf-mono">${esc(roundLabel(rd))}</div>` : ''}<ul class="pf-brk__list">${rows}</ul>`
-    }).join('')
-    const cat = catName(inBracket[0]!.categoryId)
-    return `<div class="pf-bracket"><div class="pf-calday__head pf-mono">${esc(cat)} · ${esc(bl)}</div>${body}</div>`
+    const rounds = roundsInOrder(inBracket)
+    const isTree = rounds.length >= 2 && rounds.every((r) => CODE_ROUNDS.has(r))
+    const head = `<div class="pf-calday__head pf-mono">${esc(catName(inBracket[0]!.categoryId))} · ${esc(bl)}</div>`
+    const body = isTree
+      ? `<div class="pf-brk-desktop">${bracketTree(inBracket, rounds)}</div><div class="pf-brk-fallback">${bracketList(inBracket, rounds)}</div>`
+      : bracketList(inBracket, rounds)
+    return `<div class="pf-bracket">${head}${body}</div>`
   }).join('')
 }
 
