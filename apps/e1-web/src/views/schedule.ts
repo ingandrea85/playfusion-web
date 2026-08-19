@@ -1,4 +1,4 @@
-import { esc, renderCalendar } from '@playfusion/app-shell'
+import { esc, renderCalendar, renderTabs, categoryKeys, groupKeys } from '@playfusion/app-shell'
 import type { CategorySchedule, EventDetail, ScheduleConfig, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
@@ -78,10 +78,23 @@ function actionsCard(status: ScheduleView['status']): string {
   </div></div>`
 }
 
+const filterMatches = (matches: ScheduledMatchView[], selCat: string, selGir: string): ScheduledMatchView[] =>
+  matches.filter((m) => m.categoryId === selCat && (selGir === 'ALL' || m.groupLabel === selGir))
+
+/** Calendar card with Category + Girone filter tabs (S23). Default: first category, all gironi. */
+function calendarCard(matches: ScheduledMatchView[], selCat: string, selGir: string): string {
+  const gtabs = [{ key: 'ALL', label: 'Tutti' }, ...groupKeys(matches, selCat).map((g) => ({ key: g, label: g }))]
+  return `<div class="pf-card"><h2 class="pf-h3">Calendario</h2>
+    <div id="cal-cattabs">${renderTabs(categoryKeys(matches).map((c) => ({ key: c, label: c })), selCat)}</div>
+    <div id="cal-girtabs">${renderTabs(gtabs, selGir)}</div>
+    <div id="editmatch"></div>
+    <div id="calbody">${renderCalendar(filterMatches(matches, selCat, selGir), catName, true)}</div>
+  </div>`
+}
+
 export function renderSchedule(data: ScheduleData): string {
   const { event, schedule, matches } = data
-  const calendar = schedule.status === 'NONE' ? ''
-    : `<div class="pf-card"><h2 class="pf-h3">Calendario</h2><div id="editmatch"></div>${renderCalendar(matches, catName, true)}</div>`
+  const calendar = schedule.status === 'NONE' ? '' : calendarCard(matches, categoryKeys(matches)[0] ?? '', 'ALL')
   return workspaceShell(event, 'schedule',
     `<div id="err"></div>${configSection(schedule.config, event.categorie, schedule.status)}${actionsCard(schedule.status)}${calendar}`)
 }
@@ -98,9 +111,9 @@ export const scheduleScreen: Screen<ScheduleData> = {
     const id = data.event.sportEventId
     const err = root.querySelector('#err')!
 
-    // Reschedule + result entry work in every status (incl. APPROVED/PUBLISHED).
-    wireReschedule()
-    wireResult()
+    // Calendar with category/girone filter tabs (S23); its redraw rewires the per-match
+    // Risultato/Modifica buttons. Works in every status (incl. APPROVED/PUBLISHED).
+    wireCalendar()
     if (isLocked(data.schedule.status)) { wireStatus(); return }
 
     const categorie = data.event.categorie
@@ -165,6 +178,28 @@ export const scheduleScreen: Screen<ScheduleData> = {
         try { await ctx.client.o7.publishSchedule(id); ctx.refresh() }
         catch { err.innerHTML = inlineError('Pubblicazione non riuscita.'); publish.disabled = false }
       })
+    }
+
+    /** S23: category + girone filter tabs above the calendar. Redraws the tab bars and the
+     *  calendar body on each change, then rewires the per-match Risultato/Modifica buttons. */
+    function wireCalendar() {
+      const calbody = root.querySelector('#calbody'); if (!calbody) return
+      const catbar = root.querySelector('#cal-cattabs')!
+      const girbar = root.querySelector('#cal-girtabs')!
+      let selCat = categoryKeys(data.matches)[0] ?? ''
+      let selGir = 'ALL'
+      function draw() {
+        catbar.innerHTML = renderTabs(categoryKeys(data.matches).map((c) => ({ key: c, label: c })), selCat)
+        catbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
+          b.addEventListener('click', () => { selCat = b.dataset.key!; selGir = 'ALL'; draw() }))
+        const gtabs = [{ key: 'ALL', label: 'Tutti' }, ...groupKeys(data.matches, selCat).map((g) => ({ key: g, label: g }))]
+        girbar.innerHTML = renderTabs(gtabs, selGir)
+        girbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
+          b.addEventListener('click', () => { selGir = b.dataset.key!; draw() }))
+        calbody!.innerHTML = renderCalendar(filterMatches(data.matches, selCat, selGir), catName, true)
+        wireResult(); wireReschedule()
+      }
+      draw()
     }
 
     /** S10: per-match result entry. "Risultato" opens a panel (home/away score, prefilled if

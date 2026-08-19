@@ -28,3 +28,19 @@ describe('chrome', () => {
     expect(renderCategoryTag('U12', 2, 8)).toContain('2/8')
   })
 })
+
+import { renderTabs, categoryKeys, groupKeys } from '../src/chrome'
+describe('S23 tabs', () => {
+  it('renderTabs marks the active tab and carries data-key', () => {
+    const html = renderTabs([{ key: 'U10', label: 'U10' }, { key: 'U12', label: 'U12' }], 'U12')
+    expect(html).toContain('data-key="U10"')
+    expect(html).toMatch(/data-key="U12"[^>]*pf-tab--active|pf-tab--active[^>]*data-key="U12"/)
+    expect(html).toContain('aria-selected="true"')
+  })
+  it('renderTabs is empty for no items', () => { expect(renderTabs([], 'x')).toBe('') })
+  it('categoryKeys/groupKeys derive distinct keys in order', () => {
+    const items = [{ categoryId: 'U10', groupLabel: 'Girone A' }, { categoryId: 'U10', groupLabel: 'Girone B' }, { categoryId: 'U12', groupLabel: 'Girone A' }]
+    expect(categoryKeys(items)).toEqual(['U10', 'U12'])
+    expect(groupKeys(items, 'U10')).toEqual(['Girone A', 'Girone B'])
+  })
+})

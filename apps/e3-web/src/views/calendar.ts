@@ -1,19 +1,44 @@
 import type { EventDetail, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
-import { renderPublicTopbar, renderCalendar, esc } from '@playfusion/app-shell'
+import { renderPublicTopbar, renderCalendar, renderTabs, categoryKeys, groupKeys, esc } from '@playfusion/app-shell'
 
-/** Public, read-only match calendar. Gated on PUBLISHED: until the organizer publishes,
- *  the page shows a "not yet published" notice rather than the fixtures. Categories are
- *  plain strings on the event, so the categoryId is its own display label. */
+const catName = (c: string): string => c
+const filterMatches = (matches: ScheduledMatchView[], selCat: string, selGir: string): ScheduledMatchView[] =>
+  matches.filter((m) => m.categoryId === selCat && (selGir === 'ALL' || m.groupLabel === selGir))
+
+/** Public, read-only match calendar (S7) with Category + Girone filter tabs (S23). Gated on
+ *  PUBLISHED; scores shown when a match is played. Call wirePublicCalendar after mounting. */
 export function renderPublicCalendar(event: EventDetail, schedule: ScheduleView, matches: ScheduledMatchView[]): string {
-  const published = schedule.status === 'PUBLISHED'
-  const body = published
-    ? renderCalendar(matches, (c) => c)
-    : `<p class="pf-muted">Il calendario non è ancora stato pubblicato.</p>`
   const id = encodeURIComponent(event.sportEventId)
+  const published = schedule.status === 'PUBLISHED'
+  const selCat = categoryKeys(matches)[0] ?? ''
+  const inner = published
+    ? `<div id="cal-cattabs">${renderTabs(categoryKeys(matches).map((c) => ({ key: c, label: c })), selCat)}</div>
+       <div id="cal-girtabs">${renderTabs([{ key: 'ALL', label: 'Tutti' }, ...groupKeys(matches, selCat).map((g) => ({ key: g, label: g }))], 'ALL')}</div>
+       <div id="calbody">${renderCalendar(filterMatches(matches, selCat, 'ALL'), catName)}</div>`
+    : `<p class="pf-muted">Il calendario non è ancora stato pubblicato.</p>`
   return `${renderPublicTopbar()}
     <main class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">${esc(event.name ?? event.sport)}</div><h1>Calendario</h1></div>
-      <div class="pf-card">${body}</div>
+      <div class="pf-card">${inner}</div>
       <div class="pf-row"><a class="pf-btn" href="#/events/${id}">← Torna all'evento</a></div>
     </main>`
+}
+
+/** Wires the category/girone tabs (S23): redraws the tab bars + calendar body on each change. */
+export function wirePublicCalendar(root: ParentNode, matches: ScheduledMatchView[]): void {
+  const calbody = root.querySelector('#calbody'); if (!calbody) return
+  const catbar = root.querySelector('#cal-cattabs')!
+  const girbar = root.querySelector('#cal-girtabs')!
+  let selCat = categoryKeys(matches)[0] ?? ''
+  let selGir = 'ALL'
+  function draw() {
+    catbar.innerHTML = renderTabs(categoryKeys(matches).map((c) => ({ key: c, label: c })), selCat)
+    catbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
+      b.addEventListener('click', () => { selCat = b.dataset.key!; selGir = 'ALL'; draw() }))
+    girbar.innerHTML = renderTabs([{ key: 'ALL', label: 'Tutti' }, ...groupKeys(matches, selCat).map((g) => ({ key: g, label: g }))], selGir)
+    girbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
+      b.addEventListener('click', () => { selGir = b.dataset.key!; draw() }))
+    calbody!.innerHTML = renderCalendar(filterMatches(matches, selCat, selGir), catName)
+  }
+  draw()
 }
