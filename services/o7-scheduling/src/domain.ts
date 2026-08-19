@@ -67,6 +67,27 @@ export interface ScheduledMatch {
   field: string;
   home: string;
   away: string;
+  // S10: result. null/undefined = not played; both set = played.
+  homeScore?: number | null;
+  awayScore?: number | null;
+}
+
+/** S10: a computed standings row for one team within a group. */
+export interface StandingRow {
+  team: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDiff: number;
+  points: number;
+}
+export interface GroupStanding {
+  categoryId: string;
+  groupLabel: string;
+  rows: StandingRow[];
 }
 
 /** A resolved group: its label + the teams composing it. */

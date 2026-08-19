@@ -13,7 +13,8 @@ import { HttpEventSource, HttpTeamSource } from './adapters/http-sources.js';
 import { generateSchedule } from './application/generate-schedule.js';
 import { approveSchedule, publishSchedule } from './application/change-status.js';
 import { rescheduleMatch } from './application/reschedule-match.js';
-import { getScheduleOrDefault, listMatches } from './application/read.js';
+import { recordResult } from './application/record-result.js';
+import { getScheduleOrDefault, listMatches, listStandings } from './application/read.js';
 
 const db = makeDocClient();
 const schedules = new DynamoDbScheduleRepository(db);
@@ -74,6 +75,17 @@ app.put('/events/:id/matches/:matchId', organizer, async (c) => {
   const match = await rescheduleMatch(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), patch });
   return c.json(match);
 });
+
+// S10: record/correct a group match result (organizer). Standings derive from it on read.
+const resultBody = z.object({ homeScore: z.number().int().nonnegative(), awayScore: z.number().int().nonnegative() });
+app.post('/events/:id/matches/:matchId/result', organizer, async (c) => {
+  const b = resultBody.parse(await c.req.json());
+  const match = await recordResult(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), homeScore: b.homeScore, awayScore: b.awayScore });
+  return c.json(match);
+});
+
+// S10: live standings computed from results (public).
+app.get('/events/:id/standings', async (c) => c.json(await listStandings(matches)(c.req.param('id'))));
 
 // Public reads: schedule status/config + the placed fixtures.
 app.get('/events/:id/schedule', async (c) =>
