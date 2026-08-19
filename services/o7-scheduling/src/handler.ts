@@ -20,7 +20,7 @@ import { recordResult } from './application/record-result.js';
 import { decideWinner } from './application/decide-winner.js';
 import { setTieOverride } from './application/resolve-tie.js';
 import { startMatch, finishMatch, cancelMatch } from './application/transition-status.js';
-import { getScheduleOrDefault, listMatches, listStandings } from './application/read.js';
+import { getScheduleOrDefault, listMatches, listStandings, listFinalStandings } from './application/read.js';
 
 const db = makeDocClient();
 const schedules = new DynamoDbScheduleRepository(db);
@@ -196,6 +196,9 @@ app.put('/events/:id/standings/:categoryId/:groupLabel/override', organizer, asy
   });
   return c.json(saved);
 });
+
+// S13: progressive final ranking per category, computed on read (public).
+app.get('/events/:id/final-standings', async (c) => c.json(await listFinalStandings(matches, { overrides, events })(c.req.param('id'))));
 
 // Public reads: schedule status/config + the placed fixtures.
 app.get('/events/:id/schedule', async (c) =>

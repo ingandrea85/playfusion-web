@@ -123,6 +123,19 @@ export interface ScheduledMatch {
   awayResolved?: string;
 }
 
+/** The winning side of a FINISHED match: by score, or (on a draw) the decreed winner. Undefined if
+ *  not finished, unplayed, or a draw with no decree. */
+export function winningSide(m: ScheduledMatch): 'HOME' | 'AWAY' | undefined {
+  if (m.status !== 'FINISHED' || m.homeScore == null || m.awayScore == null) return undefined;
+  if (m.homeScore !== m.awayScore) return m.homeScore > m.awayScore ? 'HOME' : 'AWAY';
+  return m.decidedWinner;
+}
+
+/** S13: a computed final-ranking row for one category. `team` set = position decided; `pending` set
+ *  = still to define (a finals result missing / a KO draw undecided / a final-group tie unresolved). */
+export interface FinalStandingRow { position: number; team?: string; pending?: 'result' | 'tie' }
+export interface CategoryFinalStanding { categoryId: string; rows: FinalStandingRow[] }
+
 /** A match with a result recorded (both scores set). */
 export function isPlayed(m: ScheduledMatch): boolean {
   return m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined;

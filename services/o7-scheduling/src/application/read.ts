@@ -1,4 +1,4 @@
-import { defaultConfig, type GroupStanding, type Schedule, type ScheduledMatch } from '../domain.js';
+import { defaultConfig, winningSide, type CategoryFinalStanding, type FinalStandingRow, type GroupStanding, type Schedule, type ScheduledMatch } from '../domain.js';
 import { computeStandings } from '../standings.js';
 import { defaultTieBreak, rankStanding } from '../ranking.js';
 import { resolvePlaceholders } from '../resolve-finals.js';
@@ -71,5 +71,54 @@ export function listMatches(matches: MatchRepository, deps: ReadDeps = {}) {
     if (!deps.overrides && !deps.events) return all;
     const standings = await rankedStandings(all, deps, sportEventId);
     return resolvePlaceholders(all, standings);
+  };
+}
+
+/** S13: the progressive final ranking per category, computed on read. Each 2-wide placement final
+ *  (`placementTo === placementFrom + 1`) assigns its winner to the higher place and loser to the
+ *  lower; the SPLIT final group's ranked standings fill the block after the bracket (offset = the
+ *  bracket's max placement). A position stays `pending` when the deciding result is missing, a KO
+ *  draw is undecided, or the final group is in an unresolved tie (S11). PLACEMENT semifinal-loser
+ *  places remain pending until a third-place match exists (future slice). */
+export function listFinalStandings(matches: MatchRepository, deps: ReadDeps = {}) {
+  return async (sportEventId: string): Promise<CategoryFinalStanding[]> => {
+    const all = await listMatches(matches, deps)(sportEventId);
+    const standings = await listStandings(matches, deps)(sportEventId);
+    const teamOf = (m: ScheduledMatch, side: 'HOME' | 'AWAY'): string =>
+      side === 'HOME' ? (m.homeResolved ?? m.home) : (m.awayResolved ?? m.away);
+    const cats = [...new Set(all.filter((m) => m.phase === 'FINAL' || m.phase === 'FINAL_GROUP').map((m) => m.categoryId))];
+
+    return cats.map((categoryId) => {
+      const pos = new Map<number, FinalStandingRow>();
+      // Decisive 2-wide placement finals.
+      for (const m of all) {
+        if (m.categoryId !== categoryId || m.phase !== 'FINAL') continue;
+        if (m.placementFrom == null || m.placementTo == null || m.placementTo !== m.placementFrom + 1) continue;
+        const w = winningSide(m);
+        if (!w) {
+          pos.set(m.placementFrom, { position: m.placementFrom, pending: 'result' });
+          pos.set(m.placementTo, { position: m.placementTo, pending: 'result' });
+        } else {
+          pos.set(m.placementFrom, { position: m.placementFrom, team: teamOf(m, w) });
+          pos.set(m.placementTo, { position: m.placementTo, team: teamOf(m, w === 'HOME' ? 'AWAY' : 'HOME') });
+        }
+      }
+      // SPLIT final group → the positions after the bracket (offset = bracket's max placement).
+      const fg = standings.find((g) => g.categoryId === categoryId && g.groupLabel === 'Girone finale');
+      if (fg) {
+        const offset = all
+          .filter((m) => m.categoryId === categoryId && m.phase === 'FINAL' && m.placementTo != null)
+          .reduce((mx, m) => Math.max(mx, m.placementTo!), 0);
+        fg.rows.forEach((r, k) => {
+          const p = offset + k + 1;
+          const tied = (fg.unresolved ?? []).some((s) => s.includes(r.team));
+          pos.set(p, tied ? { position: p, pending: 'tie' } : { position: p, team: r.team });
+        });
+      }
+      const maxPos = Math.max(0, ...pos.keys());
+      const rows: FinalStandingRow[] = [];
+      for (let p = 1; p <= maxPos; p++) rows.push(pos.get(p) ?? { position: p, pending: 'result' });
+      return { categoryId, rows };
+    });
   };
 }
