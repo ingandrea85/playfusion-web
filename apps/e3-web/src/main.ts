@@ -4,7 +4,7 @@ import '@playfusion/ui'
 import { HashRouter } from '@playfusion/app-shell'
 import { createClient } from '@playfusion/rest-client'
 import { readConfig } from './config.js'
-import { renderLanding, renderParticipants } from './views/landing.js'
+import { renderLanding, renderParticipants, wireParticipants } from './views/landing.js'
 import { renderPublicCalendar, wirePublicCalendar } from './views/calendar.js'
 import { renderPublicStandings, wirePublicStandings } from './views/standings.js'
 import { renderPublicBracket, wirePublicBracket } from './views/bracket.js'
@@ -62,7 +62,7 @@ async function applyRoute(id: string) {
 
 new HashRouter()
   .on('#/events/:id/participants', async ({ id }) => {
-    try { app.innerHTML = renderParticipants(await client.o5.listRegistrations(id, 'Confirmed')) }
+    try { const rows = await client.o5.listRegistrations(id, 'Confirmed'); app.innerHTML = renderParticipants(rows); wireParticipants(app, rows) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/apply', ({ id }) => applyRoute(id))

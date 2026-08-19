@@ -2,14 +2,19 @@ import type { EventDetail, ScheduleView, ScheduledMatchView } from '@playfusion/
 import { renderPublicTopbar, renderCalendar, renderTabs, categoryKeys, groupKeys, esc } from '@playfusion/app-shell'
 
 const catName = (c: string): string => c
+// The public calendar shows only the group phase; the finals live in the Tabellone tab (no
+// duplication). E1/director keep finals inline in their calendar (needed for result entry).
+const groupPhaseOnly = (matches: ScheduledMatchView[]): ScheduledMatchView[] =>
+  matches.filter((m) => !m.phase || m.phase === 'GROUP')
 const filterMatches = (matches: ScheduledMatchView[], selCat: string, selGir: string): ScheduledMatchView[] =>
   matches.filter((m) => m.categoryId === selCat && (selGir === 'ALL' || m.groupLabel === selGir))
 
 /** Public, read-only match calendar (S7) with Category + Girone filter tabs (S23). Gated on
  *  PUBLISHED; scores shown when a match is played. Call wirePublicCalendar after mounting. */
-export function renderPublicCalendar(event: EventDetail, schedule: ScheduleView, matches: ScheduledMatchView[]): string {
+export function renderPublicCalendar(event: EventDetail, schedule: ScheduleView, allMatches: ScheduledMatchView[]): string {
   const id = encodeURIComponent(event.sportEventId)
   const published = schedule.status === 'PUBLISHED'
+  const matches = groupPhaseOnly(allMatches)
   const selCat = categoryKeys(matches)[0] ?? ''
   const inner = published
     ? `<div id="cal-cattabs">${renderTabs(categoryKeys(matches).map((c) => ({ key: c, label: c })), selCat)}</div>
@@ -25,8 +30,9 @@ export function renderPublicCalendar(event: EventDetail, schedule: ScheduleView,
 }
 
 /** Wires the category/girone tabs (S23): redraws the tab bars + calendar body on each change. */
-export function wirePublicCalendar(root: ParentNode, matches: ScheduledMatchView[]): void {
+export function wirePublicCalendar(root: ParentNode, allMatches: ScheduledMatchView[]): void {
   const calbody = root.querySelector('#calbody'); if (!calbody) return
+  const matches = groupPhaseOnly(allMatches)
   const catbar = root.querySelector('#cal-cattabs')!
   const girbar = root.querySelector('#cal-girtabs')!
   let selCat = categoryKeys(matches)[0] ?? ''

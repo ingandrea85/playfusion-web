@@ -31,4 +31,15 @@ describe('e3 views', () => {
     expect(html).toContain('Team A')
     expect(html).not.toContain('Team B')
   })
+  it('participants filters by category tab (default first category)', () => {
+    const html = renderParticipants([
+      { registrationId: 'r1', participantRef: 'Alfa', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' },
+      { registrationId: 'r2', participantRef: 'Bravo', sportEventId: 'e1', categoria: 'U12', status: 'Confirmed' },
+    ])
+    expect(html).toContain('pf-tabs')       // category tabs present
+    expect(html).toContain('U10')
+    expect(html).toContain('U12')
+    expect(html).toContain('Alfa')          // first category (U10) shown by default
+    expect(html).not.toContain('Bravo')     // U12 hidden until its tab is selected
+  })
 })

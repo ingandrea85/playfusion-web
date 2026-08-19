@@ -36,3 +36,13 @@ describe('landing calendar link', () => {
     expect(renderLanding(event, win)).not.toContain('/calendar') // default = not published
   })
 })
+
+describe('public calendar excludes finals (finals live in the Tabellone)', () => {
+  it('does not render FINAL / FINAL_GROUP matches', () => {
+    const finalM: ScheduledMatchView = { id: 'fm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-08-29', time: '14:00', field: 'Campo A', home: '1ª Girone A', away: '2ª Girone A', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'Finale' }
+    const html = renderPublicCalendar(event, sched('PUBLISHED'), [match, finalM])
+    expect(html).toContain('09:00')          // the group match shows
+    expect(html).not.toContain('14:00')       // the final does not
+    expect(html).not.toContain('Tabellone')
+  })
+})
