@@ -7,7 +7,7 @@ export interface O7Api {
   generateSchedule(eventId: string, config: ScheduleConfig): Promise<ScheduleView>
   approveSchedule(eventId: string): Promise<ScheduleView>
   publishSchedule(eventId: string): Promise<ScheduleView>
-  rescheduleMatch(eventId: string, matchId: string, patch: { day: string; time: string; field: string }): Promise<ScheduledMatchView>
+  rescheduleMatch(eventId: string, matchId: string, patch: { day: string; time: string; field: string; home?: string; away?: string }): Promise<ScheduledMatchView>
   recordResult(eventId: string, matchId: string, result: { homeScore: number; awayScore: number }): Promise<ScheduledMatchView>
   getStandings(eventId: string): Promise<GroupStanding[]>
 }

@@ -68,10 +68,10 @@ app.post('/events/:id/schedule:publish', organizer, async (c) =>
 
 // S9: reschedule a single match (day/time/field). Organizer mutation, allowed in any status
 // (reschedules happen mid-tournament); rejects a clash with another match's slot (409).
-const rescheduleBody = z.object({ day: z.string(), time: z.string(), field: z.string() });
+const rescheduleBody = z.object({ day: z.string(), time: z.string(), field: z.string(), home: z.string().optional(), away: z.string().optional() });
 app.put('/events/:id/matches/:matchId', organizer, async (c) => {
   const patch = rescheduleBody.parse(await c.req.json());
-  const match = await rescheduleMatch(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), patch });
+  const match = await rescheduleMatch({ matches, teams })({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), patch });
   return c.json(match);
 });
 

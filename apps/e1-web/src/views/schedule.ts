@@ -250,26 +250,40 @@ export const scheduleScreen: Screen<ScheduleData> = {
         // Field options: the match's category config fields, else the fields seen in the calendar.
         const catFields = data.schedule.config.byCategory?.[m.categoryId]?.fields ?? data.schedule.config.fields
         const fieldOpts = catFields.length ? catFields : [...new Set(data.matches.map((x) => x.field))]
-        panel!.innerHTML = `<div class="pf-card"><h3 class="pf-h4" style="margin-top:0">${esc(m.home)} vs ${esc(m.away)}</h3>
+        // Team options (S24): the teams of this match's category (across its gironi) — level B
+        // allows moving a team between gironi of the same category. Ensure current teams are present.
+        const teamOpts = [...new Set(data.matches.filter((x) => x.categoryId === m.categoryId).flatMap((x) => [x.home, x.away]).concat([m.home, m.away]))]
+        const teamSelect = (idAttr: string, sel: string) =>
+          `<select id="${idAttr}">${teamOpts.map((t) => `<option ${t === sel ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>`
+        panel!.innerHTML = `<div class="pf-card"><h3 class="pf-h4" style="margin-top:0">Modifica partita</h3>
           <div class="pf-row" style="justify-content:flex-start;gap:var(--space-md);align-items:flex-end">
+            <div class="pf-field" style="margin-bottom:0"><label>Casa</label>${teamSelect('rs-home', m.home)}</div>
+            <div class="pf-field" style="margin-bottom:0"><label>Ospite</label>${teamSelect('rs-away', m.away)}</div>
             <div class="pf-field" style="margin-bottom:0"><label>Campo</label><select id="rs-field">${fieldOpts.map((f) => `<option ${f === m.field ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select></div>
             <div class="pf-field" style="margin-bottom:0"><label>Giorno</label><input id="rs-day" type="date" value="${esc(m.day)}" /></div>
             <div class="pf-field" style="margin-bottom:0"><label>Ora</label><input id="rs-time" type="time" value="${esc(m.time)}" /></div>
             <button type="button" class="pf-btn pf-btn--primary" id="rs-save">Salva</button>
             <button type="button" class="pf-btn" id="rs-cancel">Annulla</button>
-          </div></div>`
+          </div>
+          <p class="pf-muted" style="margin:var(--space-sm) 0 0">Cambiare le squadre azzera l'eventuale risultato.</p></div>`
         panel!.querySelector('#rs-cancel')!.addEventListener('click', () => { panel!.innerHTML = '' })
         panel!.querySelector('#rs-save')!.addEventListener('click', async (e) => {
-          const b = e.currentTarget as HTMLButtonElement; b.disabled = true
+          const b = e.currentTarget as HTMLButtonElement
+          const home = (panel!.querySelector('#rs-home') as HTMLSelectElement).value
+          const away = (panel!.querySelector('#rs-away') as HTMLSelectElement).value
+          if (home === away) { err.innerHTML = inlineError('Casa e Ospite devono essere squadre diverse.'); return }
+          b.disabled = true
           const patch = {
+            home, away,
             field: (panel!.querySelector('#rs-field') as HTMLSelectElement).value,
             day: (panel!.querySelector('#rs-day') as HTMLInputElement).value,
             time: (panel!.querySelector('#rs-time') as HTMLInputElement).value,
           }
           try { await ctx.client.o7.rescheduleMatch(id, matchId, patch); ctx.refresh() }
           catch (e2: unknown) {
-            const conflict = (e2 as { status?: number })?.status === 409
-            err.innerHTML = inlineError(conflict ? 'Slot già occupato: scegli un altro campo o orario.' : 'Riprogrammazione non riuscita. Riprova.')
+            const status = (e2 as { status?: number })?.status
+            err.innerHTML = inlineError(status === 409 ? 'Slot già occupato: scegli un altro campo o orario.'
+              : status === 422 ? 'Squadre non valide.' : 'Modifica non riuscita. Riprova.')
             b.disabled = false
           }
         })

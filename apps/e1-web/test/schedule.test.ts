@@ -222,3 +222,32 @@ describe('schedule category/girone tabs (S23)', () => {
     expect(calbody).not.toContain('A <b>vs</b> B')  // U10 Girone A hidden
   })
 })
+
+describe('schedule edit teams (S24)', () => {
+  const mountWith = (edit = vi.fn().mockResolvedValue({})) => {
+    const o7 = { generateSchedule: vi.fn(), approveSchedule: vi.fn(), publishSchedule: vi.fn(), rescheduleMatch: edit, recordResult: vi.fn(), getStandings: vi.fn() }
+    const ctx = { client: { o7 } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh: vi.fn() }
+    const d = data('GENERATED', [match]) // home 'A' away 'B', U10
+    const root = document.createElement('div'); root.innerHTML = renderSchedule(d)
+    scheduleScreen.mount!(root, ctx as any, d)
+    return { root, o7 }
+  }
+  it('Modifica panel has Casa/Ospite selects; saving sends home/away', async () => {
+    const { root, o7 } = mountWith()
+    root.querySelector<HTMLButtonElement>('.js-editmatch')!.click()
+    ;(root.querySelector('#rs-home') as HTMLSelectElement).value = 'B'
+    ;(root.querySelector('#rs-away') as HTMLSelectElement).value = 'A'
+    root.querySelector<HTMLButtonElement>('#rs-save')!.click()
+    await vi.waitFor(() => expect(o7.rescheduleMatch).toHaveBeenCalled())
+    const [, , patch] = o7.rescheduleMatch.mock.calls[0]
+    expect(patch).toMatchObject({ home: 'B', away: 'A' })
+  })
+  it('blocks save when Casa === Ospite (no call)', async () => {
+    const { root, o7 } = mountWith()
+    root.querySelector<HTMLButtonElement>('.js-editmatch')!.click()
+    ;(root.querySelector('#rs-away') as HTMLSelectElement).value = 'A' // == rs-home default 'A'
+    root.querySelector<HTMLButtonElement>('#rs-save')!.click()
+    await vi.waitFor(() => expect(root.querySelector('#err')!.innerHTML).toContain('squadre diverse'))
+    expect(o7.rescheduleMatch).not.toHaveBeenCalled()
+  })
+})
