@@ -1,5 +1,5 @@
 import { buildFixtures } from '../fixtures.js';
-import { autoSplit, canGenerate, defaultConfig, type FixtureCategory, type Schedule, type ScheduleConfig } from '../domain.js';
+import { autoSplit, canGenerate, categoryConfig, defaultConfig, type FixtureCategory, type Schedule, type ScheduleConfig } from '../domain.js';
 import { EventNotFoundError } from '../errors.js';
 import type { EventSource, MatchRepository, ScheduleRepository, TeamSource } from '../ports.js';
 
@@ -39,9 +39,11 @@ export function generateSchedule(deps: GenerateScheduleDeps) {
       const groups = composed?.some((g) => g.teams.length)
         ? composed
         : autoSplit(byCategory.get(categoria) ?? [], input.config.groupsCount);
-      return { id: categoria, name: categoria, legs: input.config.legs, groups };
+      // S22: each category plays on its own fields/timing/legs (byCategory override, else defaults).
+      const cc = categoryConfig(input.config, categoria);
+      return { id: categoria, name: categoria, legs: cc.legs, groups, fields: cc.fields, periods: cc.periods, periodMinutes: cc.periodMinutes, breakMinutes: cc.breakMinutes };
     });
-    const fixtures = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config, cats);
+    const fixtures = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config.dailyStart, input.config.slotsPerDay, cats);
     await matches.replace(input.sportEventId, fixtures);
 
     const next: Schedule = { ...current, organizationId: current.organizationId, config: input.config, status: 'GENERATED' };

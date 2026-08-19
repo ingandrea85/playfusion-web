@@ -10,9 +10,22 @@ export type ScheduleStatus = 'NONE' | 'GENERATED' | 'APPROVED' | 'PUBLISHED';
  *  fixtures with home/away swapped). */
 export type Legs = 'SINGLE' | 'HOME_AWAY';
 
+/** Per-category playing config (S22): a category's own fields + match-format params +
+ *  leg count. Different categories can play on different fields with different durations
+ *  (e.g. U10 short pitches/times vs U14 full pitch/long times). */
+export interface CategorySchedule {
+  fields: string[];
+  periods: number;
+  periodMinutes: number;
+  breakMinutes: number;
+  legs: Legs;
+}
+
 /** Fields + match-format params live on the Schedule (O7), never on the Event/Category.
- *  `groupsCount`/`legs` are S7 inputs applied uniformly to every category until the
- *  per-category O6 gironi model lands in S8 (see the slice design). */
+ *  The top-level fields/periods/…/legs are the DEFAULTS applied to every category; S22
+ *  adds an optional `byCategory` override so each category can have its own fields +
+ *  timing + legs. `dailyStart`/`slotsPerDay` (facility window) and `groupsCount` (the
+ *  auto-split fallback) stay global. */
 export interface ScheduleConfig {
   fields: string[];
   periods: number;
@@ -22,6 +35,16 @@ export interface ScheduleConfig {
   slotsPerDay: number;
   groupsCount: number;
   legs: Legs;
+  byCategory?: Record<string, CategorySchedule>;
+}
+
+/** Resolve a category's playing config: its `byCategory` override if present, else the
+ *  top-level defaults. */
+export function categoryConfig(config: ScheduleConfig, categoria: string): CategorySchedule {
+  return config.byCategory?.[categoria] ?? {
+    fields: config.fields, periods: config.periods, periodMinutes: config.periodMinutes,
+    breakMinutes: config.breakMinutes, legs: config.legs,
+  };
 }
 
 export interface Schedule {
@@ -50,12 +73,18 @@ export interface ScheduledMatch {
 export interface ResolvedGroup { label: string; teams: string[] }
 
 /** One category fed to buildFixtures: its resolved groups (from the o3 gironi composition
- *  when present, else auto-split — S8) + the leg count. */
+ *  when present, else auto-split — S8), leg count, and its own placement config (fields +
+ *  match timing — S22). buildFixtures places each category on its own `fields` with its own
+ *  slot length. */
 export interface FixtureCategory {
   id: string;
   name: string;
   legs: Legs;
   groups: ResolvedGroup[];
+  fields: string[];
+  periods: number;
+  periodMinutes: number;
+  breakMinutes: number;
 }
 
 /** Round-robin auto-seed used when a category has no explicit gironi composition (S7

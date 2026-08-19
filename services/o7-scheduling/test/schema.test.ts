@@ -17,3 +17,14 @@ test('test_scheduleConfigBody_rejectsNonPositivePeriods', () => {
   expect(() => scheduleConfigBody.parse({ periods: 0 })).toThrow();
   expect(() => scheduleConfigBody.parse({ legs: 'NONSENSE' })).toThrow();
 });
+
+test('test_scheduleConfigBody_acceptsPerCategoryOverride', () => {
+  const parsed = scheduleConfigBody.parse({
+    byCategory: { U14: { fields: ['Campo Grande'], periods: 2, periodMinutes: 30, breakMinutes: 5, legs: 'HOME_AWAY' } },
+  });
+  expect(parsed.byCategory?.U14).toMatchObject({ fields: ['Campo Grande'], periodMinutes: 30, legs: 'HOME_AWAY' });
+})
+
+test('test_scheduleConfigBody_rejectsBadPerCategory', () => {
+  expect(() => scheduleConfigBody.parse({ byCategory: { U14: { fields: ['X'], periods: 0, periodMinutes: 30, breakMinutes: 5, legs: 'SINGLE' } } })).toThrow();
+})
