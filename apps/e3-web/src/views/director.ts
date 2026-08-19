@@ -2,7 +2,7 @@ import type { EventDetail, ScheduledMatchView } from '@playfusion/rest-client'
 import type { O7Api } from '@playfusion/rest-client'
 import {
   renderPublicTopbar, renderStepper, wireSteppers, readStepper, esc,
-  displayStatus, matchStatusBadge, matchDelayLabel, openSheet,
+  displayStatus, matchStatusBadge, matchDelayLabel, openSheet, needsWinnerDecision,
 } from '@playfusion/app-shell'
 
 /** The field director's scope, decoded from their magic-link (subject `director:<eventId>:<field>`).
@@ -43,7 +43,7 @@ function listBody(matches: ScheduledMatchView[], now: Date): string {
       <button type="button" class="pf-dirmatch js-dirmatch${cls}" data-match="${esc(m.id)}">
         <span class="pf-mono">${esc(m.time)}</span>
         <span class="pf-dirmatch__teams">${esc(dHome(m))} <b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b> ${esc(dAway(m))}</span>
-        <span class="pf-dirmatch__cat">${esc(m.categoryId)} · ${esc(dLabel(m))} ${matchStatusBadge(m)}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
+        <span class="pf-dirmatch__cat">${esc(m.categoryId)} · ${esc(dLabel(m))} ${matchStatusBadge(m)}${needsWinnerDecision(m) ? '<span class="pf-mstatus pf-mstatus--decide">⚠ Chi passa?</span>' : ''}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
       </button>`
     }).join('')
     return `<div class="pf-calday"><div class="pf-calday__head pf-mono">${esc(day)}</div>${rows}</div>`

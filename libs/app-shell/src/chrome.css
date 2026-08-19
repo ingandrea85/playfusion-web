@@ -175,6 +175,7 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-brk__match { display: flex; align-items: center; gap: var(--space-md); padding: 6px 10px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); }
 .pf-brk__slot { color: var(--color-text-muted); white-space: nowrap; }
 .pf-brk__teams { flex: 1; }
+.pf-brk__win { font-weight: 800; color: var(--color-feedback-success); }
 
 /* ---------- Category/girone tabs (S23) ---------- */
 .pf-tabs { display: flex; flex-wrap: wrap; gap: var(--space-xs); overflow-x: auto; margin-bottom: var(--space-sm); padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
@@ -209,6 +210,7 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-mstatus--live { background: #fdeaea; color: #c0392b; }
 .pf-mstatus--done { background: #eafaf1; color: var(--color-feedback-success); }
 .pf-mstatus--cancel { background: #f2f3f5; color: var(--color-text-muted); }
+.pf-mstatus--decide { background: #fef3e2; color: #b45309; }
 .pf-delay { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: var(--radius-pill);
   font-size: 11px; font-weight: 700; background: #fef3e2; color: #b45309; white-space: nowrap; }
 .pf-match--cancelled .pf-match__teams { text-decoration: line-through; color: var(--color-text-muted); }

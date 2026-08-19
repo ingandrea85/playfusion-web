@@ -32,7 +32,16 @@ export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED'
  *  no dependency on rest-client (rest-client's ScheduledMatchView satisfies it). `id` is
  *  only needed in editable mode (E1 reschedule — S9). `status`/`startedAt` drive the S26
  *  lifecycle badges + delay. */
-export interface CalendarMatch { id?: string; categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string; homeScore?: number | null; awayScore?: number | null; status?: MatchStatus; startedAt?: string | null; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'; round?: string; bracketLabel?: string; homeResolved?: string; awayResolved?: string }
+export interface CalendarMatch { id?: string; categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string; homeScore?: number | null; awayScore?: number | null; status?: MatchStatus; startedAt?: string | null; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'; round?: string; bracketLabel?: string; decidedWinner?: 'HOME' | 'AWAY'; homeResolved?: string; awayResolved?: string }
+
+/** A knockout (FINAL) match that finished level and has no decreed winner yet — the organizer/
+ *  director still has to pick who advances. Used to flag such rows in the calendar/bracket/director. */
+export function needsWinnerDecision(m: { phase?: string; homeScore?: number | null; awayScore?: number | null; status?: MatchStatus; decidedWinner?: 'HOME' | 'AWAY' }): boolean {
+  return m.phase === 'FINAL' && m.status === 'FINISHED'
+    && m.homeScore != null && m.awayScore != null && m.homeScore === m.awayScore && !m.decidedWinner
+}
+const decideBadge = (m: CalendarMatch): string =>
+  needsWinnerDecision(m) ? '<span class="pf-mstatus pf-mstatus--decide">⚠ Chi passa?</span>' : ''
 
 const played = (m: CalendarMatch): boolean =>
   m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined
@@ -111,7 +120,7 @@ export function renderCalendar(matches: CalendarMatch[], catName: (id: string) =
         return `<li class="pf-match${st === 'CANCELLED' ? ' pf-match--cancelled' : ''}">
         <span class="pf-match__time pf-mono">${esc(m.time)}</span>
         <span class="pf-match__field pf-mono">${esc(m.field)}</span>
-        <span class="pf-match__cat">${esc(catName(m.categoryId))} · ${esc(m.phase === 'FINAL' ? `${m.bracketLabel ?? 'Finali'}${m.round ? ` · ${m.round}` : ''}` : m.groupLabel)} ${badge}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
+        <span class="pf-match__cat">${esc(catName(m.categoryId))} · ${esc(m.phase === 'FINAL' ? `${m.bracketLabel ?? 'Finali'}${m.round ? ` · ${m.round}` : ''}` : m.groupLabel)} ${badge}${decideBadge(m)}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
         <span class="pf-match__teams">${esc(m.homeResolved ?? m.home)} <b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b> ${esc(m.awayResolved ?? m.away)}</span>
         ${editable ? `<span class="pf-match__actions"><button type="button" class="pf-btn pf-btn--ghost js-resultmatch" data-match="${esc(m.id ?? '')}">Risultato</button><button type="button" class="pf-btn pf-btn--ghost js-editmatch" data-match="${esc(m.id ?? '')}">Modifica</button></span>` : ''}
       </li>`
@@ -188,7 +197,14 @@ export function renderStandings(groups: GroupStandingView[], catName: (id: strin
 }
 
 /** Structural finals match shape (app-shell stays free of rest-client). */
-export interface BracketMatch { categoryId: string; bracketLabel?: string; round?: string; order?: number; day?: string; time?: string; field?: string; home: string; away: string; homeResolved?: string; awayResolved?: string }
+export interface BracketMatch { categoryId: string; bracketLabel?: string; round?: string; order?: number; day?: string; time?: string; field?: string; home: string; away: string; homeResolved?: string; awayResolved?: string; status?: MatchStatus; homeScore?: number | null; awayScore?: number | null; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'; decidedWinner?: 'HOME' | 'AWAY' }
+
+/** Which side won a finished match: by score, or (on a draw) the decreed winner; null if not decided. */
+export function winnerSide(m: BracketMatch): 'HOME' | 'AWAY' | null {
+  if (m.status !== 'FINISHED' || m.homeScore == null || m.awayScore == null) return null
+  if (m.homeScore !== m.awayScore) return m.homeScore > m.awayScore ? 'HOME' : 'AWAY'
+  return m.decidedWinner ?? null
+}
 
 /** Human label for a round code (S13 v1 uses R64/R32/R16/QF/SF/F). Non-code rounds (e.g.
  *  "Finale 1º/2º", "Girone finale") pass through unchanged. */
@@ -208,10 +224,16 @@ export function renderBracket(finals: BracketMatch[], catName: (id: string) => s
     const body = rounds.map((rd) => {
       const rows = inBracket.filter((f) => (f.round ?? '') === rd)
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-        .map((f) => `<li class="pf-brk__match">
+        .map((f) => {
+          const w = winnerSide(f)
+          const hn = esc(f.homeResolved ?? f.home), an = esc(f.awayResolved ?? f.away)
+          const mid = f.homeScore != null && f.awayScore != null ? `${esc(f.homeScore)}–${esc(f.awayScore)}` : 'vs'
+          const decide = needsWinnerDecision(f) ? ' <span class="pf-mstatus pf-mstatus--decide">⚠ Chi passa?</span>' : ''
+          return `<li class="pf-brk__match">
           ${f.time || f.field ? `<span class="pf-brk__slot pf-mono">${esc([f.time, f.field].filter(Boolean).join(' · '))}</span>` : ''}
-          <span class="pf-brk__teams">${esc(f.homeResolved ?? f.home)} <b>vs</b> ${esc(f.awayResolved ?? f.away)}</span>
-        </li>`).join('')
+          <span class="pf-brk__teams"><span class="${w === 'HOME' ? 'pf-brk__win' : ''}">${w === 'HOME' ? '✓ ' : ''}${hn}</span> <b>${mid}</b> <span class="${w === 'AWAY' ? 'pf-brk__win' : ''}">${w === 'AWAY' ? '✓ ' : ''}${an}</span>${decide}</span>
+        </li>`
+        }).join('')
       return `${rd ? `<div class="pf-brk__round pf-mono">${esc(roundLabel(rd))}</div>` : ''}<ul class="pf-brk__list">${rows}</ul>`
     }).join('')
     const cat = catName(inBracket[0]!.categoryId)
