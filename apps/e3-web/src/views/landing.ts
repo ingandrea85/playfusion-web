@@ -19,9 +19,14 @@ export function renderLanding(event: EventDetail, window: RegistrationWindowView
   return `${renderPublicTopbar()}
     <section class="pf-hero"><div class="pf-hero__inner">
       <div class="pf-eyebrow">Evento</div>
-      <h1>${esc(event.sport)}</h1>
+      <h1>${esc(event.name ?? event.sport)}</h1>
       <div class="pf-hero__meta">${esc(event.dates.from)} → ${esc(event.dates.to)}</div>
-      <ul class="pf-catlist">${cats}</ul>
-      <div class="pf-row">${applyCta}<a class="pf-btn" href="#/events/${id}/participants">Vedi le squadre iscritte →</a>${calendarCta}</div>
+      <div class="pf-eyebrow" style="margin-top:var(--space-lg)">Categorie</div>
+      <ul class="pf-catlist" style="margin:var(--space-sm) 0 var(--space-xl)">${cats}</ul>
+      <div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">
+        ${applyCta}
+        ${calendarCta}
+        <a class="pf-btn pf-btn--ghost" href="#/events/${id}/participants">Squadre iscritte →</a>
+      </div>
     </div></section>`
 }

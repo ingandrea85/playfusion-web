@@ -17,13 +17,26 @@ describe('e3 apply', () => {
     expect(openCategories(ev, win)).toEqual(['U10', 'U14'])
   })
 
-  it('renders a team-name input, a category option per open category, and a submit button', () => {
+  it('renders every category with its fill count; full ones are shown but disabled', () => {
     const html = renderApply(ev, win, true)
     expect(html).toContain('name="participantRef"')
-    expect(html).toContain('<option value="U10"')
-    expect(html).toContain('<option value="U14"')
-    expect(html).not.toContain('<option value="U12"')
+    expect(html).toContain('<option value="U10"') // open
+    expect(html).toContain('<option value="U14"') // open (no cap)
+    expect(html).toMatch(/<option value="U12"[^>]*disabled/) // full → shown but disabled
+    expect(html).toContain('3/8')       // U10 count/cap
+    expect(html).toContain('completa')  // U12 marked full
     expect(html).toContain('data-apply')
+  })
+
+  it('shows a "all full" notice instead of the form when no category has room', () => {
+    const allFull = { ...win, categories: [
+      { categoria: 'U10', cap: 4, count: 4, remaining: 0 },
+      { categoria: 'U12', cap: 4, count: 4, remaining: 0 },
+      { categoria: 'U14', cap: 2, count: 2, remaining: 0 },
+    ] }
+    const html = renderApply(ev, allFull, true)
+    expect(html).not.toContain('data-apply')
+    expect(html).toContain('complete')
   })
 
   it('shows a magic-link notice instead of the form when no token is present', () => {
