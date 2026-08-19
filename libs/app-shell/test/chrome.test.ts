@@ -65,9 +65,14 @@ describe('S26 match lifecycle badges + delay', () => {
     expect(matchDelayLabel({ ...base }, new Date('2026-09-01T08:55:00'))).toBeNull()
   })
   it('renderCalendar marks a cancelled match and shows badges', () => {
-    const html = renderCalendar([{ ...base, id: 'm1', status: 'CANCELLED' }], (id) => id, false, new Date('2026-09-01T09:00:00'))
+    const html = renderCalendar([{ ...base, id: 'm1', status: 'CANCELLED' }], (id) => id, false, { now: new Date('2026-09-01T09:00:00') })
     expect(html).toContain('pf-match--cancelled')
     expect(html).toContain('Annullata')
+  })
+  it('hideScheduledBadge suppresses the SCHEDULED pill but keeps LIVE/FINISHED', () => {
+    const now = new Date('2026-09-01T08:00:00')
+    expect(renderCalendar([{ ...base, id: 'a' }], (id) => id, false, { now, hideScheduledBadge: true })).not.toContain('Programmata')
+    expect(renderCalendar([{ ...base, id: 'b', status: 'LIVE' }], (id) => id, false, { now, hideScheduledBadge: true })).toContain('In corso')
   })
 })
 

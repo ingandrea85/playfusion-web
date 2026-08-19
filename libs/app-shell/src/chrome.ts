@@ -94,8 +94,10 @@ export function openSheet(host: HTMLElement, innerHtml: string): { el: HTMLEleme
  *  organizer schedule screen and the E3 public calendar so the two never drift. `editable`
  *  (S9) adds a per-match "Modifica" button for the E1 reschedule editor; it defaults off so
  *  E3 stays read-only. */
-export function renderCalendar(matches: CalendarMatch[], catName: (id: string) => string, editable = false, now: Date = new Date()): string {
+export interface CalendarOptions { now?: Date; hideScheduledBadge?: boolean }
+export function renderCalendar(matches: CalendarMatch[], catName: (id: string) => string, editable = false, opts: CalendarOptions = {}): string {
   if (!matches.length) return `<p class="pf-muted">Nessuna partita in calendario.</p>`
+  const now = opts.now ?? new Date()
   const days = [...new Set(matches.map((m) => m.day))].sort()
   return days.map((day) => {
     const rows = matches.filter((m) => m.day === day)
@@ -103,10 +105,13 @@ export function renderCalendar(matches: CalendarMatch[], catName: (id: string) =
       .map((m) => {
         const st = displayStatus(m)
         const delay = matchDelayLabel(m, now)
+        // On the public calendar the SCHEDULED pill is suppressed (noise on upcoming rows);
+        // LIVE/FINISHED/CANCELLED always show.
+        const badge = opts.hideScheduledBadge && st === 'SCHEDULED' ? '' : matchStatusBadge(m)
         return `<li class="pf-match${st === 'CANCELLED' ? ' pf-match--cancelled' : ''}">
         <span class="pf-match__time pf-mono">${esc(m.time)}</span>
         <span class="pf-match__field pf-mono">${esc(m.field)}</span>
-        <span class="pf-match__cat">${esc(catName(m.categoryId))} · ${esc(m.groupLabel)} ${matchStatusBadge(m)}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
+        <span class="pf-match__cat">${esc(catName(m.categoryId))} · ${esc(m.groupLabel)} ${badge}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
         <span class="pf-match__teams">${esc(m.home)} <b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b> ${esc(m.away)}</span>
         ${editable ? `<span class="pf-match__actions"><button type="button" class="pf-btn pf-btn--ghost js-resultmatch" data-match="${esc(m.id ?? '')}">Risultato</button><button type="button" class="pf-btn pf-btn--ghost js-editmatch" data-match="${esc(m.id ?? '')}">Modifica</button></span>` : ''}
       </li>`
