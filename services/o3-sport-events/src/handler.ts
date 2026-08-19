@@ -24,7 +24,7 @@ const app = new Hono();
 // Actual (non-preflight) responses need CORS headers too: API Gateway's
 // defaultCorsPreflightOptions only answers OPTIONS, so browsers block GET/POST replies
 // unless the Lambda sets Access-Control-Allow-Origin itself.
-app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'OPTIONS'] }));
+app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'] }));
 const orgOf = (c: any) => getIdentity(c)?.organizationId ?? c.req.header('x-organization-id') ?? 'org-pilot';
 const tieBreakCriterion = z.enum(['HEAD_TO_HEAD', 'GOAL_DIFFERENCE', 'GOALS_FOR']);
 // S6.1: competition config is added additively — dates stay start/end date, the rest is
