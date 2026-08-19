@@ -23,6 +23,12 @@ export function directorScopeFromToken(token: string | null): { eventId: string;
 const played = (m: ScheduledMatchView): boolean =>
   m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined
 
+// S12: finals show the resolved qualifier (else the placeholder) and a bracket/round label.
+const dHome = (m: ScheduledMatchView): string => m.homeResolved ?? m.home
+const dAway = (m: ScheduledMatchView): string => m.awayResolved ?? m.away
+const dLabel = (m: ScheduledMatchView): string =>
+  m.phase === 'FINAL' ? `${m.bracketLabel ?? 'Finali'}${m.round ? ` · ${m.round}` : ''}` : m.groupLabel
+
 /** Compact, mobile-first list of the director's field matches — grouped by day, each a tappable
  *  row that opens the score bottom-sheet. Each row carries the S26 status badge + delay. */
 function listBody(matches: ScheduledMatchView[], now: Date): string {
@@ -36,8 +42,8 @@ function listBody(matches: ScheduledMatchView[], now: Date): string {
       return `
       <button type="button" class="pf-dirmatch js-dirmatch${cls}" data-match="${esc(m.id)}">
         <span class="pf-mono">${esc(m.time)}</span>
-        <span class="pf-dirmatch__teams">${esc(m.home)} <b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b> ${esc(m.away)}</span>
-        <span class="pf-dirmatch__cat">${esc(m.categoryId)} · ${esc(m.groupLabel)} ${matchStatusBadge(m)}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
+        <span class="pf-dirmatch__teams">${esc(dHome(m))} <b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b> ${esc(dAway(m))}</span>
+        <span class="pf-dirmatch__cat">${esc(m.categoryId)} · ${esc(dLabel(m))} ${matchStatusBadge(m)}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
       </button>`
     }).join('')
     return `<div class="pf-calday"><div class="pf-calday__head pf-mono">${esc(day)}</div>${rows}</div>`
@@ -81,8 +87,8 @@ export function wireDirector(root: ParentNode, o7: O7Api, eventId: string, field
     if (!m) return
     clearError()
     const st = displayStatus(m)
-    const head = `<h3 class="pf-h4" style="margin-top:0">${esc(m.home)} vs ${esc(m.away)}</h3>
-      <div class="pf-mono pf-muted" style="margin-bottom:var(--space-md)">${esc(m.time)} · ${esc(m.categoryId)} · ${esc(m.groupLabel)} ${matchStatusBadge(m)}</div>`
+    const head = `<h3 class="pf-h4" style="margin-top:0">${esc(dHome(m))} vs ${esc(dAway(m))}</h3>
+      <div class="pf-mono pf-muted" style="margin-bottom:var(--space-md)">${esc(m.time)} · ${esc(m.categoryId)} · ${esc(dLabel(m))} ${matchStatusBadge(m)}</div>`
 
     if (st === 'CANCELLED') {
       const { close } = openSheet(sheet, `${head}<p class="pf-muted">Gara annullata dall'organizzazione.</p>
@@ -114,8 +120,8 @@ export function wireDirector(root: ParentNode, o7: O7Api, eventId: string, field
     // LIVE: score stepper + Salva (keep live) / Termina (finalize).
     const { close } = openSheet(sheet, `${head}
       <div class="pf-row" style="justify-content:center;gap:var(--space-2xl);align-items:flex-end">
-        ${renderStepper('home', m.home, m.homeScore ?? 0)}
-        ${renderStepper('away', m.away, m.awayScore ?? 0)}
+        ${renderStepper('home', dHome(m), m.homeScore ?? 0)}
+        ${renderStepper('away', dAway(m), m.awayScore ?? 0)}
       </div>
       <div class="pf-row" style="justify-content:center;gap:var(--space-sm);margin-top:var(--space-md);flex-wrap:wrap">
         <button type="button" class="pf-btn pf-btn--primary pf-btn--lg" id="dir-finish">Termina</button>
