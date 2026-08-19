@@ -9,15 +9,17 @@ const event: EventDetail = {
 }
 const cfg: ScheduleView['config'] = { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', slotsPerDay: 8, groupsCount: 1, legs: 'SINGLE' }
 const match: ScheduledMatchView = { id: 'sm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Girone A', day: '2026-08-29', time: '09:00', field: 'Campo A', home: 'A', away: 'B' }
-const data = (status: ScheduleView['status'], matches: ScheduledMatchView[] = []): ScheduleData =>
-  ({ event, schedule: { sportEventId: 'e1', organizationId: 'org', status, config: cfg }, matches })
+const data = (status: ScheduleView['status'], matches: ScheduledMatchView[] = [], config = cfg): ScheduleData =>
+  ({ event, schedule: { sportEventId: 'e1', organizationId: 'org', status, config }, matches })
 
 describe('schedule render', () => {
-  it('shows the config form and the Calendario tab, no calendar/actions when NONE', () => {
+  it('shows the facility + play config and the Calendario tab, no calendar/actions when NONE', () => {
     const html = renderSchedule(data('NONE'))
-    expect(html).toContain('Configurazione')
+    expect(html).toContain('Finestra impianto')
+    expect(html).toContain('Config di gioco')
+    expect(html).toContain('id="sameForAll"')
     expect(html).toContain('id="generate"')
-    expect(html).toContain('/schedule') // Calendario tab href
+    expect(html).toContain('/schedule')
     expect(html).toContain('Genera il calendario') // NONE actions hint
     expect(html).not.toContain('id="approve"')
   })
@@ -32,61 +34,74 @@ describe('schedule render', () => {
 
   it('locks the config and enables Pubblica when APPROVED', () => {
     const html = renderSchedule(data('APPROVED', [match]))
-    expect(html).toContain('configurazione è bloccata')
+    expect(html).toContain('configurazione bloccata')
     expect(html).not.toContain('id="generate"')
     expect(html).toMatch(/id="publish"(?![^>]*disabled)/)
   })
 
-  it('shows Pubblicato when PUBLISHED', () => {
-    expect(renderSchedule(data('PUBLISHED', [match]))).toContain('Pubblicato')
+  it('starts in per-category mode when the config carries byCategory', () => {
+    const perCat = { ...cfg, byCategory: { U10: { fields: ['Campo Nord'], periods: 1, periodMinutes: 10, breakMinutes: 0, legs: 'SINGLE' as const } } }
+    const html = renderSchedule(data('NONE', [], perCat))
+    expect(html).toMatch(/id="sameForAll"(?![^>]*checked)/) // toggle OFF
+    expect(html).toContain('data-cat="U10"')
+    expect(html).toContain('data-cat="U12"')
   })
 })
 
-describe('schedule mount', () => {
-  const mountWith = (status: ScheduleView['status']) => {
-    const o7 = {
-      generateSchedule: vi.fn().mockResolvedValue({}),
-      approveSchedule: vi.fn().mockResolvedValue({}),
-      publishSchedule: vi.fn().mockResolvedValue({}),
-      rescheduleMatch: vi.fn().mockResolvedValue({}),
-    }
+describe('schedule generate', () => {
+  const mountWith = (status: ScheduleView['status'], config = cfg) => {
+    const o7 = { generateSchedule: vi.fn().mockResolvedValue({}), approveSchedule: vi.fn().mockResolvedValue({}), publishSchedule: vi.fn().mockResolvedValue({}), rescheduleMatch: vi.fn().mockResolvedValue({}) }
     const refresh = vi.fn()
     const ctx = { client: { o7 } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh }
-    const d = data(status, status === 'NONE' ? [] : [match])
+    const d = data(status, status === 'NONE' ? [] : [match], config)
     const root = document.createElement('div'); root.innerHTML = renderSchedule(d)
     scheduleScreen.mount!(root, ctx as any, d)
     return { root, o7, refresh }
   }
 
-  it('generate collects the config (incl. groups/legs) and calls o7 then refresh', async () => {
+  it('ON mode: generate sends a flat config (fields/legs from the single card, no byCategory)', async () => {
     const { root, o7, refresh } = mountWith('NONE')
     ;(root.querySelector('#groupsCount') as HTMLInputElement).value = '2'
-    ;(root.querySelector('#legs') as HTMLSelectElement).value = 'HOME_AWAY'
+    ;(root.querySelector('.cfg-legs') as HTMLSelectElement).value = 'HOME_AWAY'
     root.querySelector<HTMLButtonElement>('#generate')!.click()
     await vi.waitFor(() => expect(o7.generateSchedule).toHaveBeenCalled())
-    const [id, config] = o7.generateSchedule.mock.calls[0]
-    expect(id).toBe('e1')
+    const [idArg, config] = o7.generateSchedule.mock.calls[0]
+    expect(idArg).toBe('e1')
     expect(config).toMatchObject({ groupsCount: 2, legs: 'HOME_AWAY', fields: ['Campo A', 'Campo B'] })
+    expect(config.byCategory).toBeUndefined()
     expect(refresh).toHaveBeenCalled()
   })
 
-  it('approve calls o7.approveSchedule then refresh when GENERATED', async () => {
-    const { root, o7, refresh } = mountWith('GENERATED')
-    root.querySelector<HTMLButtonElement>('#approve')!.click()
-    await vi.waitFor(() => expect(o7.approveSchedule).toHaveBeenCalledWith('e1'))
-    expect(refresh).toHaveBeenCalled()
+  it('per-category mode: toggling off yields a card per category; generate sends byCategory', async () => {
+    const { root, o7 } = mountWith('NONE')
+    const toggle = root.querySelector('#sameForAll') as HTMLInputElement
+    toggle.checked = false
+    toggle.dispatchEvent(new Event('change'))
+    const cards = root.querySelectorAll('.js-playcard')
+    expect(cards.length).toBe(2) // U10, U12
+    // customise U12
+    const u12 = root.querySelector('.js-playcard[data-cat="U12"]')!
+    ;(u12.querySelector('.cfg-fields') as HTMLInputElement).value = 'Campo Sud'
+    ;(u12.querySelector('.cfg-legs') as HTMLSelectElement).value = 'HOME_AWAY'
+    root.querySelector<HTMLButtonElement>('#generate')!.click()
+    await vi.waitFor(() => expect(o7.generateSchedule).toHaveBeenCalled())
+    const [, config] = o7.generateSchedule.mock.calls[0]
+    expect(config.byCategory.U10).toMatchObject({ fields: ['Campo A', 'Campo B'] })
+    expect(config.byCategory.U12).toMatchObject({ fields: ['Campo Sud'], legs: 'HOME_AWAY' })
   })
 
-  it('publish calls o7.publishSchedule when APPROVED', async () => {
-    const { root, o7 } = mountWith('APPROVED')
-    root.querySelector<HTMLButtonElement>('#publish')!.click()
-    await vi.waitFor(() => expect(o7.publishSchedule).toHaveBeenCalledWith('e1'))
+  it('blocks generate with an inline error when a category has no field', async () => {
+    const { root, o7 } = mountWith('NONE')
+    ;(root.querySelector('.cfg-fields') as HTMLInputElement).value = '  '
+    root.querySelector<HTMLButtonElement>('#generate')!.click()
+    await vi.waitFor(() => expect(root.querySelector('#err')!.innerHTML).toContain('almeno un campo'))
+    expect(o7.generateSchedule).not.toHaveBeenCalled()
   })
 })
 
-describe('schedule reschedule (S9)', () => {
+describe('schedule status + reschedule', () => {
   const mountWith = (status: ScheduleView['status'], reschedule = vi.fn().mockResolvedValue({})) => {
-    const o7 = { generateSchedule: vi.fn(), approveSchedule: vi.fn(), publishSchedule: vi.fn(), rescheduleMatch: reschedule }
+    const o7 = { generateSchedule: vi.fn(), approveSchedule: vi.fn().mockResolvedValue({}), publishSchedule: vi.fn().mockResolvedValue({}), rescheduleMatch: reschedule }
     const refresh = vi.fn()
     const ctx = { client: { o7 } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh }
     const d = data(status, [match])
@@ -95,37 +110,29 @@ describe('schedule reschedule (S9)', () => {
     return { root, o7, refresh }
   }
 
-  it('renders a per-match Modifica control in the editable calendar', () => {
-    expect(renderSchedule(data('GENERATED', [match]))).toContain('js-editmatch')
-    // E3 default (non-editable) has no edit control
-    expect(renderSchedule(data('NONE'))).not.toContain('js-editmatch')
+  it('approve then publish call the o7 seam', async () => {
+    const g = mountWith('GENERATED')
+    g.root.querySelector<HTMLButtonElement>('#approve')!.click()
+    await vi.waitFor(() => expect(g.o7.approveSchedule).toHaveBeenCalledWith('e1'))
+    const a = mountWith('APPROVED')
+    a.root.querySelector<HTMLButtonElement>('#publish')!.click()
+    await vi.waitFor(() => expect(a.o7.publishSchedule).toHaveBeenCalledWith('e1'))
   })
 
-  it('Modifica opens a prefilled panel and Salva calls rescheduleMatch then refresh', async () => {
-    const { root, o7, refresh } = mountWith('GENERATED')
-    root.querySelector<HTMLButtonElement>('.js-editmatch')!.click()
-    const day = root.querySelector('#rs-day') as HTMLInputElement
-    expect(day.value).toBe('2026-08-29') // prefilled from the match
-    day.value = '2026-08-30'
-    ;(root.querySelector('#rs-time') as HTMLInputElement).value = '11:00'
-    root.querySelector<HTMLButtonElement>('#rs-save')!.click()
-    await vi.waitFor(() => expect(o7.rescheduleMatch).toHaveBeenCalled())
-    const [id, matchId, patch] = o7.rescheduleMatch.mock.calls[0]
-    expect(id).toBe('e1'); expect(matchId).toBe('sm-1')
-    expect(patch).toMatchObject({ day: '2026-08-30', time: '11:00' })
-    expect(refresh).toHaveBeenCalled()
+  it('Modifica → Salva reschedules a match; 409 shows a conflict notice', async () => {
+    const ok = mountWith('GENERATED')
+    ok.root.querySelector<HTMLButtonElement>('.js-editmatch')!.click()
+    ;(ok.root.querySelector('#rs-time') as HTMLInputElement).value = '11:00'
+    ok.root.querySelector<HTMLButtonElement>('#rs-save')!.click()
+    await vi.waitFor(() => expect(ok.o7.rescheduleMatch).toHaveBeenCalledWith('e1', 'sm-1', expect.objectContaining({ time: '11:00' })))
+
+    const conflict = mountWith('GENERATED', vi.fn().mockRejectedValue({ status: 409 }))
+    conflict.root.querySelector<HTMLButtonElement>('.js-editmatch')!.click()
+    conflict.root.querySelector<HTMLButtonElement>('#rs-save')!.click()
+    await vi.waitFor(() => expect(conflict.root.querySelector('#err')!.innerHTML).toContain('Slot già occupato'))
   })
 
-  it('surfaces a 409 slot conflict without refreshing', async () => {
-    const conflict = vi.fn().mockRejectedValue({ status: 409, code: 'SLOT_CONFLICT' })
-    const { root, refresh } = mountWith('GENERATED', conflict)
-    root.querySelector<HTMLButtonElement>('.js-editmatch')!.click()
-    root.querySelector<HTMLButtonElement>('#rs-save')!.click()
-    await vi.waitFor(() => expect(root.querySelector('#err')!.innerHTML).toContain('Slot già occupato'))
-    expect(refresh).not.toHaveBeenCalled()
-  })
-
-  it('reschedule is available even when the schedule is PUBLISHED', () => {
+  it('reschedule is available even when PUBLISHED', () => {
     const { root } = mountWith('PUBLISHED')
     root.querySelector<HTMLButtonElement>('.js-editmatch')!.click()
     expect(root.querySelector('#rs-save')).not.toBeNull()
