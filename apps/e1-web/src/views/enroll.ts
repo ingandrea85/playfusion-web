@@ -4,12 +4,13 @@ import { inlineError, type Screen, type ViewCtx } from '../view.js'
 
 export interface EnrollData { event: EventDetail; window: RegistrationWindowView; pending: RegistrationView[]; e3BaseUrl: string; enrollToken?: string }
 
-/** The shareable coach enrollment link. When the window has minted a token (at open) it is
- *  embedded as `?token=` before the hash so E3's captureMagicLink reads it; the coach then
- *  sees the apply form. Falls back to the plain landing link if no token yet. */
+/** The shareable coach enrollment link. Points straight to the SEPARATE registration page
+ *  (`/apply`), not the public landing (option A). When the window has minted a token (at open)
+ *  it is embedded as `?token=` before the hash so E3's captureMagicLink reads it and the coach
+ *  sees the form. Falls back to the plain /apply link if no token yet. */
 export function enrollUrl(e3BaseUrl: string, id: string, token?: string): string {
   const base = `${e3BaseUrl}/e3/`
-  const hash = `#/events/${encodeURIComponent(id)}`
+  const hash = `#/events/${encodeURIComponent(id)}/apply`
   return token ? `${base}?token=${encodeURIComponent(token)}${hash}` : `${base}${hash}`
 }
 

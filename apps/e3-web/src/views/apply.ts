@@ -31,9 +31,11 @@ function categoryOptions(event: EventDetail, window: RegistrationWindowView): st
 }
 
 export function renderApply(event: EventDetail, window: RegistrationWindowView, hasToken: boolean): string {
+  const id = encodeURIComponent(event.sportEventId)
   const head = `${renderPublicTopbar()}
     <main class="pf-container pf-container--narrow">
-      <div class="pf-pagehead"><div class="pf-eyebrow">Iscrizione</div><h1>${esc(event.name ?? event.sport)}</h1></div>`
+      <div class="pf-pagehead"><div class="pf-eyebrow">Iscrizione</div><h1>${esc(event.name ?? event.sport)}</h1></div>
+      <div class="pf-row" style="margin-bottom:var(--space-md)"><a class="pf-btn pf-btn--ghost" href="#/events/${id}">← Vai alla pagina evento</a></div>`
   // Without a magic-link token the O5 apply call would 401 — show the notice instead of a form.
   if (!hasToken) {
     return `${head}
