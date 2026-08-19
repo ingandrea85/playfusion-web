@@ -159,3 +159,10 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-table th, .pf-table td { padding: 6px 8px; text-align: center; border-bottom: 1px solid var(--color-border-default); white-space: nowrap; }
 .pf-table th { font-size: 12px; color: var(--color-text-muted); font-weight: 700; }
 .pf-table td:nth-child(2), .pf-table th:nth-child(2) { text-align: left; }
+
+/* ---------- Category/girone tabs (S23) ---------- */
+.pf-tabs { display: flex; gap: var(--space-xs); overflow-x: auto; margin-bottom: var(--space-sm); padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+.pf-tab { flex: 0 0 auto; padding: 6px 12px; border: 1px solid var(--color-border-default); background: var(--color-surface-default);
+  border-radius: var(--radius-pill); font: inherit; font-size: 13px; font-weight: 600; color: var(--color-text-muted); cursor: pointer; white-space: nowrap; }
+.pf-tab:hover { border-color: var(--color-border-strong); }
+.pf-tab--active { background: var(--color-action-primary); border-color: var(--color-action-primary); color: #fff; }

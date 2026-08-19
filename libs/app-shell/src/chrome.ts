@@ -54,6 +54,27 @@ export function renderCalendar(matches: CalendarMatch[], catName: (id: string) =
   }).join('')
 }
 
+/** Category/girone filter tabs (S23) — shared by the calendar & standings surfaces (E1+E3).
+ *  Stateless: screens read `data-key` on click and re-render. Scrollable on mobile. */
+export interface Tab { key: string; label: string }
+export function renderTabs(items: Tab[], activeKey: string): string {
+  if (!items.length) return ''
+  return `<nav class="pf-tabs">${items.map((t) =>
+    `<button type="button" class="pf-tab${t.key === activeKey ? ' pf-tab--active' : ''}" data-key="${esc(t.key)}" aria-selected="${t.key === activeKey}">${esc(t.label)}</button>`).join('')}</nav>`
+}
+/** Distinct categoryIds in first-seen order (from matches or standings groups). */
+export function categoryKeys(items: Array<{ categoryId: string }>): string[] {
+  const out: string[] = []
+  for (const i of items) if (!out.includes(i.categoryId)) out.push(i.categoryId)
+  return out
+}
+/** Distinct groupLabels of one category, first-seen order. */
+export function groupKeys(items: Array<{ categoryId: string; groupLabel: string }>, categoryId: string): string[] {
+  const out: string[] = []
+  for (const i of items) if (i.categoryId === categoryId && !out.includes(i.groupLabel)) out.push(i.groupLabel)
+  return out
+}
+
 /** Structural standings shapes (app-shell stays free of rest-client; its DTOs satisfy these). */
 export interface StandingRowView { team: string; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; goalDiff: number; points: number }
 export interface GroupStandingView { categoryId: string; groupLabel: string; rows: StandingRowView[] }
