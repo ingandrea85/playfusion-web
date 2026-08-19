@@ -1,4 +1,4 @@
-import { esc, renderCalendar, renderTabs, categoryKeys, groupKeys } from '@playfusion/app-shell'
+import { esc, renderCalendar, renderTabs, categoryKeys, groupKeys, renderStepper, wireSteppers, readStepper, copyToClipboard } from '@playfusion/app-shell'
 import type { CategorySchedule, EventDetail, ScheduleConfig, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
@@ -92,11 +92,26 @@ function calendarCard(matches: ScheduledMatchView[], selCat: string, selGir: str
   </div>`
 }
 
+/** Per-field director links (S25): the organizer shares one link per field; that director
+ *  reports only that field's results from the phone. */
+function directorCard(matches: ScheduledMatchView[]): string {
+  const fields = [...new Set(matches.map((m) => m.field))]
+  if (!fields.length) return ''
+  const rows = fields.map((f) => `<div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">
+    <span class="pf-mono">${esc(f)}</span>
+    <button type="button" class="pf-btn js-dirlink" data-field="${esc(f)}">Copia link direttore</button>
+    <span class="js-dircopied pf-muted" data-field="${esc(f)}"></span></div>`).join('')
+  return `<div class="pf-card"><h2 class="pf-h3">Direttori di campo</h2>
+    <p class="pf-muted">Invia a ciascun direttore il link del suo campo: potrà inserire i risultati di quel campo dal telefono.</p>
+    <div class="pf-stack">${rows}</div></div>`
+}
+
 export function renderSchedule(data: ScheduleData): string {
   const { event, schedule, matches } = data
   const calendar = schedule.status === 'NONE' ? '' : calendarCard(matches, categoryKeys(matches)[0] ?? '', 'ALL')
+  const directors = schedule.status === 'NONE' ? '' : directorCard(matches)
   return workspaceShell(event, 'schedule',
-    `<div id="err"></div>${configSection(schedule.config, event.categorie, schedule.status)}${actionsCard(schedule.status)}${calendar}`)
+    `<div id="err"></div>${configSection(schedule.config, event.categorie, schedule.status)}${actionsCard(schedule.status)}${calendar}${directors}`)
 }
 
 export const scheduleScreen: Screen<ScheduleData> = {
@@ -114,6 +129,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
     // Calendar with category/girone filter tabs (S23); its redraw rewires the per-match
     // Risultato/Modifica buttons. Works in every status (incl. APPROVED/PUBLISHED).
     wireCalendar()
+    wireDirectorLinks()
     if (isLocked(data.schedule.status)) { wireStatus(); return }
 
     const categorie = data.event.categorie
@@ -180,6 +196,21 @@ export const scheduleScreen: Screen<ScheduleData> = {
       })
     }
 
+    /** S25: per-field director links. On click, mint a director token for that field and copy
+     *  the E3 director URL (…/e3/?token=…#/events/:id/director) to the clipboard. */
+    function wireDirectorLinks() {
+      root.querySelectorAll<HTMLButtonElement>('.js-dirlink').forEach((btn) => btn.addEventListener('click', async () => {
+        const field = btn.dataset.field!
+        const note = btn.closest('.pf-row')?.querySelector<HTMLElement>('.js-dircopied')
+        try {
+          const { token } = await ctx.client.o7.getDirectorToken(id, field)
+          const url = `${ctx.e3BaseUrl}/e3/?token=${encodeURIComponent(token)}#/events/${encodeURIComponent(id)}/director`
+          const ok = await copyToClipboard(url)
+          if (note) note.textContent = ok ? 'Copiato ✓' : 'Copia manuale'
+        } catch { if (note) note.textContent = 'Errore, riprova' }
+      }))
+    }
+
     /** S23: category + girone filter tabs above the calendar. Redraws the tab bars and the
      *  calendar body on each change, then rewires the per-match Risultato/Modifica buttons. */
     function wireCalendar() {
@@ -213,23 +244,20 @@ export const scheduleScreen: Screen<ScheduleData> = {
       function openResult(matchId: string) {
         const m = data.matches.find((x) => x.id === matchId)
         if (!m) return
-        const hs = m.homeScore ?? '', as = m.awayScore ?? ''
         panel!.innerHTML = `<div class="pf-card"><h3 class="pf-h4" style="margin-top:0">Risultato · ${esc(m.home)} vs ${esc(m.away)}</h3>
-          <div class="pf-row" style="justify-content:flex-start;gap:var(--space-md);align-items:flex-end">
-            <div class="pf-field" style="margin-bottom:0;width:110px"><label>${esc(m.home)}</label><input id="rr-home" type="number" min="0" value="${esc(hs)}" /></div>
-            <div class="pf-field" style="margin-bottom:0;width:110px"><label>${esc(m.away)}</label><input id="rr-away" type="number" min="0" value="${esc(as)}" /></div>
+          <div class="pf-row" style="justify-content:center;gap:var(--space-2xl);align-items:flex-end">
+            ${renderStepper('home', m.home, m.homeScore ?? 0)}
+            ${renderStepper('away', m.away, m.awayScore ?? 0)}
+          </div>
+          <div class="pf-row" style="justify-content:center;gap:var(--space-sm);margin-top:var(--space-md)">
             <button type="button" class="pf-btn pf-btn--primary" id="rr-save">Salva</button>
             <button type="button" class="pf-btn" id="rr-cancel">Annulla</button>
           </div></div>`
+        wireSteppers(panel!)
         panel!.querySelector('#rr-cancel')!.addEventListener('click', () => { panel!.innerHTML = '' })
         panel!.querySelector('#rr-save')!.addEventListener('click', async (e) => {
-          const b = e.currentTarget as HTMLButtonElement
-          const homeScore = Number((panel!.querySelector('#rr-home') as HTMLInputElement).value)
-          const awayScore = Number((panel!.querySelector('#rr-away') as HTMLInputElement).value)
-          if (!Number.isInteger(homeScore) || !Number.isInteger(awayScore) || homeScore < 0 || awayScore < 0) {
-            err.innerHTML = inlineError('Inserisci due punteggi validi (interi ≥ 0).'); return
-          }
-          b.disabled = true
+          const b = e.currentTarget as HTMLButtonElement; b.disabled = true
+          const homeScore = readStepper(panel!, 'home'), awayScore = readStepper(panel!, 'away')
           try { await ctx.client.o7.recordResult(id, matchId, { homeScore, awayScore }); ctx.refresh() }
           catch { err.innerHTML = inlineError('Salvataggio risultato non riuscito. Riprova.'); b.disabled = false }
         })
