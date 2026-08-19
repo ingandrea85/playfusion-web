@@ -151,3 +151,21 @@ test('test_generate_perCategoryFinalsFormats', async () => {
   expect(u10Finals.length).toBeGreaterThan(0); // U10 has a bracket
   expect(u12Finals).toHaveLength(0);           // U12 has none
 })
+
+test('test_generate_finalsStartAfterGroupMatchesOnFinalsDay', async () => {
+  // Single-day event: finals must be scheduled AFTER the last group match of that day, not overlap it.
+  events = new FakeEventSource({ 'evt-1d': {
+    sportEventId: 'evt-1d', dates: { from: '2026-09-01', to: '2026-09-01' }, categorie: ['U10'],
+    gironi: { U10: { groups: [{ label: 'Girone A', teams: ['A', 'B', 'C'] }], locked: true } },
+  } });
+  teams = new FakeTeamSource({ 'evt-1d': { U10: ['A', 'B', 'C'] } });
+  await generateSchedule(deps())({ sportEventId: 'evt-1d', organizationId: 'org-1', config: { ...config, finalsType: 'SINGLE_GROUP_CROSSOVER' } });
+  const all = await matches.list('evt-1d');
+  const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return (h ?? 0) * 60 + (m ?? 0); };
+  const slot = config.periods * config.periodMinutes + config.breakMinutes; // 50
+  const groups = all.filter((m) => m.phase !== 'FINAL');
+  const finals = all.filter((m) => m.phase === 'FINAL');
+  const lastGroupEnd = Math.max(...groups.filter((m) => m.day === '2026-09-01').map((m) => toMin(m.time) + slot));
+  expect(finals.length).toBeGreaterThan(0);
+  for (const f of finals) expect(toMin(f.time)).toBeGreaterThanOrEqual(lastGroupEnd);
+})
