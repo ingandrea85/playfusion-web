@@ -89,7 +89,7 @@ new HashRouter()
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/bracket', async ({ id }) => {
-    try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); app.innerHTML = renderPublicBracket(ev, sched, matches); wirePublicBracket(app, matches) }
+    try { const [ev, sched, matches, ranking] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id), client.o7.getFinalStandings(id)]); app.innerHTML = renderPublicBracket(ev, sched, matches, ranking); wirePublicBracket(app, matches, ranking) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id', async ({ id }) => {

@@ -36,3 +36,13 @@ describe('e3 landing Tabellone link (S12)', () => {
     expect(renderLanding(event, win, false)).not.toContain(`#/events/e1/bracket`)
   })
 })
+
+describe('e3 public bracket shows the final ranking (S13)', () => {
+  const finalM: ScheduledMatchView = { id: 'fm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Tabellone', day: 'd', time: 't', field: 'f', home: '1ª Girone A', away: '2ª Girone A', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'F' }
+  it('renders Classifica finale with positions', () => {
+    const html = renderPublicBracket(event, sched('PUBLISHED'), [finalM], [{ categoryId: 'U10', rows: [{ position: 1, team: 'Alfa' }, { position: 2, team: 'Bravo' }] }])
+    expect(html).toContain('Classifica finale')
+    expect(html).toContain('1º')
+    expect(html).toContain('Alfa')
+  })
+})

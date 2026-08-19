@@ -154,3 +154,14 @@ describe('o7 decide winner (draw KO)', () => {
     expect(out.decidedWinner).toBe('AWAY')
   })
 })
+
+describe('o7 final standings (S13)', () => {
+  const r = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } })
+  it('getFinalStandings GETs /o7/events/:id/final-standings', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(r([{ categoryId: 'U10', rows: [{ position: 1, team: 'A' }, { position: 2, pending: 'tie' }] }]))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o7.getFinalStandings('e1')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api/prod/o7/events/e1/final-standings')
+    expect(out[0].rows[0]).toEqual({ position: 1, team: 'A' })
+  })
+})

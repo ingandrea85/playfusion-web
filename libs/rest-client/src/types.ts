@@ -138,6 +138,9 @@ export interface StandingRow {
   goalDiff: number
   points: number
 }
+// S13 final ranking (podium/placements) per category — progressive; pending where undecided.
+export interface FinalStandingRow { position: number; team?: string; pending?: 'result' | 'tie' }
+export interface CategoryFinalStanding { categoryId: string; rows: FinalStandingRow[] }
 export interface GroupStanding {
   categoryId: string
   groupLabel: string
