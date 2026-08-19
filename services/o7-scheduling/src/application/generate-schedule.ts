@@ -28,12 +28,15 @@ function buildFinalMatches(
     const fields = cat.fields.length ? cat.fields : ['Campo 1'];
     const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
     draws.forEach((d, i) => {
+      // Omit undefined placement fields — DynamoDB's document marshaller rejects `undefined`
+      // (FINAL_GROUP draws carry no placement range).
       out.push({
         id: `fm-${++n}`, sportEventId, categoryId: cat.id, groupLabel: d.bracketLabel,
         day: finalsDate, time: addMinutes(dailyStart, Math.floor(i / fields.length) * slotMinutes),
         field: fields[i % fields.length]!, home: d.home, away: d.away, status: 'SCHEDULED',
-        phase: d.phase, bracketLabel: d.bracketLabel, round: d.round, order: d.order,
-        slot: d.slot, placementFrom: d.placementFrom, placementTo: d.placementTo,
+        phase: d.phase, bracketLabel: d.bracketLabel, round: d.round, order: d.order, slot: d.slot,
+        ...(d.placementFrom !== undefined ? { placementFrom: d.placementFrom } : {}),
+        ...(d.placementTo !== undefined ? { placementTo: d.placementTo } : {}),
       });
     });
   }
