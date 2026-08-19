@@ -7,8 +7,8 @@ import type { SportEvent, Playbook } from './domain.js';
 export type EventSummary = Omit<SportEvent, 'organizationId' | 'playbook'> & { playbook: Playbook };
 export type EventDetail = EventSummary;
 
-const strip = ({ organizationId, playbook, qualifiersPerGroup, ...rest }: SportEvent): EventDetail =>
-  ({ ...rest, playbook: playbook ?? 'PB-1', qualifiersPerGroup: qualifiersPerGroup ?? 2 });
+const strip = ({ organizationId, playbook, ...rest }: SportEvent): EventDetail =>
+  ({ ...rest, playbook: playbook ?? 'PB-1' });
 
 export const listEvents = (store: EventReadStore) => async (organizationId: string): Promise<EventSummary[]> =>
   (await store.listByOrg(organizationId)).map(strip);

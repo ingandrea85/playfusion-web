@@ -10,18 +10,15 @@ import {
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { DynamoDbEventStore } from './adapters/dynamodb-event-store.js';
 import { DynamoDbGironiRepository } from './adapters/dynamodb-gironi-repository.js';
-import { DynamoDbFinalsConfigRepository } from './adapters/dynamodb-finals-config-repository.js';
 import { HttpTeamSource } from './adapters/http-team-source.js';
 import { drawGironi } from './application/draw-gironi.js';
 import { saveGironi, getGironi } from './application/save-gironi.js';
-import { setFinalsConfig } from './application/set-finals-config.js';
 import { listEvents, getEvent } from './read-model.js';
 
 const db = makeDocClient();
 const publisher = new EventBridgeEventPublisher(busName());
 const store = new DynamoDbEventStore(db);
 const gironiRepo = new DynamoDbGironiRepository(db);
-const finalsConfigRepo = new DynamoDbFinalsConfigRepository(db);
 const teamSource = new HttpTeamSource();
 const app = new Hono();
 // Actual (non-preflight) responses need CORS headers too: API Gateway's
@@ -85,22 +82,8 @@ app.put('/events/:id/gironi/:categoria', organizer, async (c) => {
 });
 
 app.get('/events/:id/gironi', async (c) => c.json(await getGironi(gironiRepo)(c.req.param('id'))));
-
-// S12: finals config (O6) — a dedicated editor in the Competizione tab. Organizer mutation; the
-// values are read back via GET /events/:id. Changing them after generate requires regenerating the
-// calendar (the bracket is built at generate time — see o7).
-const finalsConfigBody = z.object({
-  finalsType: z.enum(['SINGLE_GROUP_CROSSOVER', 'SPLIT_GROUP_FINALS', 'PLACEMENT']),
-  qualifiersPerGroup: z.number().int().positive().default(2), // deprecated (v1 formats ignore it)
-  finalsEnabled: z.boolean().optional(),
-  finalsTeamsToBracket: z.number().int().positive().optional(), // SPLIT_GROUP_FINALS bracket size (S13)
-});
-app.put('/events/:id/finals-config', organizer, async (c) => {
-  const sportEventId = c.req.param('id');
-  if (!(await getEvent(store)(sportEventId))) return c.json({ error: 'EventNotFound', sportEventId }, 404);
-  const b = finalsConfigBody.parse(await c.req.json());
-  return c.json(await setFinalsConfig(finalsConfigRepo)({ sportEventId, finalsType: b.finalsType, qualifiersPerGroup: b.qualifiersPerGroup, finalsEnabled: b.finalsEnabled, finalsTeamsToBracket: b.finalsTeamsToBracket }));
-});
+// Finals format is per-category on the o7 ScheduleConfig (edited in the Calendario tab), not on the
+// event — there is no o3 finals-config endpoint.
 
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
 
