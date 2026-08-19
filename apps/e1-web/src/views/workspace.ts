@@ -89,8 +89,9 @@ function finalsEditor(event: EventDetail): string {
     <h2 class="pf-h3">Fase finale</h2>
     <div class="pf-field"><label for="fc-type">Formato</label>
       <select id="fc-type"><option value=""${event.finalsType ? '' : ' selected'}>Nessuna fase finale</option>${opts}</select></div>
-    <div class="pf-field"><label for="fc-q">Qualificate per girone</label>
-      <input id="fc-q" type="number" min="1" step="1" value="${esc(String(event.qualifiersPerGroup ?? 2))}" /></div>
+    <div class="pf-field"><label for="fc-bracket">Squadre al tabellone</label>
+      <input id="fc-bracket" type="number" min="2" step="2" value="${esc(String(event.finalsTeamsToBracket ?? ''))}" placeholder="es. 4" />
+      <small class="pf-muted">Solo per "Gironi + girone finale": quante squadre vanno al tabellone (il resto gioca il girone finale).</small></div>
     <div id="fc-err"></div>
     <div class="pf-row" style="gap:var(--space-sm)"><button type="button" class="pf-btn pf-btn--primary" id="fc-save">Salva fase finale</button></div>
     <p class="pf-muted" style="margin-top:var(--space-sm)">Dopo la modifica <b>rigenera il calendario</b> (tab Calendario) per applicare il tabellone.</p>
@@ -131,10 +132,12 @@ export const competitionScreen: Screen<EventDetail> = {
     const err = root.querySelector('#fc-err')!
     save.addEventListener('click', async () => {
       const finalsType = root.querySelector<HTMLSelectElement>('#fc-type')!.value as FinalsType | ''
-      const qualifiersPerGroup = Math.max(1, Math.floor(Number(root.querySelector<HTMLInputElement>('#fc-q')!.value) || 0))
+      const bracketRaw = Number(root.querySelector<HTMLInputElement>('#fc-bracket')!.value)
+      const finalsTeamsToBracket = Number.isFinite(bracketRaw) && bracketRaw >= 2 ? Math.floor(bracketRaw) : undefined
       if (!finalsType) { err.innerHTML = inlineError('Scegli un formato di fase finale.'); return }
+      if (finalsType === 'SPLIT_GROUP_FINALS' && !finalsTeamsToBracket) { err.innerHTML = inlineError('Indica quante squadre vanno al tabellone (≥ 2, pari).'); return }
       save.disabled = true
-      try { await ctx.client.o3.updateFinalsConfig(event.sportEventId, { finalsType, qualifiersPerGroup }); ctx.refresh() }
+      try { await ctx.client.o3.updateFinalsConfig(event.sportEventId, { finalsType, finalsEnabled: true, finalsTeamsToBracket }); ctx.refresh() }
       catch { err.innerHTML = inlineError('Salvataggio della fase finale non riuscito. Riprova.'); save.disabled = false }
     })
   },
