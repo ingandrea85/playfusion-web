@@ -445,6 +445,14 @@ is allowed in any status incl. PUBLISHED and never changes the status (distinct 
 regenerate S7 locks after APPROVED). `renderCalendar` gained an `editable` flag so only E1 shows the
 per-match "Modifica" control; E3 stays read-only.
 
+**Phase S22 (Per-category schedule config, O7) — complete.** `ScheduleConfig` gained an
+optional `byCategory` override so each category can play on its own fields with its own match
+params + legs (`dailyStart`/`slotsPerDay`/`groupsCount` stay global). `buildFixtures` places
+each category on its own fields using one cursor per (fields+slot) signature — same-config
+categories lay out sequentially (no collision), distinct-field categories in parallel. The E1
+schedule screen has a "stessa per tutte / per categoria" toggle (one card, or one card per
+category). Additive/back-compat: pre-S22 flat configs still apply to all categories.
+
 ## 13. Where to read more
 
 - [`README.md`](../README.md) — quick start.
