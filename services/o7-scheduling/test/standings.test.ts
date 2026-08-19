@@ -45,3 +45,24 @@ test('test_computeStandings_drawGivesOnePointEach', () => {
   const s = computeStandings([mk('U10', 'Girone A', 'A', 'B', 2, 2)]);
   expect(s[0]!.rows.every((r) => r.points === 1 && r.drawn === 1)).toBe(true);
 });
+
+test('test_computeStandings_legacyPlayedCountsWithoutStatus', () => {
+  // Pre-S26 fixtures have scores but no status → still counted (legacy fallback).
+  const m = mk('U10', 'Girone A', 'A', 'B', 1, 0);
+  expect(m.status).toBeUndefined();
+  const rows = computeStandings([m])[0]!.rows;
+  expect(rows.find((r) => r.team === 'A')).toMatchObject({ points: 3, played: 1 });
+});
+
+test('test_computeStandings_liveAndCancelledExcludedButRowsKept', () => {
+  const live = { ...mk('U10', 'Girone A', 'A', 'B', 3, 0), status: 'LIVE' as const };
+  const cancelled = { ...mk('U10', 'Girone A', 'A', 'C', 5, 0), status: 'CANCELLED' as const };
+  const rows = computeStandings([live, cancelled])[0]!.rows;
+  expect(rows.map((r) => r.team).sort()).toEqual(['A', 'B', 'C']); // teams still listed
+  expect(rows.every((r) => r.played === 0 && r.points === 0)).toBe(true); // neither counts
+});
+
+test('test_computeStandings_finishedCounts', () => {
+  const finished = { ...mk('U10', 'Girone A', 'A', 'B', 2, 1), status: 'FINISHED' as const };
+  expect(computeStandings([finished])[0]!.rows.find((r) => r.team === 'A')).toMatchObject({ points: 3 });
+});

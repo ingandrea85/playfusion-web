@@ -16,6 +16,7 @@ import { generateSchedule } from './application/generate-schedule.js';
 import { approveSchedule, publishSchedule } from './application/change-status.js';
 import { rescheduleMatch } from './application/reschedule-match.js';
 import { recordResult } from './application/record-result.js';
+import { startMatch, finishMatch, cancelMatch } from './application/transition-status.js';
 import { getScheduleOrDefault, listMatches, listStandings } from './application/read.js';
 
 const db = makeDocClient();
@@ -104,17 +105,37 @@ app.put('/events/:id/matches/:matchId', organizer, async (c) => {
   return c.json(match);
 });
 
-// S10: record/correct a group match result (organizer). Standings derive from it on read.
+// A field director's token is bound to one event + field; the organizer is unrestricted.
+// Returns the field to restrict writes to (undefined = organizer), after checking the token's
+// event matches the path.
+const reporterFieldScope = (c: any, eventId: string): string | undefined => {
+  const scope = c.get('reporterScope' as never) as ReporterScope;
+  if ('field' in scope && scope.eventId !== eventId) throw new ForbiddenError('token is for another event');
+  return 'field' in scope ? scope.field : undefined;
+};
+
+// S10: record/correct a group match result (organizer or field director). S26: recording
+// auto-advances a match to LIVE; a director cannot correct a FINISHED match. Standings derive on read.
 const resultBody = z.object({ homeScore: z.number().int().nonnegative(), awayScore: z.number().int().nonnegative() });
 app.post('/events/:id/matches/:matchId/result', requireResultReporter, async (c) => {
   const b = resultBody.parse(await c.req.json());
-  const scope = c.get('reporterScope' as never) as ReporterScope;
-  // A field director's token is bound to one event + field.
-  const restrictToField = 'field' in scope ? scope.field : undefined;
-  if ('field' in scope && scope.eventId !== c.req.param('id')) throw new ForbiddenError('token is for another event');
+  const restrictToField = reporterFieldScope(c, c.req.param('id'));
   const match = await recordResult(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), homeScore: b.homeScore, awayScore: b.awayScore, restrictToField });
   return c.json(match);
 });
+
+// S26: match lifecycle. Start/finish are result-reporter actions (organizer OR the field's
+// director); cancel is an organizer-only administrative override.
+app.post('/events/:id/matches/:matchId/start', requireResultReporter, async (c) => {
+  const restrictToField = reporterFieldScope(c, c.req.param('id'));
+  return c.json(await startMatch(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), restrictToField }));
+});
+app.post('/events/:id/matches/:matchId/finish', requireResultReporter, async (c) => {
+  const restrictToField = reporterFieldScope(c, c.req.param('id'));
+  return c.json(await finishMatch(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), restrictToField }));
+});
+app.post('/events/:id/matches/:matchId/cancel', organizer, async (c) =>
+  c.json(await cancelMatch(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId') })));
 
 // S25: mint a per-field director link (organizer). The token lasts the whole tournament — TTL
 // runs to the event's end date (+2 days), with a generous fallback. The organizer shares one

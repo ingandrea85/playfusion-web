@@ -34,3 +34,11 @@ export class UnknownTeamError extends DomainError {
     super('UNKNOWN_TEAM', `team ${team} is not a confirmed team of this category`, 422);
   }
 }
+
+/** 409 — a lifecycle transition not allowed from the match's current status (S26), e.g. start
+ *  a FINISHED match, or record a result on a CANCELLED one. */
+export class InvalidMatchTransitionError extends DomainError {
+  constructor(from: string, action: string) {
+    super('INVALID_MATCH_TRANSITION', `cannot ${action} a match in status ${from}`, 409);
+  }
+}
