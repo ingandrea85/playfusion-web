@@ -11,6 +11,10 @@ export interface O7Api {
   recordResult(eventId: string, matchId: string, result: { homeScore: number; awayScore: number }): Promise<ScheduledMatchView>
   getStandings(eventId: string): Promise<GroupStanding[]>
   getDirectorToken(eventId: string, field: string): Promise<{ field: string; token: string }>
+  // S26: match lifecycle transitions.
+  startMatch(eventId: string, matchId: string): Promise<ScheduledMatchView>
+  finishMatch(eventId: string, matchId: string): Promise<ScheduledMatchView>
+  cancelMatch(eventId: string, matchId: string): Promise<ScheduledMatchView>
 }
 export const o7 = (cfg: HttpConfig): O7Api => ({
   getSchedule: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/schedule`),
@@ -22,4 +26,7 @@ export const o7 = (cfg: HttpConfig): O7Api => ({
   recordResult: (id, matchId, result) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/result`, result),
   getStandings: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/standings`),
   getDirectorToken: (id, field) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/director-token`, { field }),
+  startMatch: (id, matchId) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/start`),
+  finishMatch: (id, matchId) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/finish`),
+  cancelMatch: (id, matchId) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/cancel`),
 })

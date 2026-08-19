@@ -94,3 +94,33 @@ describe('o7 results + standings (S10)', () => {
     expect(out[0].rows[0].team).toBe('A')
   })
 })
+
+describe('o7 director token (S25)', () => {
+  it('getDirectorToken POSTs the field to /director-token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ field: 'Campo A', token: 'tok-d' }), { status: 200, headers: { 'content-type': 'application/json' } }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o7.getDirectorToken('e1', 'Campo A')
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://api/prod/o7/events/e1/director-token')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ field: 'Campo A' })
+    expect(out.token).toBe('tok-d')
+  })
+})
+
+describe('o7 match lifecycle (S26)', () => {
+  const match = { id: 'sm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Girone A', day: '2026-09-01', time: '09:00', field: 'Campo A', home: 'A', away: 'B', status: 'LIVE', startedAt: '2026-09-01T09:05:00.000Z' }
+  it.each([
+    ['startMatch', 'start'],
+    ['finishMatch', 'finish'],
+    ['cancelMatch', 'cancel'],
+  ] as const)('%s POSTs to /matches/:id/%s', async (method, verb) => {
+    const fetchMock = vi.fn().mockResolvedValue(res(match))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o7[method]('e1', 'sm-1')
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe(`https://api/prod/o7/events/e1/matches/sm-1/${verb}`)
+    expect(init.method).toBe('POST')
+    expect(out.status).toBe('LIVE')
+  })
+})
