@@ -20,3 +20,17 @@ export class SlotConflictError extends DomainError {
     super('SLOT_CONFLICT', `the target slot is already occupied (match ${matchId})`, 409);
   }
 }
+
+/** 422 — a team edit with an empty team or home === away. */
+export class InvalidTeamError extends DomainError {
+  constructor(message = 'home and away must be non-empty and different') {
+    super('INVALID_TEAM', message, 422);
+  }
+}
+
+/** 422 — a team edit with a team that isn't confirmed for the match's category (level B). */
+export class UnknownTeamError extends DomainError {
+  constructor(team: string) {
+    super('UNKNOWN_TEAM', `team ${team} is not a confirmed team of this category`, 422);
+  }
+}
