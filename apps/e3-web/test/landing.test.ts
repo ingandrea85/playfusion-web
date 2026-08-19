@@ -6,10 +6,14 @@ const win = { sportEventId: 'e1', state: 'Open' as const, categories: [{ categor
 const closedWin = { ...win, state: 'Closed' as const }
 
 describe('e3 views', () => {
-  it('landing shows the public hero + a category capacity tag', () => {
-    const html = renderLanding(ev, win)
+  it('landing shows the public hero + category chips linking to the calendar (no capacity)', () => {
+    const html = renderLanding(ev, win, true) // published → chips link to the calendar
     expect(html).toContain('pf-hero')
-    expect(html).toContain('3/8')
+    expect(html).not.toContain('3/8') // enrollment capacity is organizer info, not for spectators
+    expect(html).toContain(`#/events/${ev.sportEventId}/calendar/${encodeURIComponent(ev.categorie[0])}`)
+  })
+  it('landing category chips are not links before the calendar is published', () => {
+    expect(renderLanding(ev, win, false)).not.toContain('/calendar')
   })
   it('landing has NO apply CTA (registration is a separate page via the organizer link)', () => {
     expect(renderLanding(ev, win)).not.toContain(`#/events/${ev.sportEventId}/apply`)

@@ -83,6 +83,11 @@ new HashRouter()
     try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); app.innerHTML = renderPublicCalendar(ev, sched, matches); wirePublicCalendar(app, matches) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
+  // Deep-link from a landing category chip: the calendar preselected to that category.
+  .on('#/events/:id/calendar/:cat', async ({ id, cat }) => {
+    try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); app.innerHTML = renderPublicCalendar(ev, sched, matches, cat); wirePublicCalendar(app, matches, cat) }
+    catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
+  })
   .on('#/events/:id/bracket', async ({ id }) => {
     try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); app.innerHTML = renderPublicBracket(ev, sched, matches); wirePublicBracket(app, matches) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
