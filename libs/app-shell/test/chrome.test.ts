@@ -156,17 +156,46 @@ describe('bracket tree vs list (S13)', () => {
 
 describe('bracket full classification (S13)', () => {
   const cat = (c: string) => c
-  it('renders the main path as a tree and the placement finals as a list below', () => {
+  it('renders the main path as a tree and the placement finals as a list below (variante B)', () => {
     const finals = [
       { categoryId: 'U10', bracketLabel: 'Tabellone', round: 'SF', order: 1, slot: 'T1SF1', home: 'Vincente A', away: 'Vincente B', phase: 'FINAL' as const },
       { categoryId: 'U10', bracketLabel: 'Tabellone', round: 'SF', order: 2, slot: 'T1SF2', home: 'Vincente C', away: 'Vincente D', phase: 'FINAL' as const },
-      { categoryId: 'U10', bracketLabel: 'Tabellone', round: 'F', order: 3, slot: 'T1WF', home: 'Vincente T1SF1', away: 'Vincente T1SF2', phase: 'FINAL' as const },
-      { categoryId: 'U10', bracketLabel: 'Tabellone', round: 'Finale 3º/4º', order: 4, slot: 'T1WLF', home: 'Perdente T1SF1', away: 'Perdente T1SF2', phase: 'FINAL' as const },
+      { categoryId: 'U10', bracketLabel: 'Tabellone', round: 'F', order: 3, slot: 'T1WF', home: 'Vincente T1SF1', away: 'Vincente T1SF2', placementFrom: 1, placementTo: 2, phase: 'FINAL' as const },
+      { categoryId: 'U10', bracketLabel: 'Tabellone', round: 'Finale 3º/4º', order: 4, slot: 'T1WLF', home: 'Perdente T1SF1', away: 'Perdente T1SF2', placementFrom: 3, placementTo: 4, phase: 'FINAL' as const },
     ]
     const html = renderBracket(finals, cat)
-    expect(html).toContain('pf-brk-tree')        // main path is a graphical tree
-    expect(html).toContain('pf-brk-placements')  // placement finals listed below
+    expect(html).toContain('pf-brk-tree')            // main path is a graphical tree
+    expect(html).toContain('pf-brk-placements')      // placement finals listed below
     expect(html).toContain('Piazzamenti')
-    expect(html).toContain('Finale 3º/4º')        // the placement round header
+    expect(html).toContain('posizioni 1º–4º')        // bracket-level range chip (head)
+    expect(html).toContain('→ 1º–4º')                // Semifinali feeder → decides positions 1–4
+    expect(html).toContain('1º/2º')                  // position chip on the final
+    expect(html).toContain('3º/4º')                  // position chip on the placement final
+  })
+})
+
+import { finalsPhaseTabs, filterCalendarMatches, FINALS_TAB } from '../src/chrome'
+describe('finals phase sub-filter (S13)', () => {
+  const mk = (round: string, phase: 'GROUP' | 'FINAL', groupLabel = 'Girone A') =>
+    ({ categoryId: 'U10', groupLabel, round, phase })
+  const ms = [
+    mk('', 'GROUP', 'Girone A'), mk('', 'GROUP', 'Girone B'),
+    mk('QF', 'FINAL'), mk('SF', 'FINAL'), mk('F', 'FINAL'),
+    { categoryId: 'U10', groupLabel: 'Tabellone', round: 'Finale 3º/4º', phase: 'FINAL' as const },
+    { categoryId: 'U10', groupLabel: 'Tabellone', round: 'Sp. 5º-8º', phase: 'FINAL' as const },
+  ]
+  it('lists code rounds in bracket order + a single "Piazzamenti", led by "Tutte"', () => {
+    const tabs = finalsPhaseTabs(ms, 'U10').map((t) => t.label)
+    expect(tabs).toEqual(['Tutte', 'Quarti', 'Semifinali', 'Finale', 'Piazzamenti'])
+  })
+  it('returns no tabs when a category has fewer than 2 finals phases', () => {
+    const only = [{ categoryId: 'U10', groupLabel: 'Finali', round: 'Finale 1º/2º', phase: 'FINAL' as const }]
+    expect(finalsPhaseTabs(only, 'U10')).toEqual([])
+  })
+  it('filters finals by phase; "Piazzamenti" groups every non-code round', () => {
+    expect(filterCalendarMatches(ms, 'U10', FINALS_TAB, 'QF').map((m) => m.round)).toEqual(['QF'])
+    expect(filterCalendarMatches(ms, 'U10', FINALS_TAB, 'PIAZZAMENTI').map((m) => m.round).sort())
+      .toEqual(['Finale 3º/4º', 'Sp. 5º-8º'])
+    expect(filterCalendarMatches(ms, 'U10', FINALS_TAB, 'ALL').every((m) => m.phase === 'FINAL')).toBe(true)
   })
 })

@@ -3,6 +3,7 @@ import type { O7Api } from '@playfusion/rest-client'
 import {
   renderPublicTopbar, renderStepper, wireSteppers, readStepper, esc,
   displayStatus, matchStatusBadge, matchDelayLabel, openSheet, needsWinnerDecision, renderTabs, isFinalPhase,
+  finalsPhaseTabs, finalsPhaseKey,
 } from '@playfusion/app-shell'
 
 /** The field director's scope, decoded from their magic-link (subject `director:<eventId>:<field>`).
@@ -64,6 +65,7 @@ export function renderDirector(event: EventDetail, field: string, matches: Sched
         <div class="pf-mono pf-muted">${esc(event.name ?? event.sport)}</div></div>
       <div id="dir-err"></div>
       ${dirFilterTabs(mine)}
+      <div id="dir-phase"></div>
       <div id="dir-body">${listBody(mine, new Date())}</div>
       <div id="dir-sheet"></div>
     </main>`
@@ -84,14 +86,26 @@ export function wireDirector(root: ParentNode, o7: O7Api, eventId: string, field
   const upsert = (m: ScheduledMatchView) => { const i = local.findIndex((x) => x.id === m.id); if (i >= 0) local[i] = { ...local[i]!, ...m } }
 
   const filterbar = root.querySelector<HTMLElement>('#dir-filter')
+  const phasebar = root.querySelector<HTMLElement>('#dir-phase')
   let filter = 'ALL'
-  const shown = () => local.filter((m) => filter === 'ALL' || (filter === 'FINALS' ? isFinalPhase(m) : !isFinalPhase(m)))
+  let phase = 'ALL'
+  const shown = () => local.filter((m) => {
+    if (filter === 'ALL') return true
+    if (filter === 'GROUP') return !isFinalPhase(m)
+    return isFinalPhase(m) && (phase === 'ALL' || finalsPhaseKey(m.round) === phase) // FINALS
+  })
 
   function draw() {
     if (filterbar) {
       filterbar.innerHTML = renderTabs([{ key: 'ALL', label: 'Tutte' }, { key: 'GROUP', label: 'Gironi' }, { key: 'FINALS', label: 'Finali' }], filter)
       filterbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
-        b.addEventListener('click', () => { filter = b.dataset.key!; draw() }))
+        b.addEventListener('click', () => { filter = b.dataset.key!; phase = 'ALL'; draw() }))
+    }
+    if (phasebar) {
+      const phaseTabs = filter === 'FINALS' ? finalsPhaseTabs(local) : []
+      phasebar.innerHTML = phaseTabs.length ? `<div class="pf-tabs--sub">${renderTabs(phaseTabs, phase)}</div>` : ''
+      phasebar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
+        b.addEventListener('click', () => { phase = b.dataset.key!; draw() }))
     }
     body.innerHTML = listBody(shown(), new Date())
     body.querySelectorAll<HTMLButtonElement>('.js-dirmatch').forEach((b) =>
