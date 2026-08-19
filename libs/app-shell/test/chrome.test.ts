@@ -127,3 +127,29 @@ describe('finals winner highlight + decide badge (chrome)', () => {
     expect(needsWinnerDecision({ phase: 'GROUP', status: 'FINISHED', homeScore: 1, awayScore: 1 })).toBe(false)
   })
 })
+
+describe('bracket tree vs list (S13)', () => {
+  const cat = (c: string) => c
+  const m = (round: string, order: number, home: string, away: string, over: any = {}) =>
+    ({ categoryId: 'U10', bracketLabel: 'Tabellone', round, order, home, away, phase: 'FINAL' as const, ...over })
+  it('multi-round knockout renders a graphical tree + a mobile list fallback', () => {
+    const finals = [
+      m('SF', 1, 'Vincente QF1', 'Vincente QF2'), m('SF', 2, 'Vincente QF3', 'Vincente QF4'),
+      m('F', 1, 'Vincente SF1', 'Vincente SF2'),
+    ]
+    const html = renderBracket(finals, cat)
+    expect(html).toContain('pf-brk-tree')       // graphical tree present
+    expect(html).toContain('pf-brk__col')
+    expect(html).toContain('pf-brk-fallback')    // mobile list fallback present
+    expect(html).toContain('Semifinali')         // round header mapped
+  })
+  it('single-match placement finals render as a list (no tree)', () => {
+    const finals = [
+      { categoryId: 'U10', bracketLabel: 'Finali', round: 'Finale 1º/2º', order: 1, home: '1ª Girone A', away: '2ª Girone A', phase: 'FINAL' as const },
+      { categoryId: 'U10', bracketLabel: 'Finali', round: 'Finale 3º/4º', order: 2, home: '3ª Girone A', away: '4ª Girone A', phase: 'FINAL' as const },
+    ]
+    const html = renderBracket(finals, cat)
+    expect(html).not.toContain('pf-brk-tree')
+    expect(html).toContain('pf-brk__list')
+  })
+})
