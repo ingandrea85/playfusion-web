@@ -4,14 +4,16 @@ import { countsForStandings, type GroupStanding, type ScheduledMatch } from './d
  *
  *  - Qualifier seed `Nª Girone X` → the ranked team of that group, **iff** the group is complete
  *    (every GROUP fixture counted — S26) **and** position N is not inside an S11 `unresolved` tie.
- *  - Winner link `Vincente <slot>` (S13) → the winner (higher score) of the FINISHED FINAL match with
- *    that `slot`. A drawn/unfinished match leaves the placeholder (shootout = a follow-up slice).
+ *  - Winner link `Vincente <slot>` / loser link `Perdente <slot>` (S13) → the winner (resp. loser) of
+ *    the FINISHED FINAL match with that `slot`. A drawn match resolves via the organizer/director
+ *    `decidedWinner`; an unfinished/undecided match leaves the placeholder (blocks the classification).
  *
  *  Resolution is a fixpoint (earlier rounds resolve first, then their winners propagate). Pure and
  *  idempotent: correcting a result that "uncompletes" a group or unfinishes a match reverts the slots.
  *  `standings` are the GROUP standings (ranked, with `unresolved`). */
 const SEED_RE = /^(\d+)ª (Girone .+)$/;
 const WIN_RE = /^Vincente (.+)$/;
+const LOSE_RE = /^Perdente (.+)$/;
 
 export function resolvePlaceholders(matches: ScheduledMatch[], standings: GroupStanding[]): ScheduledMatch[] {
   const byGroup = new Map<string, GroupStanding>();
@@ -49,19 +51,25 @@ export function resolvePlaceholders(matches: ScheduledMatch[], standings: GroupS
     const resolved = side === 'home' ? m.homeResolved : m.awayResolved;
     if (resolved) return resolved;
     const raw = side === 'home' ? m.home : m.away;
-    return SEED_RE.test(raw) || WIN_RE.test(raw) ? undefined : raw; // a literal team name resolves to itself
+    return SEED_RE.test(raw) || WIN_RE.test(raw) || LOSE_RE.test(raw) ? undefined : raw; // a literal team name resolves to itself
   };
-  const winnerOf = (m: ScheduledMatch): string | undefined => {
+  // The decided side of a finished match: `want='WIN'` returns the winner, `'LOSE'` the loser. A draw
+  // uses the organizer/director `decidedWinner` (the other side is the loser); undecided ⇒ blocked.
+  const sideOf = (m: ScheduledMatch, want: 'WIN' | 'LOSE'): string | undefined => {
     if (m.status !== 'FINISHED') return undefined;
     const hs = m.homeScore, as = m.awayScore;
     if (hs == null || as == null) return undefined;
-    if (hs !== as) return nameOf(m, hs > as ? 'home' : 'away');
-    // Draw: advance the side the organizer/director decreed; else the bracket stays blocked.
-    return m.decidedWinner ? nameOf(m, m.decidedWinner === 'HOME' ? 'home' : 'away') : undefined;
+    let winner: 'home' | 'away' | undefined;
+    if (hs !== as) winner = hs > as ? 'home' : 'away';
+    else if (m.decidedWinner) winner = m.decidedWinner === 'HOME' ? 'home' : 'away';
+    if (!winner) return undefined;
+    return nameOf(m, want === 'WIN' ? winner : winner === 'home' ? 'away' : 'home');
   };
   const resolveOne = (label: string, categoryId: string): string | undefined => {
     const w = WIN_RE.exec(label);
-    if (w) { const t = bySlot.get(`${categoryId}||${w[1]}`); return t ? winnerOf(t) : undefined; }
+    if (w) { const t = bySlot.get(`${categoryId}||${w[1]}`); return t ? sideOf(t, 'WIN') : undefined; }
+    const l = LOSE_RE.exec(label);
+    if (l) { const t = bySlot.get(`${categoryId}||${l[1]}`); return t ? sideOf(t, 'LOSE') : undefined; }
     return resolveSeed(label, categoryId);
   };
 

@@ -63,6 +63,40 @@ test('test_resolve_winnerNotPropagated_whenSemifinalUnfinishedOrDrawn', () => {
   expect(final.awayResolved).toBe('B'); // the qualifier side still resolves
 });
 
+test('test_resolve_loserPropagates_fromFinishedSemifinal', () => {
+  // The 3rd/4th final's "Perdente SFx" links resolve to the losing side of each finished semifinal.
+  const ms: ScheduledMatch[] = [
+    grp('A', 'B', 3, 0), grp('A', 'C', 3, 0), grp('A', 'D', 3, 0), grp('B', 'C', 3, 0), grp('B', 'D', 3, 0), grp('C', 'D', 3, 0),
+    { ...fin('1ª Girone A', '4ª Girone A'), slot: 'SF1', round: 'SF', homeScore: 2, awayScore: 0, status: 'FINISHED' },
+    { ...fin('2ª Girone A', '3ª Girone A'), slot: 'SF2', round: 'SF', homeScore: 1, awayScore: 0, status: 'FINISHED' },
+    { ...fin('Perdente SF1', 'Perdente SF2'), slot: 'B1', round: 'Finale 3º/4º' },
+  ];
+  const third = resolvePlaceholders(ms, ranked(ms)).find((m) => m.slot === 'B1')!;
+  expect(third.homeResolved).toBe('D'); // 4ª lost SF1
+  expect(third.awayResolved).toBe('C'); // 3ª lost SF2
+});
+
+test('test_resolve_loser_usesDecreedWinner_onDraw', () => {
+  // A drawn semi decreed HOME → the loser link resolves to the AWAY side.
+  const ms: ScheduledMatch[] = [
+    grp('A', 'B', 3, 0), grp('A', 'C', 3, 0), grp('A', 'D', 3, 0), grp('B', 'C', 3, 0), grp('B', 'D', 3, 0), grp('C', 'D', 3, 0),
+    { ...fin('1ª Girone A', '4ª Girone A'), slot: 'SF1', round: 'SF', homeScore: 1, awayScore: 1, status: 'FINISHED', decidedWinner: 'HOME' },
+    { ...fin('Perdente SF1', 'x'), slot: 'B1', round: 'Finale 3º/4º' },
+  ];
+  const third = resolvePlaceholders(ms, ranked(ms)).find((m) => m.slot === 'B1')!;
+  expect(third.homeResolved).toBe('D'); // drawn, decreed HOME (1ª=A) ⇒ loser = AWAY (4ª=D)
+});
+
+test('test_resolve_loser_blockedWhenUndecided', () => {
+  const ms: ScheduledMatch[] = [
+    grp('A', 'B', 3, 0), grp('A', 'C', 3, 0), grp('A', 'D', 3, 0), grp('B', 'C', 3, 0), grp('B', 'D', 3, 0), grp('C', 'D', 3, 0),
+    { ...fin('1ª Girone A', '4ª Girone A'), slot: 'SF1', round: 'SF', homeScore: 1, awayScore: 1, status: 'FINISHED' },
+    { ...fin('Perdente SF1', 'x'), slot: 'B1', round: 'Finale 3º/4º' },
+  ];
+  const third = resolvePlaceholders(ms, ranked(ms)).find((m) => m.slot === 'B1')!;
+  expect(third.homeResolved).toBeUndefined(); // drawn + undecided ⇒ no loser yet
+});
+
 test('test_computeStandings_ignoresFinalMatches', () => {
   const ms = [grp('A', 'B', 2, 0), fin('1ª Girone A', '2ª Girone A')];
   const s = computeStandings(ms);
