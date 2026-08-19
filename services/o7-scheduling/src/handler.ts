@@ -180,8 +180,10 @@ app.put('/events/:id/standings/:categoryId/:groupLabel/override', organizer, asy
 app.get('/events/:id/schedule', async (c) =>
   c.json(await getScheduleOrDefault(schedules)(c.req.param('id'), orgOf(c))));
 
+// S12: matches include finals (phase FINAL); the deps let listMatches resolve `Nª Girone X`
+// placeholders to the ranked teams on read (same S11 ranking as the standings).
 app.get('/events/:id/matches', async (c) =>
-  c.json(await listMatches(matches)(c.req.param('id'))));
+  c.json(await listMatches(matches, { overrides, events })(c.req.param('id'))));
 
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
 

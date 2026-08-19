@@ -6,6 +6,11 @@ export type Playbook = 'PB-1' | 'PB-2';
 /** Tie-break criteria applied after points (points always rank first). */
 export type TieBreakCriterion = 'HEAD_TO_HEAD' | 'GOAL_DIFFERENCE' | 'GOALS_FOR';
 
+/** S12: how the finals bracket is drawn from the group qualifiers.
+ *  SINGLE_GROUP_CROSSOVER = one group's top-N cross (1-4/2-3); SPLIT_GROUP_FINALS = one bracket per
+ *  position across groups (Oro/Argento/…); PLACEMENT = per-position placement finals. */
+export type FinalsType = 'SINGLE_GROUP_CROSSOVER' | 'SPLIT_GROUP_FINALS' | 'PLACEMENT';
+
 /** A published sport event. `organizationId` is denormalised onto the item at write
  *  time (S1.1) so list-per-org is a single-BC GSI query.
  *
@@ -27,4 +32,8 @@ export interface SportEvent {
   playbook?: Playbook;
   /** S8: per-category group composition (O6). Optional; absent on pre-S8 events. */
   gironi?: import('./gironi.js').GironiMap;
+  /** S12: finals config (O6). `finalsType` absent ⇒ no finals bracket generated;
+   *  `qualifiersPerGroup` defaults to 2 in the read model. */
+  finalsType?: FinalsType;
+  qualifiersPerGroup?: number;
 }

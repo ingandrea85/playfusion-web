@@ -74,3 +74,14 @@ describe('e3 director view (S26 lifecycle)', () => {
     expect(root.querySelector('#dir-void')).toBeNull()
   })
 })
+
+describe('director shows finals (S12)', () => {
+  const fin: ScheduledMatchView = { id: 'fm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-09-02', time: '10:00', field: 'Campo A', home: '1ª Girone A', away: '2ª Girone A', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'Finale', order: 1, homeResolved: 'Alfa', awayResolved: 'Bravo' }
+  it('lists a FINAL match on the field with resolved names + round label', () => {
+    const html = renderDirector(event, 'Campo A', [fin])
+    expect(html).toContain('Alfa')
+    expect(html).toContain('Bravo')
+    expect(html).toContain('Finale')
+    expect(html).not.toContain('1ª Girone A')
+  })
+})

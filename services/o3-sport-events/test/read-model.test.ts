@@ -59,3 +59,17 @@ test('test_getEvent_returnsCompetitionConfig', async () => {
   });
   expect(res).not.toHaveProperty('organizationId');
 });
+
+test('test_getEvent_defaultsQualifiersPerGroupTo2_andPassesFinalsType', async () => {
+  const store = new InMemoryEventStore();
+  await store.add({ ...ev('evt-f', 'org-1'), finalsType: 'SINGLE_GROUP_CROSSOVER' });
+  const detail = await getEvent(store)('evt-f');
+  expect(detail).toMatchObject({ finalsType: 'SINGLE_GROUP_CROSSOVER', qualifiersPerGroup: 2 });
+});
+
+test('test_getEvent_keepsExplicitQualifiersPerGroup', async () => {
+  const store = new InMemoryEventStore();
+  await store.add({ ...ev('evt-g', 'org-1'), finalsType: 'PLACEMENT', qualifiersPerGroup: 3 });
+  const detail = await getEvent(store)('evt-g');
+  expect(detail).toMatchObject({ finalsType: 'PLACEMENT', qualifiersPerGroup: 3 });
+})

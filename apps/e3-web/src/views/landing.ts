@@ -8,6 +8,9 @@ export function renderLanding(event: EventDetail, window: RegistrationWindowView
   const capOf = (c: string) => window.categories.find((x) => x.categoria === c)
   const cats = event.categorie.map((c) => { const w = capOf(c); return renderCategoryTag(c, w?.count ?? 0, w?.cap ?? 0) }).join('')
   const id = encodeURIComponent(event.sportEventId)
+  const bracketCta = published
+    ? `<a class="pf-btn pf-btn--ghost" href="#/events/${id}/bracket">Tabellone →</a>`
+    : ''
   const calendarCta = published
     ? `<a class="pf-btn" href="#/events/${id}/calendar">Calendario →</a>`
     : ''
@@ -27,6 +30,7 @@ export function renderLanding(event: EventDetail, window: RegistrationWindowView
       <div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">
         ${calendarCta}
         <a class="pf-btn pf-btn--ghost" href="#/events/${id}/standings">Classifiche →</a>
+        ${bracketCta}
         <a class="pf-btn pf-btn--ghost" href="#/events/${id}/participants">Squadre iscritte →</a>
       </div>
       ${enrollHint}

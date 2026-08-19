@@ -24,6 +24,7 @@ export function computeStandings(matches: ScheduledMatch[]): GroupStanding[] {
   };
 
   for (const m of matches) {
+    if (m.phase === 'FINAL') continue; // S12: finals never affect the group table nor create rows
     const g = groupOf(m);
     const home = rowOf(g, m.home);
     const away = rowOf(g, m.away);

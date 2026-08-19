@@ -168,6 +168,14 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-tieitem { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); padding: 6px 10px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); }
 .pf-tieitem__moves { display: inline-flex; gap: var(--space-xs); }
 
+/* ---------- Finals bracket (S12) ---------- */
+.pf-bracket { margin-bottom: var(--space-lg); overflow-x: auto; }
+.pf-brk__round { margin: var(--space-sm) 0 var(--space-xs); color: var(--color-text-muted); font-size: 12px; }
+.pf-brk__list { list-style: none; margin: 0 0 var(--space-sm); padding: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
+.pf-brk__match { display: flex; align-items: center; gap: var(--space-md); padding: 6px 10px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); }
+.pf-brk__slot { color: var(--color-text-muted); white-space: nowrap; }
+.pf-brk__teams { flex: 1; }
+
 /* ---------- Category/girone tabs (S23) ---------- */
 .pf-tabs { display: flex; gap: var(--space-xs); overflow-x: auto; margin-bottom: var(--space-sm); padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
 .pf-tab { flex: 0 0 auto; padding: 6px 12px; border: 1px solid var(--color-border-default); background: var(--color-surface-default);

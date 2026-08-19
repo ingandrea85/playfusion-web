@@ -1,4 +1,4 @@
-import type { ResolvedGroup, Schedule, ScheduledMatch, TieBreakCriterion, TieOverride } from './domain.js';
+import type { FinalsType, ResolvedGroup, Schedule, ScheduledMatch, TieBreakCriterion, TieOverride } from './domain.js';
 
 /** Persistence seam for the Schedule aggregate (one per event). */
 export interface ScheduleRepository {
@@ -26,6 +26,9 @@ export interface EventView {
    *  Both read from the o3 event over HTTP. */
   sport?: string;
   tieBreak?: TieBreakCriterion[];
+  /** S12: finals config (O6, from o3). `finalsType` absent ⇒ no bracket generated. */
+  finalsType?: FinalsType;
+  qualifiersPerGroup?: number;
 }
 export interface EventSource {
   get(sportEventId: string): Promise<EventView | undefined>;

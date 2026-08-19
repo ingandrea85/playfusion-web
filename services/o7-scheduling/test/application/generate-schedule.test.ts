@@ -87,3 +87,27 @@ test('test_generate_usesExplicitGironiCompositionWhenPresent', async () => {
   expect(u10[0]).toMatchObject({ groupLabel: 'Girone A', home: 'A', away: 'B' });
   expect(m.filter((x) => x.categoryId === 'U12')).toHaveLength(1); // auto-split fallback
 });
+
+test('test_generate_appendsFinalsWhenFinalsTypeConfigured', async () => {
+  // U10 with an explicit single group of 3 + SINGLE_GROUP_CROSSOVER Q2 → one Tabellone final appended.
+  events = new FakeEventSource({ 'evt-f': {
+    sportEventId: 'evt-f', dates: { from: '2026-08-29', to: '2026-08-31' }, categorie: ['U10'],
+    gironi: { U10: { groups: [{ label: 'Girone A', teams: ['A', 'B', 'C'] }], locked: true } },
+    finalsType: 'SINGLE_GROUP_CROSSOVER', qualifiersPerGroup: 2,
+  } });
+  teams = new FakeTeamSource({ 'evt-f': { U10: ['A', 'B', 'C'] } });
+  await generateSchedule(deps())({ sportEventId: 'evt-f', organizationId: 'org-1', config: { ...config, finalsDate: '2026-08-31' } });
+  const all = await matches.list('evt-f');
+  const finals = all.filter((m) => m.phase === 'FINAL');
+  expect(finals).toHaveLength(1);
+  expect(finals[0]).toMatchObject({ phase: 'FINAL', bracketLabel: 'Tabellone', round: 'Finale', home: '1ª Girone A', away: '2ª Girone A', day: '2026-08-31', status: 'SCHEDULED' });
+  expect(all.filter((m) => m.phase !== 'FINAL')).toHaveLength(3); // 3 group fixtures unaffected
+});
+
+test('test_generate_noFinalsWhenNoFinalsType', async () => {
+  const all = await (async () => {
+    await generateSchedule(deps())({ sportEventId: 'evt-1', organizationId: 'org-1', config });
+    return matches.list('evt-1');
+  })();
+  expect(all.some((m) => m.phase === 'FINAL')).toBe(false);
+});

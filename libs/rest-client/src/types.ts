@@ -1,6 +1,8 @@
 // o3 (services/o3-sport-events/src/read-model.ts + domain.ts)
 export type Playbook = 'PB-1' | 'PB-2'
 export type TieBreakCriterion = 'HEAD_TO_HEAD' | 'GOAL_DIFFERENCE' | 'GOALS_FOR'
+// S12: finals bracket shape (O6).
+export type FinalsType = 'SINGLE_GROUP_CROSSOVER' | 'SPLIT_GROUP_FINALS' | 'PLACEMENT'
 export interface EventDetail {
   sportEventId: string
   sport: string
@@ -12,6 +14,9 @@ export interface EventDetail {
   location?: string
   startTime?: string
   tieBreak?: TieBreakCriterion[]
+  // S12: finals config. finalsType absent ⇒ no bracket; qualifiersPerGroup defaults to 2 on read.
+  finalsType?: FinalsType
+  qualifiersPerGroup?: number
 }
 export type EventSummary = EventDetail
 export interface CreateEventInput {
@@ -24,6 +29,8 @@ export interface CreateEventInput {
   tieBreak?: TieBreakCriterion[]
   playbook?: Playbook
 }
+// S12: the finals-config editor payload (Competizione tab).
+export interface FinalsConfigInput { finalsType: FinalsType; qualifiersPerGroup: number }
 export interface CreateEventResult { sportEventId: string; status: 'Published' }
 // o6 gironi (composition on the o3 event) — S8
 export interface Group { label: string; teams: string[] }
@@ -77,6 +84,7 @@ export interface ScheduleConfig {
   groupsCount: number
   legs: Legs
   byCategory?: Record<string, CategorySchedule>
+  finalsDate?: string // S12: day the finals bracket is played on (defaults to the event's last day)
 }
 export interface ScheduleView {
   sportEventId: string
@@ -100,6 +108,14 @@ export interface ScheduledMatchView {
   awayScore?: number | null
   status?: MatchStatus // S26
   startedAt?: string | null // S26: ISO kickoff instant
+  // S12: finals. phase absent ⇒ GROUP; FINAL matches carry bracket metadata + placeholder home/away,
+  // with homeResolved/awayResolved filled on read once the qualifier is known.
+  phase?: 'GROUP' | 'FINAL'
+  bracketLabel?: string
+  round?: string
+  order?: number
+  homeResolved?: string
+  awayResolved?: string
 }
 // S10 standings
 export interface StandingRow {

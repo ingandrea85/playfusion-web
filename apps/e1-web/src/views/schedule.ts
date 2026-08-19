@@ -49,6 +49,7 @@ function globalCard(config: ScheduleConfig, locked: boolean): string {
   return `<div class="pf-card"><h2 class="pf-h3">Finestra impianto</h2>
     <div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
       <div class="pf-field" style="margin-bottom:0"><label>Inizio giornata</label><input id="dailyStart" type="time" value="${esc(config.dailyStart)}" ${dis} /></div>
+      <div class="pf-field" style="margin-bottom:0"><label>Data finali</label><input id="finalsDate" type="date" value="${esc(config.finalsDate ?? '')}" ${dis} /></div>
     </div>
     <p class="pf-muted" style="margin:var(--space-sm) 0 0">Gli slot per giornata sono calcolati automaticamente per far stare tutte le partite nei giorni dell'evento. I gironi si compongono nel tab <b>Gironi</b>.</p></div>`
 }
@@ -150,6 +151,8 @@ export const scheduleScreen: Screen<ScheduleData> = {
     }
     const buildConfig = (): { config?: ScheduleConfig; error?: string } => {
       const dailyStart = root.querySelector<HTMLInputElement>('#dailyStart')?.value || '09:00'
+      // S12: empty → undefined so the o7 generator defaults finalsDate to the event's last day.
+      const finalsDate = root.querySelector<HTMLInputElement>('#finalsDate')?.value || undefined
       // slotsPerDay is derived automatically by the o7 generator (fits all matches across the
       // event days) — no longer a form input.
       // groupsCount is only the auto-split fallback for events with no composed gironi (set in
@@ -158,7 +161,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
       if (mode() === 'all') {
         const cc = readCard(cfgbody.querySelector('.js-playcard')!)
         if (!cc.fields.length) return { error: 'Indica almeno un campo.' }
-        return { config: { ...cc, dailyStart, groupsCount } }
+        return { config: { ...cc, dailyStart, groupsCount, finalsDate } }
       }
       const byCategory: Record<string, CategorySchedule> = {}
       for (const card of Array.from(cfgbody.querySelectorAll('.js-playcard'))) {
@@ -168,7 +171,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
         byCategory[c] = cc
       }
       const first = Object.values(byCategory)[0] ?? defaultCat(data.schedule.config)
-      return { config: { ...first, dailyStart, groupsCount, byCategory } }
+      return { config: { ...first, dailyStart, groupsCount, byCategory, finalsDate } }
     }
 
     root.querySelector('#generate')?.addEventListener('click', async (e) => {
