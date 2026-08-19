@@ -49,11 +49,23 @@ describe('workspace Competition tab', () => {
   })
 })
 
-describe('workspace Categorie tab', () => {
-  it('lists every category', () => {
-    const html = renderCategorie(full)
+describe('workspace Categorie tab (dashboard)', () => {
+  const cfg = { fields: ['A'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', groupsCount: 1, legs: 'SINGLE' as const, byCategory: { U10: { fields: ['A'], periods: 2, periodMinutes: 20, breakMinutes: 10, legs: 'SINGLE' as const, finalsType: 'SPLIT_GROUP_FINALS' as const } } }
+  const data = {
+    event: full,
+    confirmed: [
+      { registrationId: 'r1', participantRef: 'A', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' as const },
+      { registrationId: 'r2', participantRef: 'B', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' as const },
+    ],
+    gironi: { U10: { locked: true, groups: [{ label: 'Girone A', teams: ['A', 'B'] }] } },
+    schedule: { sportEventId: 'e1', organizationId: 'o', status: 'GENERATED' as const, config: cfg },
+  }
+  it('shows per-category teams / gironi / finals format + calendar status', () => {
+    const html = renderCategorie(data)
     expect(html).toContain('U10')
     expect(html).toContain('U12')
+    expect(html).toContain('Gironi + girone finale') // U10 finals format
+    expect(html).toContain('Generato')                // calendar status
   })
 })
 

@@ -1,7 +1,16 @@
-import type { EventDetail, Playbook } from '@playfusion/rest-client'
+import type { EventDetail, Playbook, FinalsType, GironiMap, RegistrationView, ScheduleView } from '@playfusion/rest-client'
 import { renderOrganizerWorkspace, esc, type WorkspaceTab } from '@playfusion/app-shell'
 import type { Screen } from '../view.js'
 import { criterionLabel } from './tiebreak.js'
+
+const FINALS_LABEL: Record<FinalsType, string> = {
+  PLACEMENT: 'Tabellone eliminazione',
+  SINGLE_GROUP_CROSSOVER: 'Girone unico · coppie',
+  SPLIT_GROUP_FINALS: 'Gironi + girone finale',
+}
+const SCHEDULE_LABEL: Record<ScheduleView['status'], string> = {
+  NONE: 'Da generare', GENERATED: 'Generato', APPROVED: 'Approvato', PUBLISHED: 'Pubblicato',
+}
 
 export const workspaceTabs = (id: string): WorkspaceTab[] => {
   const e = encodeURIComponent(id)
@@ -84,10 +93,24 @@ export function renderCompetition(event: EventDetail, activeTab = 'competition')
   </div>`)
 }
 
-export function renderCategorie(event: EventDetail, activeTab = 'categorie'): string {
-  const items = event.categorie.map(c => `<li class="pf-cat"><span class="pf-cat__label">${esc(c)}</span></li>`).join('')
+/** S13: Categorie is a per-category dashboard — confirmed teams, gironi, finals format — plus the
+ *  global calendar status. Read-only summary; the actual work lives in Gironi/Calendario/Iscrizioni. */
+export interface CategorieData { event: EventDetail; confirmed: RegistrationView[]; gironi: GironiMap; schedule: ScheduleView }
+
+export function renderCategorie(data: CategorieData, activeTab = 'categorie'): string {
+  const { event, confirmed, gironi, schedule } = data
+  const teams = (c: string): number => confirmed.filter((r) => r.categoria === c && r.status === 'Confirmed').length
+  const groups = (c: string): number => gironi[c]?.groups.filter((g) => g.teams.length).length ?? 0
+  const finals = (c: string): string => {
+    const t = schedule.config.byCategory?.[c]?.finalsType ?? schedule.config.finalsType
+    return t ? esc(FINALS_LABEL[t]) : '<span class="pf-muted">—</span>'
+  }
+  const rows = event.categorie.map((c) => `<tr>
+    <td>${esc(c)}</td><td>${teams(c)}</td><td>${groups(c) || '<span class="pf-muted">—</span>'}</td><td>${finals(c)}</td>
+  </tr>`).join('')
   const body = event.categorie.length
-    ? `<ul class="pf-catlist">${items}</ul>`
+    ? `<table class="pf-table"><thead><tr><th>Categoria</th><th>Squadre</th><th>Gironi</th><th>Formato finali</th></tr></thead><tbody>${rows}</tbody></table>
+       <p class="pf-muted" style="margin-top:var(--space-sm)">Calendario: <b>${esc(SCHEDULE_LABEL[schedule.status])}</b>. Composizione gironi nel tab <b>Gironi</b>, formato finali nel tab <b>Calendario</b>.</p>`
     : `<div class="pf-muted">Nessuna categoria.</div>`
   return shell(event, activeTab, `<div class="pf-card"><h2 class="pf-h3">Categorie</h2>${body}</div>`)
 }
@@ -102,7 +125,12 @@ export const competitionScreen: Screen<EventDetail> = {
   render: (e) => renderCompetition(e),
 }
 
-export const categorieScreen: Screen<EventDetail> = {
-  load: (ctx, p) => ctx.client.o3.getEvent(p.id),
-  render: (e) => renderCategorie(e),
+export const categorieScreen: Screen<CategorieData> = {
+  load: async (ctx, p) => {
+    const [event, confirmed, gironi, schedule] = await Promise.all([
+      ctx.client.o3.getEvent(p.id), ctx.client.o5.listRegistrations(p.id, 'Confirmed'), ctx.client.o3.getGironi(p.id), ctx.client.o7.getSchedule(p.id),
+    ])
+    return { event, confirmed, gironi, schedule }
+  },
+  render: (d) => renderCategorie(d),
 }
