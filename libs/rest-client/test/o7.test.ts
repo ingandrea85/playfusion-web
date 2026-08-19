@@ -140,3 +140,17 @@ describe('o7 match lifecycle (S26)', () => {
     expect(out.status).toBe('LIVE')
   })
 })
+
+describe('o7 decide winner (draw KO)', () => {
+  const r = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } })
+  it('decideWinner POSTs the side to /matches/:id/decide-winner', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(r({ id: 'f1', decidedWinner: 'AWAY' }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o7.decideWinner('e1', 'f1', 'AWAY')
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://api/prod/o7/events/e1/matches/f1/decide-winner')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ winner: 'AWAY' })
+    expect(out.decidedWinner).toBe('AWAY')
+  })
+})
