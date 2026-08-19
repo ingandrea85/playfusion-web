@@ -461,6 +461,13 @@ calendar gains a per-match "Risultato" panel and shows scores; a **Classifiche**
 the E3 public standings view render the shared `renderStandings`. O8 lives on o7 (scores are match
 data; no new BC — same pragmatic call as O6-on-o3).
 
+**Phase S24 (Edit match teams, O7) — complete.** The calendar "Modifica" panel edits a match's
+teams (home/away) as well as its slot: `PUT /o7/events/:id/matches/:matchId` takes optional
+`home`/`away` (absent = pure reschedule). Level-B validation: non-empty + `home != away` (422); each
+team must be a confirmed team of the category (422, read from o5, fail-open if unavailable);
+changing the teams resets the match result. Per-match override — the gironi composition is
+unchanged; standings recompute from the edited matches.
+
 ## 13. Where to read more
 
 - [`README.md`](../README.md) — quick start.
