@@ -35,12 +35,20 @@ const orgOf = (c: any) => getIdentity(c)?.organizationId ?? c.req.header('x-orga
 
 // S7.1: match-format params + fields + the (uniform, until S8) group structure are the
 // generate input. All positive; legs defaults SINGLE, groupsCount defaults 1.
+// S13: finals format fields (per-category on byCategory, or top-level default). Optional everywhere.
+const finalsType = z.enum(['SINGLE_GROUP_CROSSOVER', 'SPLIT_GROUP_FINALS', 'PLACEMENT']);
+const finalsFields = {
+  finalsType: finalsType.optional(),
+  finalsEnabled: z.boolean().optional(),
+  finalsTeamsToBracket: z.number().int().positive().optional(),
+};
 const categorySchedule = z.object({
   fields: z.array(z.string()),
   periods: z.number().int().positive(),
   periodMinutes: z.number().int().positive(),
   breakMinutes: z.number().int().nonnegative(),
   legs: z.enum(['SINGLE', 'HOME_AWAY']),
+  ...finalsFields,
 });
 export const scheduleConfigBody = z.object({
   fields: z.array(z.string()).default(['Campo A', 'Campo B']),
@@ -50,8 +58,11 @@ export const scheduleConfigBody = z.object({
   dailyStart: z.string().default('09:00'),
   groupsCount: z.number().int().positive().default(1),
   legs: z.enum(['SINGLE', 'HOME_AWAY']).default('SINGLE'),
-  // S22: optional per-category override of fields + match params + legs.
+  // S22: optional per-category override of fields + match params + legs (+ S13 finals format).
   byCategory: z.record(categorySchedule).optional(),
+  // S12/S13: finals scheduling day (global) + top-level finals format default.
+  finalsDate: z.string().optional(),
+  ...finalsFields,
 });
 
 // Generate/approve/publish are organizer mutations (S2.4 bridge / Auth0 JWT).

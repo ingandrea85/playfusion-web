@@ -28,3 +28,15 @@ test('test_scheduleConfigBody_acceptsPerCategoryOverride', () => {
 test('test_scheduleConfigBody_rejectsBadPerCategory', () => {
   expect(() => scheduleConfigBody.parse({ byCategory: { U14: { fields: ['X'], periods: 0, periodMinutes: 30, breakMinutes: 5, legs: 'SINGLE' } } })).toThrow();
 })
+
+test('test_scheduleConfigBody_keepsFinalsFields_topLevelAndPerCategory', () => {
+  // Regression: the generate zod body must NOT strip finals config (else generate builds no finals).
+  const parsed = scheduleConfigBody.parse({
+    finalsDate: '2026-09-03', finalsType: 'SPLIT_GROUP_FINALS', finalsTeamsToBracket: 4,
+    byCategory: { U10: { fields: ['A'], periods: 2, periodMinutes: 20, breakMinutes: 10, legs: 'SINGLE', finalsType: 'SINGLE_GROUP_CROSSOVER' } },
+  });
+  expect(parsed.finalsDate).toBe('2026-09-03');
+  expect(parsed.finalsType).toBe('SPLIT_GROUP_FINALS');
+  expect(parsed.finalsTeamsToBracket).toBe(4);
+  expect(parsed.byCategory?.U10?.finalsType).toBe('SINGLE_GROUP_CROSSOVER');
+})
