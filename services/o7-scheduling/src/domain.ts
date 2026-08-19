@@ -53,6 +53,13 @@ export interface Schedule {
   config: ScheduleConfig;
 }
 
+/** S26: a match's lifecycle. SCHEDULED → LIVE (kickoff, `startedAt` set) → FINISHED
+ *  (result frozen). CANCELLED is an organizer-only override reachable from any live state.
+ *  Only FINISHED matches count in the standings. Legacy fixtures (pre-S26) carry no
+ *  `status`; they are treated as SCHEDULED, but a legacy match that already has both scores
+ *  is counted in the standings as if FINISHED (see `countsForStandings`). */
+export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED';
+
 /** A placed group-stage fixture. `categoryId` is the categoria string (categories are
  *  plain strings on the o3 event today); `home`/`away` are the confirmed teams' labels
  *  (participantRef until a real team name exists — S14). */
@@ -69,6 +76,28 @@ export interface ScheduledMatch {
   // S10: result. null/undefined = not played; both set = played.
   homeScore?: number | null;
   awayScore?: number | null;
+  // S26: lifecycle. Absent on legacy fixtures → treated as SCHEDULED.
+  status?: MatchStatus;
+  startedAt?: string | null; // ISO instant of kickoff (set on start), else null/undefined.
+}
+
+/** A match with a result recorded (both scores set). */
+export function isPlayed(m: ScheduledMatch): boolean {
+  return m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined;
+}
+
+/** The lifecycle status a match effectively has, defaulting legacy (statusless) fixtures to
+ *  SCHEDULED. */
+export function effectiveStatus(m: ScheduledMatch): MatchStatus {
+  return m.status ?? 'SCHEDULED';
+}
+
+/** Whether a match contributes to the standings: only FINISHED (S26), with a legacy fallback
+ *  so pre-S26 played fixtures (no status) still count. CANCELLED / LIVE / SCHEDULED never do. */
+export function countsForStandings(m: ScheduledMatch): boolean {
+  if (m.status === 'FINISHED') return true;
+  if (m.status == null) return isPlayed(m); // legacy fixtures predate the lifecycle
+  return false;
 }
 
 /** S10: a computed standings row for one team within a group. */
@@ -143,4 +172,23 @@ export function nextOnApprove(status: ScheduleStatus): ScheduleStatus {
 /** Publish advances APPROVED → PUBLISHED; any other state is left untouched. */
 export function nextOnPublish(status: ScheduleStatus): ScheduleStatus {
   return status === 'APPROVED' ? 'PUBLISHED' : status;
+}
+
+/** S26 match-lifecycle transition guards. Each answers "is this transition allowed from
+ *  `status`?"; idempotent re-entry (start a LIVE, finish a FINISHED) is allowed. CANCELLED is
+ *  terminal — nothing transitions out of it. */
+export function canStart(status: MatchStatus): boolean {
+  return status === 'SCHEDULED' || status === 'LIVE';
+}
+export function canFinish(status: MatchStatus): boolean {
+  return status === 'SCHEDULED' || status === 'LIVE' || status === 'FINISHED';
+}
+/** Cancel (organizer only) is allowed from any non-terminal state. */
+export function canCancel(status: MatchStatus): boolean {
+  return status !== 'CANCELLED';
+}
+/** A result may be recorded/corrected while not cancelled; recording auto-advances a
+ *  SCHEDULED match to LIVE (see recordResult). CANCELLED rejects results. */
+export function canRecord(status: MatchStatus): boolean {
+  return status !== 'CANCELLED';
 }

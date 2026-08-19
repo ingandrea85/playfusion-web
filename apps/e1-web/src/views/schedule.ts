@@ -1,4 +1,4 @@
-import { esc, renderCalendar, renderTabs, categoryKeys, groupKeys, renderStepper, wireSteppers, readStepper, copyToClipboard } from '@playfusion/app-shell'
+import { esc, renderCalendar, renderTabs, categoryKeys, groupKeys, renderStepper, wireSteppers, readStepper, copyToClipboard, displayStatus, matchStatusBadge } from '@playfusion/app-shell'
 import type { CategorySchedule, EventDetail, ScheduleConfig, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
@@ -233,33 +233,60 @@ export const scheduleScreen: Screen<ScheduleData> = {
       draw()
     }
 
-    /** S10: per-match result entry. "Risultato" opens a panel (home/away score, prefilled if
-     *  played); Salva → o7.recordResult → refresh (calendar shows the score, standings recompute). */
+    /** S10 + S26: per-match result entry & lifecycle. "Risultato" opens a panel showing the
+     *  match status, a score stepper, and lifecycle actions: Inizia (SCHEDULED→LIVE), Salva
+     *  (record, stays live), Salva e termina (record + finish → counts in standings), and the
+     *  organizer-only Annulla gara. A cancelled match is read-only. Each action → refresh. */
     function wireResult() {
       const panel = root.querySelector('#editmatch')
       if (!panel) return
       root.querySelectorAll<HTMLButtonElement>('.js-resultmatch').forEach((btn) =>
         btn.addEventListener('click', () => openResult(btn.dataset.match!)))
 
+      async function run(fn: () => Promise<unknown>, btn: HTMLButtonElement) {
+        btn.disabled = true
+        try { await fn(); ctx.refresh() }
+        catch (e2: unknown) {
+          const status = (e2 as { status?: number })?.status
+          err.innerHTML = inlineError(status === 409 ? 'Operazione non valida per lo stato della partita.' : 'Operazione non riuscita. Riprova.')
+          btn.disabled = false
+        }
+      }
+
       function openResult(matchId: string) {
         const m = data.matches.find((x) => x.id === matchId)
         if (!m) return
-        panel!.innerHTML = `<div class="pf-card"><h3 class="pf-h4" style="margin-top:0">Risultato · ${esc(m.home)} vs ${esc(m.away)}</h3>
+        const st = displayStatus(m)
+        const head = `<h3 class="pf-h4" style="margin-top:0">Risultato · ${esc(m.home)} vs ${esc(m.away)} ${matchStatusBadge(m)}</h3>`
+        if (st === 'CANCELLED') {
+          panel!.innerHTML = `<div class="pf-card">${head}<p class="pf-muted">Gara annullata.</p>
+            <div class="pf-row" style="justify-content:center;margin-top:var(--space-md)"><button type="button" class="pf-btn" id="rr-cancel">Chiudi</button></div></div>`
+          panel!.querySelector('#rr-cancel')!.addEventListener('click', () => { panel!.innerHTML = '' })
+          return
+        }
+        const finishLabel = st === 'FINISHED' ? 'Salva correzione' : 'Salva e termina'
+        panel!.innerHTML = `<div class="pf-card">${head}
           <div class="pf-row" style="justify-content:center;gap:var(--space-2xl);align-items:flex-end">
             ${renderStepper('home', m.home, m.homeScore ?? 0)}
             ${renderStepper('away', m.away, m.awayScore ?? 0)}
           </div>
-          <div class="pf-row" style="justify-content:center;gap:var(--space-sm);margin-top:var(--space-md)">
-            <button type="button" class="pf-btn pf-btn--primary" id="rr-save">Salva</button>
-            <button type="button" class="pf-btn" id="rr-cancel">Annulla</button>
+          <div class="pf-row" style="justify-content:center;gap:var(--space-sm);margin-top:var(--space-md);flex-wrap:wrap">
+            ${st === 'SCHEDULED' ? '<button type="button" class="pf-btn" id="rr-start">Inizia</button>' : ''}
+            <button type="button" class="pf-btn pf-btn--primary" id="rr-finish">${finishLabel}</button>
+            ${st === 'FINISHED' ? '' : '<button type="button" class="pf-btn" id="rr-save">Salva</button>'}
+            <button type="button" class="pf-btn pf-btn--ghost" id="rr-void">Annulla gara</button>
+            <button type="button" class="pf-btn" id="rr-cancel">Chiudi</button>
           </div></div>`
         wireSteppers(panel!)
+        const scores = () => ({ homeScore: readStepper(panel!, 'home'), awayScore: readStepper(panel!, 'away') })
         panel!.querySelector('#rr-cancel')!.addEventListener('click', () => { panel!.innerHTML = '' })
-        panel!.querySelector('#rr-save')!.addEventListener('click', async (e) => {
-          const b = e.currentTarget as HTMLButtonElement; b.disabled = true
-          const homeScore = readStepper(panel!, 'home'), awayScore = readStepper(panel!, 'away')
-          try { await ctx.client.o7.recordResult(id, matchId, { homeScore, awayScore }); ctx.refresh() }
-          catch { err.innerHTML = inlineError('Salvataggio risultato non riuscito. Riprova.'); b.disabled = false }
+        panel!.querySelector('#rr-start')?.addEventListener('click', (e) => run(() => ctx.client.o7.startMatch(id, matchId), e.currentTarget as HTMLButtonElement))
+        panel!.querySelector('#rr-save')?.addEventListener('click', (e) => run(() => ctx.client.o7.recordResult(id, matchId, scores()), e.currentTarget as HTMLButtonElement))
+        panel!.querySelector('#rr-finish')!.addEventListener('click', (e) =>
+          run(async () => { await ctx.client.o7.recordResult(id, matchId, scores()); await ctx.client.o7.finishMatch(id, matchId) }, e.currentTarget as HTMLButtonElement))
+        panel!.querySelector('#rr-void')!.addEventListener('click', (e) => {
+          if (!window.confirm(`Annullare la gara ${m.home} vs ${m.away}? Non conterà in classifica.`)) return
+          run(() => ctx.client.o7.cancelMatch(id, matchId), e.currentTarget as HTMLButtonElement)
         })
       }
     }

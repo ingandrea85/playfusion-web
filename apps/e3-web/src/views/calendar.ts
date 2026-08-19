@@ -38,7 +38,7 @@ export function wirePublicCalendar(root: ParentNode, matches: ScheduledMatchView
     girbar.innerHTML = renderTabs([{ key: 'ALL', label: 'Tutti' }, ...groupKeys(matches, selCat).map((g) => ({ key: g, label: g }))], selGir)
     girbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
       b.addEventListener('click', () => { selGir = b.dataset.key!; draw() }))
-    calbody!.innerHTML = renderCalendar(filterMatches(matches, selCat, selGir), catName)
+    calbody!.innerHTML = renderCalendar(filterMatches(matches, selCat, selGir), catName, false, { hideScheduledBadge: true })
   }
   draw()
 }

@@ -25,31 +25,97 @@ export function renderPublicTopbar(brandHtml?: string): string {
   return `<header class="pf-publicbar"><a class="pf-brand" href="#/">${brandHtml ?? 'play<b>fusion</b>'}</a></header>`
 }
 
+/** S26 match lifecycle (mirrors rest-client/o7 MatchStatus). */
+export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED'
+
 /** Structural shape of a scheduled match for rendering — kept local so app-shell needs
  *  no dependency on rest-client (rest-client's ScheduledMatchView satisfies it). `id` is
- *  only needed in editable mode (E1 reschedule — S9). */
-export interface CalendarMatch { id?: string; categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string; homeScore?: number | null; awayScore?: number | null }
+ *  only needed in editable mode (E1 reschedule — S9). `status`/`startedAt` drive the S26
+ *  lifecycle badges + delay. */
+export interface CalendarMatch { id?: string; categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string; homeScore?: number | null; awayScore?: number | null; status?: MatchStatus; startedAt?: string | null }
 
 const played = (m: CalendarMatch): boolean =>
   m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined
+
+/** The lifecycle status to display: the explicit `status` if set, else a legacy fallback —
+ *  a statusless fixture with both scores reads as FINISHED, otherwise SCHEDULED. Mirrors the
+ *  o7 backend's `effectiveStatus`/`countsForStandings` so FE and BE never disagree. */
+export function displayStatus(m: CalendarMatch): MatchStatus {
+  if (m.status) return m.status
+  return played(m) ? 'FINISHED' : 'SCHEDULED'
+}
+
+const STATUS_META: Record<MatchStatus, { label: string; mod: string; dot: string }> = {
+  SCHEDULED: { label: 'Programmata', mod: 'sched', dot: '' },
+  LIVE: { label: 'In corso', mod: 'live', dot: '🔴 ' },
+  FINISHED: { label: 'Finita', mod: 'done', dot: '' },
+  CANCELLED: { label: 'Annullata', mod: 'cancel', dot: '' },
+}
+
+/** A colored status pill for a match (S26). */
+export function matchStatusBadge(m: CalendarMatch): string {
+  const meta = STATUS_META[displayStatus(m)]
+  return `<span class="pf-mstatus pf-mstatus--${meta.mod}">${meta.dot}${meta.label}</span>`
+}
+
+/** A delay label relative to the kickoff, or null when on time (S26). A still-SCHEDULED match
+ *  past its slot reads "in ritardo N′"; a LIVE match started after its slot reads "iniziata +N′".
+ *  Times are naive wall-clock (venue-local); `now` is injectable for tests. */
+export function matchDelayLabel(m: CalendarMatch, now: Date = new Date()): string | null {
+  const sched = Date.parse(`${m.day}T${m.time}`)
+  if (Number.isNaN(sched)) return null
+  const s = displayStatus(m)
+  if (s === 'SCHEDULED') {
+    const late = Math.floor((now.getTime() - sched) / 60000)
+    return late >= 1 ? `in ritardo ${late}′` : null
+  }
+  if (s === 'LIVE' && m.startedAt) {
+    const started = Date.parse(m.startedAt)
+    if (!Number.isNaN(started)) {
+      const late = Math.floor((started - sched) / 60000)
+      if (late >= 1) return `iniziata +${late}′`
+    }
+  }
+  return null
+}
+
+/** Mount a mobile bottom-sheet into `host`, returning its content element + a `close()`. The
+ *  sheet is anchored to the bottom of the viewport (thumb-reach) so the director never scrolls
+ *  up to reach the score controls (S26). Tapping the backdrop closes it. */
+export function openSheet(host: HTMLElement, innerHtml: string): { el: HTMLElement; close: () => void } {
+  host.innerHTML = `<div class="pf-sheet-overlay"><div class="pf-sheet" role="dialog" aria-modal="true">${innerHtml}</div></div>`
+  const overlay = host.querySelector<HTMLElement>('.pf-sheet-overlay')!
+  const close = () => { host.innerHTML = '' }
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close() })
+  return { el: host.querySelector<HTMLElement>('.pf-sheet')!, close }
+}
 
 /** Calendar rendering — grouped by day, matches sorted by time then field. Shared by the E1
  *  organizer schedule screen and the E3 public calendar so the two never drift. `editable`
  *  (S9) adds a per-match "Modifica" button for the E1 reschedule editor; it defaults off so
  *  E3 stays read-only. */
-export function renderCalendar(matches: CalendarMatch[], catName: (id: string) => string, editable = false): string {
+export interface CalendarOptions { now?: Date; hideScheduledBadge?: boolean }
+export function renderCalendar(matches: CalendarMatch[], catName: (id: string) => string, editable = false, opts: CalendarOptions = {}): string {
   if (!matches.length) return `<p class="pf-muted">Nessuna partita in calendario.</p>`
+  const now = opts.now ?? new Date()
   const days = [...new Set(matches.map((m) => m.day))].sort()
   return days.map((day) => {
     const rows = matches.filter((m) => m.day === day)
       .sort((a, b) => a.time.localeCompare(b.time) || a.field.localeCompare(b.field))
-      .map((m) => `<li class="pf-match">
+      .map((m) => {
+        const st = displayStatus(m)
+        const delay = matchDelayLabel(m, now)
+        // On the public calendar the SCHEDULED pill is suppressed (noise on upcoming rows);
+        // LIVE/FINISHED/CANCELLED always show.
+        const badge = opts.hideScheduledBadge && st === 'SCHEDULED' ? '' : matchStatusBadge(m)
+        return `<li class="pf-match${st === 'CANCELLED' ? ' pf-match--cancelled' : ''}">
         <span class="pf-match__time pf-mono">${esc(m.time)}</span>
         <span class="pf-match__field pf-mono">${esc(m.field)}</span>
-        <span class="pf-match__cat">${esc(catName(m.categoryId))} · ${esc(m.groupLabel)}</span>
+        <span class="pf-match__cat">${esc(catName(m.categoryId))} · ${esc(m.groupLabel)} ${badge}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
         <span class="pf-match__teams">${esc(m.home)} <b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b> ${esc(m.away)}</span>
         ${editable ? `<span class="pf-match__actions"><button type="button" class="pf-btn pf-btn--ghost js-resultmatch" data-match="${esc(m.id ?? '')}">Risultato</button><button type="button" class="pf-btn pf-btn--ghost js-editmatch" data-match="${esc(m.id ?? '')}">Modifica</button></span>` : ''}
-      </li>`).join('')
+      </li>`
+      }).join('')
     return `<div class="pf-calday"><div class="pf-calday__head pf-mono">${esc(day)}</div><ul class="pf-callist">${rows}</ul></div>`
   }).join('')
 }

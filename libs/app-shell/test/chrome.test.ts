@@ -45,6 +45,49 @@ describe('S23 tabs', () => {
   })
 })
 
+import { displayStatus, matchStatusBadge, matchDelayLabel, openSheet, renderCalendar } from '../src/chrome'
+describe('S26 match lifecycle badges + delay', () => {
+  const base = { categoryId: 'U10', groupLabel: 'Girone A', day: '2026-09-01', time: '09:00', field: 'Campo A', home: 'A', away: 'B' }
+  it('displayStatus uses explicit status, falls back to FINISHED when a statusless match has scores', () => {
+    expect(displayStatus({ ...base, status: 'LIVE' })).toBe('LIVE')
+    expect(displayStatus({ ...base, homeScore: 1, awayScore: 0 })).toBe('FINISHED') // legacy fallback
+    expect(displayStatus(base)).toBe('SCHEDULED')
+  })
+  it('badge reflects status with a live dot', () => {
+    expect(matchStatusBadge({ ...base, status: 'LIVE' })).toContain('pf-mstatus--live')
+    expect(matchStatusBadge({ ...base, status: 'LIVE' })).toContain('In corso')
+    expect(matchStatusBadge({ ...base, status: 'CANCELLED' })).toContain('Annullata')
+  })
+  it('delay label: scheduled past its slot is late; live started late shows +N; on-time is null', () => {
+    const now = new Date('2026-09-01T09:12:00')
+    expect(matchDelayLabel({ ...base }, now)).toBe('in ritardo 12′')
+    expect(matchDelayLabel({ ...base, status: 'LIVE', startedAt: '2026-09-01T09:07:00' }, new Date('2026-09-01T09:20:00'))).toBe('iniziata +7′')
+    expect(matchDelayLabel({ ...base }, new Date('2026-09-01T08:55:00'))).toBeNull()
+  })
+  it('renderCalendar marks a cancelled match and shows badges', () => {
+    const html = renderCalendar([{ ...base, id: 'm1', status: 'CANCELLED' }], (id) => id, false, { now: new Date('2026-09-01T09:00:00') })
+    expect(html).toContain('pf-match--cancelled')
+    expect(html).toContain('Annullata')
+  })
+  it('hideScheduledBadge suppresses the SCHEDULED pill but keeps LIVE/FINISHED', () => {
+    const now = new Date('2026-09-01T08:00:00')
+    expect(renderCalendar([{ ...base, id: 'a' }], (id) => id, false, { now, hideScheduledBadge: true })).not.toContain('Programmata')
+    expect(renderCalendar([{ ...base, id: 'b', status: 'LIVE' }], (id) => id, false, { now, hideScheduledBadge: true })).toContain('In corso')
+  })
+})
+
+describe('S26 bottom sheet', () => {
+  it('mounts a bottom sheet and closes on backdrop click', () => {
+    const host = document.createElement('div')
+    const { el, close } = openSheet(host, '<p>ciao</p>')
+    expect(el.textContent).toContain('ciao')
+    expect(host.querySelector('.pf-sheet-overlay')).not.toBeNull()
+    host.querySelector<HTMLElement>('.pf-sheet-overlay')!.click() // backdrop
+    expect(host.querySelector('.pf-sheet-overlay')).toBeNull()
+    close() // idempotent
+  })
+})
+
 import { renderStepper, wireSteppers, readStepper } from '../src/chrome'
 describe('S25 score stepper', () => {
   it('renders a +/- stepper and reads/updates the value (clamped at 0)', () => {

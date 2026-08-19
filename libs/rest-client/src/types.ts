@@ -84,6 +84,8 @@ export interface ScheduleView {
   status: ScheduleStatus
   config: ScheduleConfig
 }
+// S26: match lifecycle. Absent status on legacy fixtures = treated as SCHEDULED.
+export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED'
 export interface ScheduledMatchView {
   id: string
   sportEventId: string
@@ -96,6 +98,8 @@ export interface ScheduledMatchView {
   away: string
   homeScore?: number | null // S10: null/undefined = not played
   awayScore?: number | null
+  status?: MatchStatus // S26
+  startedAt?: string | null // S26: ISO kickoff instant
 }
 // S10 standings
 export interface StandingRow {
