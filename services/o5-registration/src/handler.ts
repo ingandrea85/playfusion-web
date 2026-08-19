@@ -14,6 +14,7 @@ import type { RegistrationStatus } from './domain/registration.js';
 import { confirmRegistration } from './application/confirm-registration.js';
 import { rejectRegistration } from './application/reject-registration.js';
 import { openWindow } from './application/open-window.js';
+import { getEnrollToken } from './application/get-enroll-token.js';
 import { DynamoDbRegistrationRepository } from './adapters/dynamodb-registration-repository.js';
 import { DynamoDbWindowRepository } from './adapters/dynamodb-window-repository.js';
 import { DynamoDbParticipantDirectory } from './adapters/dynamodb-participant-directory.js';
@@ -72,9 +73,16 @@ app.get('/events/:id/registrations', async (c) => {
 app.post('/events/:id/registration-window:open', organizer, async (c) => {
   const raw = await c.req.json().catch(() => ({}));
   const capacities = z.record(z.number().int().nonnegative()).optional().parse((raw as any).capacities);
-  await openWindow({ windows, publisher })({ sportEventId: c.req.param('id'), organizationId: orgOf(c), capacities });
-  return c.json({ sportEventId: c.req.param('id'), state: 'Open' });
+  const w = await openWindow({ windows, publisher })({ sportEventId: c.req.param('id'), organizationId: orgOf(c), capacities });
+  // The enrollToken is returned to the organizer here (and via GET enroll-token), never in
+  // the public window read.
+  return c.json({ sportEventId: w.sportEventId, state: w.state, enrollToken: w.enrollToken });
 });
+
+// Organizer-only: the coach enrollment token minted at window open, so E1 can render the
+// shareable enrollment link. Public callers use the token-free registration-window read.
+app.get('/events/:id/enroll-token', organizer, async (c) =>
+  c.json(await getEnrollToken({ windows })(c.req.param('id'))));
 
 // S1.4 read: window state + per-category remaining capacity (D-O5-1).
 app.get('/events/:id/registration-window', async (c) =>
