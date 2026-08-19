@@ -11,6 +11,7 @@ export const workspaceTabs = (id: string): WorkspaceTab[] => {
     { key: 'categorie', label: 'Categorie', href: `#/events/${e}/categorie` },
     { key: 'gironi', label: 'Gironi', href: `#/events/${e}/gironi` },
     { key: 'schedule', label: 'Calendario', href: `#/events/${e}/schedule` },
+    { key: 'standings', label: 'Classifiche', href: `#/events/${e}/standings` },
     { key: 'enroll', label: 'Iscrizioni', href: `#/events/${e}/enroll` },
     { key: 'participants', label: 'Partecipanti', href: `#/events/${e}/participants` },
   ]

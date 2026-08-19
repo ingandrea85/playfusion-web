@@ -50,7 +50,7 @@ describe('schedule render', () => {
 
 describe('schedule generate', () => {
   const mountWith = (status: ScheduleView['status'], config = cfg) => {
-    const o7 = { generateSchedule: vi.fn().mockResolvedValue({}), approveSchedule: vi.fn().mockResolvedValue({}), publishSchedule: vi.fn().mockResolvedValue({}), rescheduleMatch: vi.fn().mockResolvedValue({}) }
+    const o7 = { generateSchedule: vi.fn().mockResolvedValue({}), approveSchedule: vi.fn().mockResolvedValue({}), publishSchedule: vi.fn().mockResolvedValue({}), rescheduleMatch: vi.fn().mockResolvedValue({}), recordResult: vi.fn().mockResolvedValue({}), getStandings: vi.fn().mockResolvedValue([]) }
     const refresh = vi.fn()
     const ctx = { client: { o7 } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh }
     const d = data(status, status === 'NONE' ? [] : [match], config)
@@ -107,7 +107,7 @@ describe('schedule generate', () => {
 
 describe('schedule status + reschedule', () => {
   const mountWith = (status: ScheduleView['status'], reschedule = vi.fn().mockResolvedValue({})) => {
-    const o7 = { generateSchedule: vi.fn(), approveSchedule: vi.fn().mockResolvedValue({}), publishSchedule: vi.fn().mockResolvedValue({}), rescheduleMatch: reschedule }
+    const o7 = { generateSchedule: vi.fn(), approveSchedule: vi.fn().mockResolvedValue({}), publishSchedule: vi.fn().mockResolvedValue({}), rescheduleMatch: reschedule, recordResult: vi.fn().mockResolvedValue({}), getStandings: vi.fn().mockResolvedValue([]) }
     const refresh = vi.fn()
     const ctx = { client: { o7 } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh }
     const d = data(status, [match])
@@ -142,5 +142,43 @@ describe('schedule status + reschedule', () => {
     const { root } = mountWith('PUBLISHED')
     root.querySelector<HTMLButtonElement>('.js-editmatch')!.click()
     expect(root.querySelector('#rs-save')).not.toBeNull()
+  })
+})
+
+describe('schedule result entry (S10)', () => {
+  const mountWith = (record = vi.fn().mockResolvedValue({})) => {
+    const o7 = { generateSchedule: vi.fn(), approveSchedule: vi.fn(), publishSchedule: vi.fn(), rescheduleMatch: vi.fn(), recordResult: record, getStandings: vi.fn().mockResolvedValue([]) }
+    const refresh = vi.fn()
+    const ctx = { client: { o7 } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh }
+    const d = data('GENERATED', [match])
+    const root = document.createElement('div'); root.innerHTML = renderSchedule(d)
+    scheduleScreen.mount!(root, ctx as any, d)
+    return { root, o7, refresh }
+  }
+
+  it('renders a Risultato control per match and shows scores when played', () => {
+    const html = renderSchedule(data('GENERATED', [{ ...match, homeScore: 2, awayScore: 1 }]))
+    expect(html).toContain('js-resultmatch')
+    expect(html).toContain('2–1') // score on the row
+  })
+
+  it('Risultato → Salva records the result then refreshes', async () => {
+    const { root, o7, refresh } = mountWith()
+    root.querySelector<HTMLButtonElement>('.js-resultmatch')!.click()
+    ;(root.querySelector('#rr-home') as HTMLInputElement).value = '3'
+    ;(root.querySelector('#rr-away') as HTMLInputElement).value = '1'
+    root.querySelector<HTMLButtonElement>('#rr-save')!.click()
+    await vi.waitFor(() => expect(o7.recordResult).toHaveBeenCalledWith('e1', 'sm-1', { homeScore: 3, awayScore: 1 }))
+    expect(refresh).toHaveBeenCalled()
+  })
+
+  it('rejects invalid scores without calling recordResult', async () => {
+    const { root, o7 } = mountWith()
+    root.querySelector<HTMLButtonElement>('.js-resultmatch')!.click()
+    ;(root.querySelector('#rr-home') as HTMLInputElement).value = '-1'
+    ;(root.querySelector('#rr-away') as HTMLInputElement).value = '2'
+    root.querySelector<HTMLButtonElement>('#rr-save')!.click()
+    await vi.waitFor(() => expect(root.querySelector('#err')!.innerHTML).toContain('punteggi validi'))
+    expect(o7.recordResult).not.toHaveBeenCalled()
   })
 })
