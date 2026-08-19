@@ -14,8 +14,11 @@ export interface EventDetail {
   location?: string
   startTime?: string
   tieBreak?: TieBreakCriterion[]
-  // S12: finals config. finalsType absent ⇒ no bracket; qualifiersPerGroup defaults to 2 on read.
+  // S12/S13: finals config. finalsType absent (or finalsEnabled === false) ⇒ no bracket.
+  // finalsTeamsToBracket sizes the SPLIT_GROUP_FINALS bracket (S13). qualifiersPerGroup deprecated.
   finalsType?: FinalsType
+  finalsEnabled?: boolean
+  finalsTeamsToBracket?: number
   qualifiersPerGroup?: number
 }
 export type EventSummary = EventDetail
@@ -29,8 +32,8 @@ export interface CreateEventInput {
   tieBreak?: TieBreakCriterion[]
   playbook?: Playbook
 }
-// S12: the finals-config editor payload (Competizione tab).
-export interface FinalsConfigInput { finalsType: FinalsType; qualifiersPerGroup: number }
+// S12/S13: the finals-config editor payload (Competizione tab).
+export interface FinalsConfigInput { finalsType: FinalsType; qualifiersPerGroup?: number; finalsEnabled?: boolean; finalsTeamsToBracket?: number }
 export interface CreateEventResult { sportEventId: string; status: 'Published' }
 // o6 gironi (composition on the o3 event) — S8
 export interface Group { label: string; teams: string[] }
@@ -108,12 +111,15 @@ export interface ScheduledMatchView {
   awayScore?: number | null
   status?: MatchStatus // S26
   startedAt?: string | null // S26: ISO kickoff instant
-  // S12: finals. phase absent ⇒ GROUP; FINAL matches carry bracket metadata + placeholder home/away,
-  // with homeResolved/awayResolved filled on read once the qualifier is known.
-  phase?: 'GROUP' | 'FINAL'
+  // S12/S13: finals. phase absent ⇒ GROUP. FINAL/FINAL_GROUP carry bracket metadata + placeholder
+  // home/away, with homeResolved/awayResolved filled on read (qualifier + winner propagation).
+  phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'
   bracketLabel?: string
   round?: string
   order?: number
+  slot?: string
+  placementFrom?: number
+  placementTo?: number
   homeResolved?: string
   awayResolved?: string
 }

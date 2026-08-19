@@ -99,8 +99,8 @@ test('test_generate_appendsFinalsWhenFinalsTypeConfigured', async () => {
   await generateSchedule(deps())({ sportEventId: 'evt-f', organizationId: 'org-1', config: { ...config, finalsDate: '2026-08-31' } });
   const all = await matches.list('evt-f');
   const finals = all.filter((m) => m.phase === 'FINAL');
-  expect(finals).toHaveLength(1);
-  expect(finals[0]).toMatchObject({ phase: 'FINAL', bracketLabel: 'Tabellone', round: 'Finale', home: '1ª Girone A', away: '2ª Girone A', day: '2026-08-31', status: 'SCHEDULED' });
+  expect(finals).toHaveLength(1); // v1 SINGLE_GROUP_CROSSOVER: 3 teams → floor(3/2)=1 placement final
+  expect(finals[0]).toMatchObject({ phase: 'FINAL', bracketLabel: 'Finali', round: 'Finale 1º/2º', home: '1ª Girone A', away: '2ª Girone A', day: '2026-08-31', status: 'SCHEDULED', placementFrom: 1, placementTo: 2, slot: 'F1' });
   expect(all.filter((m) => m.phase !== 'FINAL')).toHaveLength(3); // 3 group fixtures unaffected
 });
 

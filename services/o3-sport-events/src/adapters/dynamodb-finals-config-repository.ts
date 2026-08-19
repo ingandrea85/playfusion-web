@@ -12,6 +12,12 @@ export class DynamoDbFinalsConfigRepository implements FinalsConfigRepository {
     const res = await this.db.send(new GetCommand({ TableName: this.table, Key: { sportEventId } }));
     const item = res.Item as Record<string, unknown> | undefined;
     if (!item) return; // no event → nothing to attach config to (handler guards with a 404 first)
-    await this.db.send(new PutCommand({ TableName: this.table, Item: { ...item, finalsType: config.finalsType, qualifiersPerGroup: config.qualifiersPerGroup } }));
+    await this.db.send(new PutCommand({ TableName: this.table, Item: {
+      ...item,
+      finalsType: config.finalsType,
+      qualifiersPerGroup: config.qualifiersPerGroup,
+      finalsEnabled: config.finalsEnabled ?? true,
+      ...(config.finalsTeamsToBracket !== undefined ? { finalsTeamsToBracket: config.finalsTeamsToBracket } : {}),
+    } }));
   }
 }

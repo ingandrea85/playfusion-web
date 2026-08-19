@@ -59,10 +59,11 @@ describe('workspace Categorie tab', () => {
 
 describe('competition finals editor (S12)', () => {
   it('renders the finals-config editor with the current values', () => {
-    const html = renderCompetition({ ...full, finalsType: 'SPLIT_GROUP_FINALS', qualifiersPerGroup: 3 })
+    const html = renderCompetition({ ...full, finalsType: 'SPLIT_GROUP_FINALS', finalsTeamsToBracket: 4 })
     expect(html).toContain('Fase finale')
     expect(html).toContain('SPLIT_GROUP_FINALS')
-    expect(html).toContain('value="3"')
+    expect(html).toContain('Squadre al tabellone')
+    expect(html).toContain('value="4"')
     expect(html).toContain('rigenera il calendario')
   })
 })

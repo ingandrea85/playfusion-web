@@ -32,7 +32,7 @@ export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED'
  *  no dependency on rest-client (rest-client's ScheduledMatchView satisfies it). `id` is
  *  only needed in editable mode (E1 reschedule — S9). `status`/`startedAt` drive the S26
  *  lifecycle badges + delay. */
-export interface CalendarMatch { id?: string; categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string; homeScore?: number | null; awayScore?: number | null; status?: MatchStatus; startedAt?: string | null; phase?: 'GROUP' | 'FINAL'; round?: string; bracketLabel?: string; homeResolved?: string; awayResolved?: string }
+export interface CalendarMatch { id?: string; categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string; homeScore?: number | null; awayScore?: number | null; status?: MatchStatus; startedAt?: string | null; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'; round?: string; bracketLabel?: string; homeResolved?: string; awayResolved?: string }
 
 const played = (m: CalendarMatch): boolean =>
   m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined
@@ -158,7 +158,7 @@ export function categoryKeys(items: Array<{ categoryId: string }>): string[] {
 }
 /** Distinct groupLabels of one category, first-seen order. Finals (phase FINAL) are excluded so
  *  their bracket labels never appear as girone tabs (S12). */
-export function groupKeys(items: Array<{ categoryId: string; groupLabel: string; phase?: 'GROUP' | 'FINAL' }>, categoryId: string): string[] {
+export function groupKeys(items: Array<{ categoryId: string; groupLabel: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' }>, categoryId: string): string[] {
   const out: string[] = []
   for (const i of items) if (i.categoryId === categoryId && i.phase !== 'FINAL' && !out.includes(i.groupLabel)) out.push(i.groupLabel)
   return out
@@ -190,9 +190,15 @@ export function renderStandings(groups: GroupStandingView[], catName: (id: strin
 /** Structural finals match shape (app-shell stays free of rest-client). */
 export interface BracketMatch { categoryId: string; bracketLabel?: string; round?: string; order?: number; day?: string; time?: string; field?: string; home: string; away: string; homeResolved?: string; awayResolved?: string }
 
-/** S12: the finals bracket for one category, grouped bracket → round, each match showing the
- *  resolved team when known (`homeResolved ?? home`) else the placeholder. Read-only; shared by the
- *  E1 Finali tab and the E3 public Tabellone. Rows carry time · field when scheduled. */
+/** Human label for a round code (S13 v1 uses R64/R32/R16/QF/SF/F). Non-code rounds (e.g.
+ *  "Finale 1º/2º", "Girone finale") pass through unchanged. */
+const ROUND_LABEL: Record<string, string> = { R64: 'Sedicesimi', R32: 'Sedicesimi', R16: 'Ottavi', QF: 'Quarti', SF: 'Semifinali', F: 'Finale' }
+export function roundLabel(round: string): string { return ROUND_LABEL[round] ?? round }
+
+/** S12/S13: the finals for one category, grouped bracket → round, each match showing the resolved
+ *  team when known (`homeResolved ?? home`, incl. propagated winners) else the placeholder. Read-only;
+ *  shared by the E1 Finali tab and the E3 public Tabellone. Rows carry time · field when scheduled.
+ *  Includes FINAL_GROUP (the round-robin final group) as its own bracket section. */
 export function renderBracket(finals: BracketMatch[], catName: (id: string) => string): string {
   if (!finals.length) return `<p class="pf-muted">Nessun tabellone: configura la fase finale e genera il calendario.</p>`
   const brackets = [...new Set(finals.map((f) => f.bracketLabel ?? 'Finali'))]
@@ -206,7 +212,7 @@ export function renderBracket(finals: BracketMatch[], catName: (id: string) => s
           ${f.time || f.field ? `<span class="pf-brk__slot pf-mono">${esc([f.time, f.field].filter(Boolean).join(' · '))}</span>` : ''}
           <span class="pf-brk__teams">${esc(f.homeResolved ?? f.home)} <b>vs</b> ${esc(f.awayResolved ?? f.away)}</span>
         </li>`).join('')
-      return `${rd ? `<div class="pf-brk__round pf-mono">${esc(rd)}</div>` : ''}<ul class="pf-brk__list">${rows}</ul>`
+      return `${rd ? `<div class="pf-brk__round pf-mono">${esc(roundLabel(rd))}</div>` : ''}<ul class="pf-brk__list">${rows}</ul>`
     }).join('')
     const cat = catName(inBracket[0]!.categoryId)
     return `<div class="pf-bracket"><div class="pf-calday__head pf-mono">${esc(cat)} · ${esc(bl)}</div>${body}</div>`

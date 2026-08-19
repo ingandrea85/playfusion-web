@@ -1,13 +1,17 @@
 import { countsForStandings, type GroupStanding, type ScheduledMatch } from './domain.js';
 
-/** S12: resolve finals qualifier placeholders (`Nª Girone X`) to the real ranked team, on read.
+/** S12/S13: resolve finals placeholders to real teams, on read.
  *
- *  For each FINAL match, a `Nª Girone X` placeholder becomes `standings[cat,X].rows[N-1].team`
- *  **iff** that group is complete (every one of its GROUP fixtures counts — S26) **and** position N
- *  is not inside an S11 `unresolved` tie (an ambiguous position stays a placeholder until the
- *  organizer resolves it). `Vincente <round><n>` is never resolved here — winner propagation is S13.
- *  Pure and idempotent: correcting a result that "uncompletes" a group reverts the slot. */
-const SLOT_RE = /^(\d+)ª (Girone .+)$/;
+ *  - Qualifier seed `Nª Girone X` → the ranked team of that group, **iff** the group is complete
+ *    (every GROUP fixture counted — S26) **and** position N is not inside an S11 `unresolved` tie.
+ *  - Winner link `Vincente <slot>` (S13) → the winner (higher score) of the FINISHED FINAL match with
+ *    that `slot`. A drawn/unfinished match leaves the placeholder (shootout = a follow-up slice).
+ *
+ *  Resolution is a fixpoint (earlier rounds resolve first, then their winners propagate). Pure and
+ *  idempotent: correcting a result that "uncompletes" a group or unfinishes a match reverts the slots.
+ *  `standings` are the GROUP standings (ranked, with `unresolved`). */
+const SEED_RE = /^(\d+)ª (Girone .+)$/;
+const WIN_RE = /^Vincente (.+)$/;
 
 export function resolvePlaceholders(matches: ScheduledMatch[], standings: GroupStanding[]): ScheduledMatch[] {
   const byGroup = new Map<string, GroupStanding>();
@@ -17,28 +21,55 @@ export function resolvePlaceholders(matches: ScheduledMatch[], standings: GroupS
   const groupTotal = new Map<string, number>();
   const groupCounted = new Map<string, number>();
   for (const m of matches) {
-    if (m.phase === 'FINAL') continue;
+    if (m.phase === 'FINAL' || m.phase === 'FINAL_GROUP') continue; // only real group fixtures gate completeness
     const key = `${m.categoryId}||${m.groupLabel}`;
     groupTotal.set(key, (groupTotal.get(key) ?? 0) + 1);
     if (countsForStandings(m)) groupCounted.set(key, (groupCounted.get(key) ?? 0) + 1);
   }
   const isComplete = (key: string): boolean => (groupTotal.get(key) ?? 0) > 0 && groupCounted.get(key) === groupTotal.get(key);
 
-  const resolveSlot = (label: string, categoryId: string): string | undefined => {
-    const m = SLOT_RE.exec(label);
-    if (!m) return undefined; // 'Vincente …' or a literal team — nothing to resolve here
-    const pos = Number(m[1]);
+  const resolveSeed = (label: string, categoryId: string): string | undefined => {
+    const m = SEED_RE.exec(label);
+    if (!m) return undefined;
     const key = `${categoryId}||${m[2]}`;
     if (!isComplete(key)) return undefined;
-    const st = byGroup.get(key);
-    const team = st?.rows[pos - 1]?.team;
+    const team = byGroup.get(key)?.rows[Number(m[1]) - 1]?.team;
     if (!team) return undefined;
-    if (st!.unresolved.some((set) => set.includes(team))) return undefined; // position ambiguous (S11)
+    if (byGroup.get(key)!.unresolved.some((set) => set.includes(team))) return undefined; // position ambiguous (S11)
     return team;
   };
 
-  return matches.map((m) => {
-    if (m.phase !== 'FINAL') return m;
-    return { ...m, homeResolved: resolveSlot(m.home, m.categoryId), awayResolved: resolveSlot(m.away, m.categoryId) };
-  });
+  // Work on a shallow copy; homeResolved/awayResolved accumulate across fixpoint passes.
+  const out = matches.map((m) => ({ ...m }));
+  const finals = out.filter((m) => m.phase === 'FINAL' || m.phase === 'FINAL_GROUP');
+  const bySlot = new Map<string, ScheduledMatch>();
+  for (const m of finals) if (m.slot) bySlot.set(`${m.categoryId}||${m.slot}`, m);
+
+  const nameOf = (m: ScheduledMatch, side: 'home' | 'away'): string | undefined => {
+    const resolved = side === 'home' ? m.homeResolved : m.awayResolved;
+    if (resolved) return resolved;
+    const raw = side === 'home' ? m.home : m.away;
+    return SEED_RE.test(raw) || WIN_RE.test(raw) ? undefined : raw; // a literal team name resolves to itself
+  };
+  const winnerOf = (m: ScheduledMatch): string | undefined => {
+    if (m.status !== 'FINISHED') return undefined;
+    const hs = m.homeScore, as = m.awayScore;
+    if (hs == null || as == null || hs === as) return undefined; // draw = no propagation this slice
+    return nameOf(m, hs > as ? 'home' : 'away');
+  };
+  const resolveOne = (label: string, categoryId: string): string | undefined => {
+    const w = WIN_RE.exec(label);
+    if (w) { const t = bySlot.get(`${categoryId}||${w[1]}`); return t ? winnerOf(t) : undefined; }
+    return resolveSeed(label, categoryId);
+  };
+
+  for (let pass = 0; pass < finals.length + 1; pass++) {
+    let changed = false;
+    for (const m of finals) {
+      if (m.homeResolved === undefined) { const r = resolveOne(m.home, m.categoryId); if (r !== undefined) { m.homeResolved = r; changed = true; } }
+      if (m.awayResolved === undefined) { const r = resolveOne(m.away, m.categoryId); if (r !== undefined) { m.awayResolved = r; changed = true; } }
+    }
+    if (!changed) break;
+  }
+  return out;
 }

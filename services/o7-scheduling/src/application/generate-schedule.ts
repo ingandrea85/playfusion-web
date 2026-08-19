@@ -19,12 +19,12 @@ function addMinutes(hhmm: string, mins: number): string {
  *  (`Nª Girone X`, `Vincente …`) resolved to real teams on read. */
 function buildFinalMatches(
   sportEventId: string, finalsDate: string, dailyStart: string,
-  cats: FixtureCategory[], qualifiersPerGroup: number, finalsType: FinalsType,
+  cats: FixtureCategory[], finalsType: FinalsType, finalsTeamsToBracket: number | undefined,
 ): ScheduledMatch[] {
   const out: ScheduledMatch[] = [];
   let n = 0;
   for (const cat of cats) {
-    const draws = buildFinals(cat.groups.map((g) => g.label), qualifiersPerGroup, finalsType);
+    const draws = buildFinals(cat.groups.map((g) => ({ label: g.label, size: g.teams.length })), finalsType, { finalsTeamsToBracket });
     const fields = cat.fields.length ? cat.fields : ['Campo 1'];
     const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
     draws.forEach((d, i) => {
@@ -32,7 +32,8 @@ function buildFinalMatches(
         id: `fm-${++n}`, sportEventId, categoryId: cat.id, groupLabel: d.bracketLabel,
         day: finalsDate, time: addMinutes(dailyStart, Math.floor(i / fields.length) * slotMinutes),
         field: fields[i % fields.length]!, home: d.home, away: d.away, status: 'SCHEDULED',
-        phase: 'FINAL', bracketLabel: d.bracketLabel, round: d.round, order: d.order,
+        phase: d.phase, bracketLabel: d.bracketLabel, round: d.round, order: d.order,
+        slot: d.slot, placementFrom: d.placementFrom, placementTo: d.placementTo,
       });
     });
   }
@@ -81,8 +82,8 @@ export function generateSchedule(deps: GenerateScheduleDeps) {
     });
     const fixtures = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config.dailyStart, cats);
     // S12: append the finals bracket (placeholders on finalsDate) when the event has a finalsType.
-    const finals = event.finalsType
-      ? buildFinalMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, cats, event.qualifiersPerGroup ?? 2, event.finalsType as FinalsType)
+    const finals = event.finalsType && event.finalsEnabled !== false
+      ? buildFinalMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, cats, event.finalsType as FinalsType, event.finalsTeamsToBracket)
       : [];
     await matches.replace(input.sportEventId, [...fixtures, ...finals]);
 

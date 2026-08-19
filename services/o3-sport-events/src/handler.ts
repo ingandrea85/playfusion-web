@@ -91,13 +91,15 @@ app.get('/events/:id/gironi', async (c) => c.json(await getGironi(gironiRepo)(c.
 // calendar (the bracket is built at generate time — see o7).
 const finalsConfigBody = z.object({
   finalsType: z.enum(['SINGLE_GROUP_CROSSOVER', 'SPLIT_GROUP_FINALS', 'PLACEMENT']),
-  qualifiersPerGroup: z.number().int().positive(),
+  qualifiersPerGroup: z.number().int().positive().default(2), // deprecated (v1 formats ignore it)
+  finalsEnabled: z.boolean().optional(),
+  finalsTeamsToBracket: z.number().int().positive().optional(), // SPLIT_GROUP_FINALS bracket size (S13)
 });
 app.put('/events/:id/finals-config', organizer, async (c) => {
   const sportEventId = c.req.param('id');
   if (!(await getEvent(store)(sportEventId))) return c.json({ error: 'EventNotFound', sportEventId }, 404);
   const b = finalsConfigBody.parse(await c.req.json());
-  return c.json(await setFinalsConfig(finalsConfigRepo)({ sportEventId, finalsType: b.finalsType, qualifiersPerGroup: b.qualifiersPerGroup }));
+  return c.json(await setFinalsConfig(finalsConfigRepo)({ sportEventId, finalsType: b.finalsType, qualifiersPerGroup: b.qualifiersPerGroup, finalsEnabled: b.finalsEnabled, finalsTeamsToBracket: b.finalsTeamsToBracket }));
 });
 
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });

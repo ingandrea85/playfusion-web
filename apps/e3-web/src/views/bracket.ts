@@ -2,7 +2,7 @@ import type { EventDetail, ScheduleView, ScheduledMatchView } from '@playfusion/
 import { renderPublicTopbar, renderBracket, renderTabs, categoryKeys, esc } from '@playfusion/app-shell'
 
 const catName = (c: string): string => c
-const finalsOnly = (matches: ScheduledMatchView[]): ScheduledMatchView[] => matches.filter((m) => m.phase === 'FINAL')
+const finalsOnly = (matches: ScheduledMatchView[]): ScheduledMatchView[] => matches.filter((m) => m.phase === 'FINAL' || m.phase === 'FINAL_GROUP')
 
 /** Public, read-only finals bracket (S12) with Category tabs. Gated on PUBLISHED; `Nª Girone X`
  *  placeholders show the ranked team once the group is decided (resolved by the backend on read).

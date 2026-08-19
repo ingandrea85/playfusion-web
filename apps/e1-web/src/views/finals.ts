@@ -26,7 +26,7 @@ export function renderFinalsView(data: FinalsData): string {
 export const finalsScreen: Screen<FinalsData> = {
   load: async (ctx, p) => {
     const [event, matches] = await Promise.all([ctx.client.o3.getEvent(p.id), ctx.client.o7.getMatches(p.id)])
-    return { event, finals: matches.filter((m) => m.phase === 'FINAL') }
+    return { event, finals: matches.filter((m) => m.phase === 'FINAL' || m.phase === 'FINAL_GROUP') }
   },
   render: renderFinalsView,
   mount(root, _ctx: ViewCtx, data) {

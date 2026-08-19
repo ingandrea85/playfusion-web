@@ -35,11 +35,25 @@ describe('e1 competition finals editor save (S12)', () => {
     const root = document.createElement('div')
     root.innerHTML = competitionScreen.render(event)
     competitionScreen.mount!(root, ctx as any, event)
-    ;(root.querySelector('#fc-type') as HTMLSelectElement).value = 'PLACEMENT'
-    ;(root.querySelector('#fc-q') as HTMLInputElement).value = '4'
+    ;(root.querySelector('#fc-type') as HTMLSelectElement).value = 'SPLIT_GROUP_FINALS'
+    ;(root.querySelector('#fc-bracket') as HTMLInputElement).value = '4'
     ;(root.querySelector('#fc-save') as HTMLButtonElement).click()
     await Promise.resolve(); await Promise.resolve()
-    expect(updateFinalsConfig).toHaveBeenCalledWith('e1', { finalsType: 'PLACEMENT', qualifiersPerGroup: 4 })
+    expect(updateFinalsConfig).toHaveBeenCalledWith('e1', { finalsType: 'SPLIT_GROUP_FINALS', finalsEnabled: true, finalsTeamsToBracket: 4 })
     expect(refresh).toHaveBeenCalled()
+  })
+})
+
+describe('e1 finals FINAL_GROUP + round labels (S13)', () => {
+  it('renders the girone finale section and maps round codes to labels', () => {
+    const finals: ScheduledMatchView[] = [
+      fin({ id: 'sf1', slot: 'T1-SF1', round: 'SF', bracketLabel: 'Tabellone', home: '1ª Girone A', away: '4ª Girone A', homeResolved: 'Alfa', awayResolved: 'Delta' }),
+      fin({ id: 'fg1', slot: 'FG1', round: 'Girone finale', bracketLabel: 'Girone finale', phase: 'FINAL_GROUP', home: '3ª Girone A', away: '4ª Girone A', homeResolved: 'Charlie', awayResolved: 'Delta' }),
+    ]
+    const html = renderFinalsView({ event, finals })
+    expect(html).toContain('Semifinali') // SF code mapped
+    expect(html).toContain('Girone finale')
+    expect(html).toContain('Charlie')
+    expect(html).toContain('Alfa')
   })
 })
