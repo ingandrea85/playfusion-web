@@ -177,7 +177,7 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-brk__teams { flex: 1; }
 
 /* ---------- Category/girone tabs (S23) ---------- */
-.pf-tabs { display: flex; gap: var(--space-xs); overflow-x: auto; margin-bottom: var(--space-sm); padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+.pf-tabs { display: flex; flex-wrap: wrap; gap: var(--space-xs); overflow-x: auto; margin-bottom: var(--space-sm); padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
 .pf-tab { flex: 0 0 auto; padding: 6px 12px; border: 1px solid var(--color-border-default); background: var(--color-surface-default);
   border-radius: var(--radius-pill); font: inherit; font-size: 13px; font-weight: 600; color: var(--color-text-muted); cursor: pointer; white-space: nowrap; }
 .pf-tab:hover { border-color: var(--color-border-strong); }

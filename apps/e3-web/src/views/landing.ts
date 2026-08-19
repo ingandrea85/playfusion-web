@@ -1,7 +1,7 @@
 import type { EventDetail, RegistrationWindowView } from '@playfusion/rest-client'
 import { renderPublicTopbar, renderCategoryTag, esc } from '@playfusion/app-shell'
 
-export { renderParticipants } from './participants.js'
+export { renderParticipants, wireParticipants } from './participants.js'
 
 /** `published` (S7): shows a public "Calendario" link once the schedule is published. */
 export function renderLanding(event: EventDetail, window: RegistrationWindowView, published = false): string {
