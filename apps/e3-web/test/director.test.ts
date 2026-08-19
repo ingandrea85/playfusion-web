@@ -85,3 +85,17 @@ describe('director shows finals (S12)', () => {
     expect(html).not.toContain('1ª Girone A')
   })
 })
+
+describe('e3 director decrees winner on a drawn knockout', () => {
+  it('drawn FINAL on the field → "chi passa?" → decideWinner', async () => {
+    const drawnFinal: ScheduledMatchView = { id: 'fm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-09-02', time: '14:00', field: 'Campo A', home: '1ª Girone A', away: '2ª Girone A', homeResolved: 'Alfa', awayResolved: 'Bravo', homeScore: 1, awayScore: 1, status: 'FINISHED', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'F', slot: 'F1' }
+    const o7 = { decideWinner: vi.fn().mockResolvedValue({ ...drawnFinal, decidedWinner: 'HOME' }) } as any
+    const root = document.createElement('div')
+    root.innerHTML = renderDirector(event, 'Campo A', [drawnFinal])
+    wireDirector(root, o7, 'e1', 'Campo A', [drawnFinal])
+    root.querySelector<HTMLButtonElement>('.js-dirmatch')!.click()
+    expect(root.querySelector('#dir-pass-home')).not.toBeNull()
+    root.querySelector<HTMLButtonElement>('#dir-pass-home')!.click()
+    await vi.waitFor(() => expect(o7.decideWinner).toHaveBeenCalledWith('e1', 'fm-1', 'HOME'))
+  })
+})

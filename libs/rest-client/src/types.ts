@@ -122,6 +122,7 @@ export interface ScheduledMatchView {
   slot?: string
   placementFrom?: number
   placementTo?: number
+  decidedWinner?: 'HOME' | 'AWAY' // organizer/director decree on a drawn knockout match
   homeResolved?: string
   awayResolved?: string
 }

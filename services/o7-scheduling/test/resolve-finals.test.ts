@@ -70,3 +70,16 @@ test('test_computeStandings_ignoresFinalMatches', () => {
   expect(s[0]!.groupLabel).toBe('Girone A');
   expect(s[0]!.rows.map((r) => r.team).sort()).toEqual(['A', 'B']); // no placeholder rows
 });
+
+test('test_resolve_drawnSemifinal_advancesDecreedWinner', async () => {
+  // SF1 drawn but decreed HOME → the final's "Vincente SF1" resolves to SF1's home side.
+  const ms: ScheduledMatch[] = [
+    grp('A', 'B', 3, 0), grp('A', 'C', 3, 0), grp('A', 'D', 3, 0), grp('B', 'C', 3, 0), grp('B', 'D', 3, 0), grp('C', 'D', 3, 0),
+    { ...fin('1ª Girone A', '4ª Girone A'), slot: 'SF1', round: 'SF', homeScore: 1, awayScore: 1, status: 'FINISHED', decidedWinner: 'HOME' },
+    { ...fin('2ª Girone A', '3ª Girone A'), slot: 'SF2', round: 'SF', homeScore: 2, awayScore: 0, status: 'FINISHED' },
+    { ...fin('Vincente SF1', 'Vincente SF2'), slot: 'F1', round: 'F' },
+  ];
+  const final = resolvePlaceholders(ms, ranked(ms)).find((m) => m.slot === 'F1')!;
+  expect(final.homeResolved).toBe('A'); // SF1 drawn, decreed HOME = 1ª (A)
+  expect(final.awayResolved).toBe('B'); // SF2 won by 2ª (B)
+})

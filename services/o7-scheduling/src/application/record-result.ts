@@ -34,6 +34,8 @@ export function recordResult(matches: MatchRepository, now: Clock = systemClock)
     const nextStatus = status === 'FINISHED' ? 'FINISHED' : 'LIVE';
     const startedAt = target.startedAt ?? (nextStatus === 'LIVE' ? now() : target.startedAt);
     const updated: ScheduledMatch = { ...target, homeScore: input.homeScore, awayScore: input.awayScore, status: nextStatus, startedAt };
+    // A new result invalidates a prior draw decree (delete the key — undefined would break marshalling).
+    delete updated.decidedWinner;
     await matches.replace(input.sportEventId, all.map((m) => (m.id === input.matchId ? updated : m)));
     return updated;
   };

@@ -288,10 +288,19 @@ export const scheduleScreen: Screen<ScheduleData> = {
           return
         }
         const finishLabel = st === 'FINISHED' ? 'Salva correzione' : 'Salva e termina'
+        // Decree who advances when a knockout (FINAL) match ended level (rules applied offline).
+        const isDrawnFinal = m.phase === 'FINAL' && st === 'FINISHED' && (m.homeScore ?? 0) === (m.awayScore ?? 0)
+        const hn = esc(m.homeResolved ?? m.home), an = esc(m.awayResolved ?? m.away)
+        const decideBlock = isDrawnFinal ? `<div style="margin-top:var(--space-md);text-align:center">
+          <div class="pf-eyebrow" style="justify-content:center">Pareggio — chi passa?</div>
+          <div class="pf-row" style="justify-content:center;gap:var(--space-sm);margin-top:var(--space-xs);flex-wrap:wrap">
+            <button type="button" class="pf-btn${m.decidedWinner === 'HOME' ? ' pf-btn--primary' : ''}" id="rr-pass-home">${hn}</button>
+            <button type="button" class="pf-btn${m.decidedWinner === 'AWAY' ? ' pf-btn--primary' : ''}" id="rr-pass-away">${an}</button>
+          </div></div>` : ''
         panel!.innerHTML = `<div class="pf-card">${head}
           <div class="pf-row" style="justify-content:center;gap:var(--space-2xl);align-items:flex-end">
-            ${renderStepper('home', m.home, m.homeScore ?? 0)}
-            ${renderStepper('away', m.away, m.awayScore ?? 0)}
+            ${renderStepper('home', m.homeResolved ?? m.home, m.homeScore ?? 0)}
+            ${renderStepper('away', m.awayResolved ?? m.away, m.awayScore ?? 0)}
           </div>
           <div class="pf-row" style="justify-content:center;gap:var(--space-sm);margin-top:var(--space-md);flex-wrap:wrap">
             ${st === 'SCHEDULED' ? '<button type="button" class="pf-btn" id="rr-start">Inizia</button>' : ''}
@@ -299,8 +308,10 @@ export const scheduleScreen: Screen<ScheduleData> = {
             ${st === 'FINISHED' ? '' : '<button type="button" class="pf-btn" id="rr-save">Salva</button>'}
             <button type="button" class="pf-btn pf-btn--ghost" id="rr-void">Annulla gara</button>
             <button type="button" class="pf-btn" id="rr-cancel">Chiudi</button>
-          </div></div>`
+          </div>${decideBlock}</div>`
         wireSteppers(panel!)
+        panel!.querySelector('#rr-pass-home')?.addEventListener('click', (e) => run(() => ctx.client.o7.decideWinner(id, matchId, 'HOME'), e.currentTarget as HTMLButtonElement))
+        panel!.querySelector('#rr-pass-away')?.addEventListener('click', (e) => run(() => ctx.client.o7.decideWinner(id, matchId, 'AWAY'), e.currentTarget as HTMLButtonElement))
         const scores = () => ({ homeScore: readStepper(panel!, 'home'), awayScore: readStepper(panel!, 'away') })
         panel!.querySelector('#rr-cancel')!.addEventListener('click', () => { panel!.innerHTML = '' })
         panel!.querySelector('#rr-start')?.addEventListener('click', (e) => run(() => ctx.client.o7.startMatch(id, matchId), e.currentTarget as HTMLButtonElement))

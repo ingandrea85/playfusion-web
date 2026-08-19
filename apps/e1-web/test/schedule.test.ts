@@ -273,3 +273,25 @@ describe('schedule finals format per category (finals moved to Calendario)', () 
     expect(html).toMatch(/value="SINGLE_GROUP_CROSSOVER"[^>]*selected/)
   })
 })
+
+describe('schedule decree winner on drawn knockout', () => {
+  const finalMatch: ScheduledMatchView = { id: 'fm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-08-29', time: '14:00', field: 'Campo A', home: '1ª Girone A', away: '2ª Girone A', homeResolved: 'Alfa', awayResolved: 'Bravo', homeScore: 1, awayScore: 1, status: 'FINISHED', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'F', slot: 'F1' }
+  const mountWith = (decideWinner = vi.fn().mockResolvedValue({})) => {
+    const o7 = { generateSchedule: vi.fn(), approveSchedule: vi.fn(), publishSchedule: vi.fn(), rescheduleMatch: vi.fn(), recordResult: vi.fn().mockResolvedValue({}), decideWinner, startMatch: vi.fn(), finishMatch: vi.fn(), cancelMatch: vi.fn(), getStandings: vi.fn().mockResolvedValue([]) }
+    const refresh = vi.fn()
+    const ctx = { client: { o7 } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh }
+    const d = data('GENERATED', [finalMatch])
+    const root = document.createElement('div'); root.innerHTML = renderSchedule(d)
+    scheduleScreen.mount!(root, ctx as any, d)
+    return { root, o7, refresh }
+  }
+  it('shows "chi passa?" on a drawn FINAL and decrees the winner', async () => {
+    const { root, o7, refresh } = mountWith()
+    root.querySelector<HTMLButtonElement>('.js-resultmatch')!.click()
+    expect(root.querySelector('#rr-pass-home')).not.toBeNull()
+    expect(root.innerHTML).toContain('chi passa') // case-insensitive-ish label present
+    root.querySelector<HTMLButtonElement>('#rr-pass-away')!.click()
+    await vi.waitFor(() => expect(o7.decideWinner).toHaveBeenCalledWith('e1', 'fm-1', 'AWAY'))
+    expect(refresh).toHaveBeenCalled()
+  })
+})
