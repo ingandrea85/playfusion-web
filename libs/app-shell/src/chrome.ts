@@ -100,12 +100,10 @@ export function renderStandings(groups: GroupStandingView[], catName: (id: strin
 
 export function renderCategoryTag(name: string, count: number, maxTeams: number): string {
   const full = maxTeams > 0 && count >= maxTeams
-  const pct = maxTeams > 0 ? Math.min(100, Math.round((count / maxTeams) * 100)) : 0
+  // Only the enrolled-teams count (with the total when a cap is set); no progress bar.
+  const cap = maxTeams > 0 ? `${count}/${maxTeams} squadre${full ? ' · completa' : ''}` : `${count} squadre`
   return `<li class="pf-cat${full ? ' pf-cat--full' : ''}">
     <span class="pf-cat__label">${esc(name)}</span>
-    <div class="pf-cat__body">
-      <div class="pf-cat__cap">${count}/${maxTeams} squadre${full ? ' · completa' : ''}</div>
-      <div class="pf-cat__bar"><i style="width:${pct}%"></i></div>
-    </div>
+    <div class="pf-cat__body"><div class="pf-cat__cap">${cap}</div></div>
   </li>`
 }
