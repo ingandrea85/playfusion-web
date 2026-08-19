@@ -453,6 +453,14 @@ categories lay out sequentially (no collision), distinct-field categories in par
 schedule screen has a "stessa per tutte / per categoria" toggle (one card, or one card per
 category). Additive/back-compat: pre-S22 flat configs still apply to all categories.
 
+**Phase S10 (Standings live, O8) — complete.** Results live on the o7 match (`homeScore`/
+`awayScore`, null = not played); `POST /o7/events/:id/matches/:matchId/result` records them and a
+pure `computeStandings` derives per-group tables on read (`GET /o7/events/:id/standings`) — 3/1/0,
+ordered points → goal-difference → goals-for → name (the configurable tie-break is S11). The E1
+calendar gains a per-match "Risultato" panel and shows scores; a **Classifiche** workspace tab and
+the E3 public standings view render the shared `renderStandings`. O8 lives on o7 (scores are match
+data; no new BC — same pragmatic call as O6-on-o3).
+
 ## 13. Where to read more
 
 - [`README.md`](../README.md) — quick start.

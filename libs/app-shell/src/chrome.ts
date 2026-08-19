@@ -28,7 +28,10 @@ export function renderPublicTopbar(brandHtml?: string): string {
 /** Structural shape of a scheduled match for rendering — kept local so app-shell needs
  *  no dependency on rest-client (rest-client's ScheduledMatchView satisfies it). `id` is
  *  only needed in editable mode (E1 reschedule — S9). */
-export interface CalendarMatch { id?: string; categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string }
+export interface CalendarMatch { id?: string; categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string; homeScore?: number | null; awayScore?: number | null }
+
+const played = (m: CalendarMatch): boolean =>
+  m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined
 
 /** Calendar rendering — grouped by day, matches sorted by time then field. Shared by the E1
  *  organizer schedule screen and the E3 public calendar so the two never drift. `editable`
@@ -44,10 +47,33 @@ export function renderCalendar(matches: CalendarMatch[], catName: (id: string) =
         <span class="pf-match__time pf-mono">${esc(m.time)}</span>
         <span class="pf-match__field pf-mono">${esc(m.field)}</span>
         <span class="pf-match__cat">${esc(catName(m.categoryId))} · ${esc(m.groupLabel)}</span>
-        <span class="pf-match__teams">${esc(m.home)} <b>vs</b> ${esc(m.away)}</span>
-        ${editable ? `<button type="button" class="pf-btn pf-btn--ghost js-editmatch" data-match="${esc(m.id ?? '')}">Modifica</button>` : ''}
+        <span class="pf-match__teams">${esc(m.home)} <b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b> ${esc(m.away)}</span>
+        ${editable ? `<span class="pf-match__actions"><button type="button" class="pf-btn pf-btn--ghost js-resultmatch" data-match="${esc(m.id ?? '')}">Risultato</button><button type="button" class="pf-btn pf-btn--ghost js-editmatch" data-match="${esc(m.id ?? '')}">Modifica</button></span>` : ''}
       </li>`).join('')
     return `<div class="pf-calday"><div class="pf-calday__head pf-mono">${esc(day)}</div><ul class="pf-callist">${rows}</ul></div>`
+  }).join('')
+}
+
+/** Structural standings shapes (app-shell stays free of rest-client; its DTOs satisfy these). */
+export interface StandingRowView { team: string; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; goalDiff: number; points: number }
+export interface GroupStandingView { categoryId: string; groupLabel: string; rows: StandingRowView[] }
+
+/** Standings tables, one per group (S10). Shared by the E1 Classifiche tab and the E3 public
+ *  standings — read-only in both. Rows are pre-sorted by the caller (o7 standings engine). */
+export function renderStandings(groups: GroupStandingView[], catName: (id: string) => string): string {
+  if (!groups.length) return `<p class="pf-muted">Nessuna classifica: genera il calendario e inserisci i risultati.</p>`
+  return groups.map((g) => {
+    const rows = g.rows.map((r, i) => `<tr>
+      <td class="pf-mono">${i + 1}</td><td>${esc(r.team)}</td>
+      <td>${r.played}</td><td>${r.won}</td><td>${r.drawn}</td><td>${r.lost}</td>
+      <td>${r.goalsFor}</td><td>${r.goalsAgainst}</td><td>${r.goalDiff}</td><td><b>${r.points}</b></td>
+    </tr>`).join('')
+    return `<div class="pf-standings">
+      <div class="pf-calday__head pf-mono">${esc(catName(g.categoryId))} · ${esc(g.groupLabel)}</div>
+      <table class="pf-table"><thead><tr>
+        <th>#</th><th>Squadra</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>Pti</th>
+      </tr></thead><tbody>${rows}</tbody></table>
+    </div>`
   }).join('')
 }
 

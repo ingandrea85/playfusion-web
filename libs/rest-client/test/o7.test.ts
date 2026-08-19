@@ -74,3 +74,23 @@ describe('o7 per-category config (S22)', () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).byCategory.U14).toMatchObject({ periodMinutes: 30, legs: 'HOME_AWAY' })
   })
 })
+
+describe('o7 results + standings (S10)', () => {
+  const r = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } })
+  it('recordResult POSTs the score to /matches/:id/result', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(r({ id: 'sm-1', homeScore: 3, awayScore: 1 }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    await c.o7.recordResult('e1', 'sm-1', { homeScore: 3, awayScore: 1 })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://api/prod/o7/events/e1/matches/sm-1/result')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ homeScore: 3, awayScore: 1 })
+  })
+  it('getStandings GETs /o7/events/:id/standings', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(r([{ categoryId: 'U10', groupLabel: 'Girone A', rows: [{ team: 'A', points: 3 }] }]))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o7.getStandings('e1')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api/prod/o7/events/e1/standings')
+    expect(out[0].rows[0].team).toBe('A')
+  })
+})

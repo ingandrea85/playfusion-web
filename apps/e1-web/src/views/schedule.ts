@@ -99,8 +99,9 @@ export const scheduleScreen: Screen<ScheduleData> = {
     const id = data.event.sportEventId
     const err = root.querySelector('#err')!
 
-    // Reschedule works in every status (incl. APPROVED/PUBLISHED — D-O7-3).
+    // Reschedule + result entry work in every status (incl. APPROVED/PUBLISHED).
     wireReschedule()
+    wireResult()
     if (isLocked(data.schedule.status)) { wireStatus(); return }
 
     const categorie = data.event.categorie
@@ -168,6 +169,40 @@ export const scheduleScreen: Screen<ScheduleData> = {
         try { await ctx.client.o7.publishSchedule(id); ctx.refresh() }
         catch { err.innerHTML = inlineError('Pubblicazione non riuscita.'); publish.disabled = false }
       })
+    }
+
+    /** S10: per-match result entry. "Risultato" opens a panel (home/away score, prefilled if
+     *  played); Salva → o7.recordResult → refresh (calendar shows the score, standings recompute). */
+    function wireResult() {
+      const panel = root.querySelector('#editmatch')
+      if (!panel) return
+      root.querySelectorAll<HTMLButtonElement>('.js-resultmatch').forEach((btn) =>
+        btn.addEventListener('click', () => openResult(btn.dataset.match!)))
+
+      function openResult(matchId: string) {
+        const m = data.matches.find((x) => x.id === matchId)
+        if (!m) return
+        const hs = m.homeScore ?? '', as = m.awayScore ?? ''
+        panel!.innerHTML = `<div class="pf-card"><h3 class="pf-h4" style="margin-top:0">Risultato · ${esc(m.home)} vs ${esc(m.away)}</h3>
+          <div class="pf-row" style="justify-content:flex-start;gap:var(--space-md);align-items:flex-end">
+            <div class="pf-field" style="margin-bottom:0;width:110px"><label>${esc(m.home)}</label><input id="rr-home" type="number" min="0" value="${esc(hs)}" /></div>
+            <div class="pf-field" style="margin-bottom:0;width:110px"><label>${esc(m.away)}</label><input id="rr-away" type="number" min="0" value="${esc(as)}" /></div>
+            <button type="button" class="pf-btn pf-btn--primary" id="rr-save">Salva</button>
+            <button type="button" class="pf-btn" id="rr-cancel">Annulla</button>
+          </div></div>`
+        panel!.querySelector('#rr-cancel')!.addEventListener('click', () => { panel!.innerHTML = '' })
+        panel!.querySelector('#rr-save')!.addEventListener('click', async (e) => {
+          const b = e.currentTarget as HTMLButtonElement
+          const homeScore = Number((panel!.querySelector('#rr-home') as HTMLInputElement).value)
+          const awayScore = Number((panel!.querySelector('#rr-away') as HTMLInputElement).value)
+          if (!Number.isInteger(homeScore) || !Number.isInteger(awayScore) || homeScore < 0 || awayScore < 0) {
+            err.innerHTML = inlineError('Inserisci due punteggi validi (interi ≥ 0).'); return
+          }
+          b.disabled = true
+          try { await ctx.client.o7.recordResult(id, matchId, { homeScore, awayScore }); ctx.refresh() }
+          catch { err.innerHTML = inlineError('Salvataggio risultato non riuscito. Riprova.'); b.disabled = false }
+        })
+      }
     }
 
     /** S9: per-match reschedule. "Modifica" opens a panel (field/day/time prefilled); Salva →

@@ -95,4 +95,23 @@ export interface ScheduledMatchView {
   field: string
   home: string
   away: string
+  homeScore?: number | null // S10: null/undefined = not played
+  awayScore?: number | null
+}
+// S10 standings
+export interface StandingRow {
+  team: string
+  played: number
+  won: number
+  drawn: number
+  lost: number
+  goalsFor: number
+  goalsAgainst: number
+  goalDiff: number
+  points: number
+}
+export interface GroupStanding {
+  categoryId: string
+  groupLabel: string
+  rows: StandingRow[]
 }
