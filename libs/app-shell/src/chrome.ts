@@ -32,7 +32,7 @@ export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED'
  *  no dependency on rest-client (rest-client's ScheduledMatchView satisfies it). `id` is
  *  only needed in editable mode (E1 reschedule — S9). `status`/`startedAt` drive the S26
  *  lifecycle badges + delay. */
-export interface CalendarMatch { id?: string; categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string; homeScore?: number | null; awayScore?: number | null; status?: MatchStatus; startedAt?: string | null; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'; round?: string; bracketLabel?: string; decidedWinner?: 'HOME' | 'AWAY'; homeResolved?: string; awayResolved?: string }
+export interface CalendarMatch { id?: string; categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string; homeScore?: number | null; awayScore?: number | null; status?: MatchStatus; startedAt?: string | null; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'; round?: string; bracketLabel?: string; placementFrom?: number; placementTo?: number; decidedWinner?: 'HOME' | 'AWAY'; homeResolved?: string; awayResolved?: string }
 
 /** A knockout (FINAL) match that finished level and has no decreed winner yet — the organizer/
  *  director still has to pick who advances. Used to flag such rows in the calendar/bracket/director. */
@@ -120,7 +120,7 @@ export function renderCalendar(matches: CalendarMatch[], catName: (id: string) =
         return `<li class="pf-match${st === 'CANCELLED' ? ' pf-match--cancelled' : ''}">
         <span class="pf-match__time pf-mono">${esc(m.time)}</span>
         <span class="pf-match__field pf-mono">${esc(m.field)}</span>
-        <span class="pf-match__cat">${esc(catName(m.categoryId))} · ${esc(m.phase === 'FINAL' ? `${m.bracketLabel ?? 'Finali'}${m.round ? ` · ${m.round}` : ''}` : m.groupLabel)} ${badge}${decideBadge(m)}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
+        <span class="pf-match__cat">${esc(catName(m.categoryId))} · ${esc(m.phase === 'FINAL' ? `${m.bracketLabel ?? 'Finali'}${m.round ? ` · ${roundLabel(m.round)}` : ''}` : m.groupLabel)}${m.phase === 'FINAL' && m.placementFrom != null && m.placementTo === m.placementFrom + 1 ? ` <span class="pf-brk__pos">${m.placementFrom}º/${m.placementTo}º</span>` : ''} ${badge}${decideBadge(m)}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
         <span class="pf-match__teams">${esc(m.homeResolved ?? m.home)} <b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b> ${esc(m.awayResolved ?? m.away)}</span>
         ${editable ? `<span class="pf-match__actions"><button type="button" class="pf-btn pf-btn--ghost js-resultmatch" data-match="${esc(m.id ?? '')}">Risultato</button><button type="button" class="pf-btn pf-btn--ghost js-editmatch" data-match="${esc(m.id ?? '')}">Modifica</button></span>` : ''}
       </li>`
@@ -183,11 +183,26 @@ export function calendarGironeTabs<T extends { categoryId: string; groupLabel: s
   if (matches.some((m) => m.categoryId === categoryId && isFinalPhase(m))) tabs.push({ key: FINALS_TAB, label: 'Finali' })
   return tabs
 }
-export function filterCalendarMatches<T extends { categoryId: string; groupLabel: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' }>(matches: T[], categoryId: string, selGir: string): T[] {
+/** S13: dynamic phase sub-filter for the finals. The code rounds (QF/SF/F…) each get their own tab in
+ *  bracket order; all classification/placement finals (3º/4º, 5º/6º, spareggi, girone finale) collapse
+ *  under a single "Piazzamenti" so the bar never explodes. Returns [] when a category has fewer than 2
+ *  finals phases (nothing worth sub-filtering). Shown only while the "Finali" tab is active. */
+const PHASE_ORDER = ['R64', 'R32', 'R16', 'QF', 'SF', 'F']
+export const PLACEMENTS_PHASE = 'PIAZZAMENTI'
+export const finalsPhaseKey = (round?: string): string => (round && CODE_ROUNDS.has(round) ? round : PLACEMENTS_PHASE)
+export function finalsPhaseTabs<T extends { categoryId: string; round?: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' }>(matches: T[], categoryId?: string): Tab[] {
+  const present = new Set<string>()
+  for (const m of matches) if ((!categoryId || m.categoryId === categoryId) && isFinalPhase(m)) present.add(finalsPhaseKey(m.round))
+  if (present.size < 2) return []
+  const idx = (k: string): number => (k === PLACEMENTS_PHASE ? 999 : PHASE_ORDER.indexOf(k))
+  const tabs = [...present].sort((a, b) => idx(a) - idx(b)).map((k) => ({ key: k, label: k === PLACEMENTS_PHASE ? 'Piazzamenti' : roundLabel(k) }))
+  return [{ key: 'ALL', label: 'Tutte' }, ...tabs]
+}
+export function filterCalendarMatches<T extends { categoryId: string; groupLabel: string; round?: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' }>(matches: T[], categoryId: string, selGir: string, selPhase = 'ALL'): T[] {
   return matches.filter((m) => {
     if (m.categoryId !== categoryId) return false
     if (selGir === 'ALL') return true
-    if (selGir === FINALS_TAB) return isFinalPhase(m)
+    if (selGir === FINALS_TAB) return isFinalPhase(m) && (selPhase === 'ALL' || finalsPhaseKey(m.round) === selPhase)
     return !isFinalPhase(m) && m.groupLabel === selGir
   })
 }
@@ -216,7 +231,7 @@ export function renderStandings(groups: GroupStandingView[], catName: (id: strin
 }
 
 /** Structural finals match shape (app-shell stays free of rest-client). */
-export interface BracketMatch { categoryId: string; bracketLabel?: string; round?: string; order?: number; day?: string; time?: string; field?: string; home: string; away: string; homeResolved?: string; awayResolved?: string; status?: MatchStatus; homeScore?: number | null; awayScore?: number | null; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'; decidedWinner?: 'HOME' | 'AWAY' }
+export interface BracketMatch { categoryId: string; bracketLabel?: string; round?: string; order?: number; slot?: string; placementFrom?: number; placementTo?: number; day?: string; time?: string; field?: string; home: string; away: string; homeResolved?: string; awayResolved?: string; status?: MatchStatus; homeScore?: number | null; awayScore?: number | null; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'; decidedWinner?: 'HOME' | 'AWAY' }
 
 /** Which side won a finished match: by score, or (on a draw) the decreed winner; null if not decided. */
 export function winnerSide(m: BracketMatch): 'HOME' | 'AWAY' | null {
@@ -227,15 +242,65 @@ export function winnerSide(m: BracketMatch): 'HOME' | 'AWAY' | null {
 
 /** Human label for a round code (S13 v1 uses R64/R32/R16/QF/SF/F). Non-code rounds (e.g.
  *  "Finale 1º/2º", "Girone finale") pass through unchanged. */
-const ROUND_LABEL: Record<string, string> = { R64: 'Sedicesimi', R32: 'Sedicesimi', R16: 'Ottavi', QF: 'Quarti', SF: 'Semifinali', F: 'Finale' }
+const ROUND_LABEL: Record<string, string> = { R64: 'Trentaduesimi', R32: 'Sedicesimi', R16: 'Ottavi', QF: 'Quarti', SF: 'Semifinali', F: 'Finale' }
 export function roundLabel(round: string): string { return ROUND_LABEL[round] ?? round }
 
 const CODE_ROUNDS = new Set(['R64', 'R32', 'R16', 'QF', 'SF', 'F'])
 const roundsInOrder = (ms: BracketMatch[]): string[] => { const o: string[] = []; for (const m of ms) { const r = m.round ?? ''; if (!o.includes(r)) o.push(r) } return o }
 const sortByOrder = (ms: BracketMatch[]): BracketMatch[] => [...ms].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
-/** One match rendered as a stacked two-team card (used in the bracket tree). */
-function bracketCard(f: BracketMatch): string {
+/** S13 (variante B): downstream placement range each match feeds into — follow its Vincente/Perdente
+ *  links forward to the 2-wide finals and take the min/max place. Lets feeder rounds (Quarti,
+ *  Semifinali, spareggi) show the positions they ultimately decide. Keyed by slot. */
+function downstreamRanges(ms: BracketMatch[]): Map<string, [number, number]> {
+  const REF = /^(?:Vincente|Perdente) (.+)$/
+  const children = new Map<string, BracketMatch[]>()
+  for (const m of ms) for (const side of [m.home, m.away]) {
+    const r = REF.exec(side ?? ''); if (!r) continue
+    const arr = children.get(r[1]!) ?? []; arr.push(m); children.set(r[1]!, arr)
+  }
+  const memo = new Map<string, [number, number]>()
+  const visit = (m: BracketMatch, seen: Set<string>): [number, number] => {
+    if (m.slot && memo.has(m.slot)) return memo.get(m.slot)!
+    let lo = Infinity, hi = -Infinity
+    if (m.placementFrom != null && m.placementTo != null) { lo = Math.min(lo, m.placementFrom); hi = Math.max(hi, m.placementTo) }
+    if (m.slot && !seen.has(m.slot)) {
+      seen.add(m.slot)
+      for (const c of children.get(m.slot) ?? []) { const [clo, chi] = visit(c, seen); lo = Math.min(lo, clo); hi = Math.max(hi, chi) }
+    }
+    const range: [number, number] = [lo, hi]
+    if (m.slot) memo.set(m.slot, range)
+    return range
+  }
+  const out = new Map<string, [number, number]>()
+  for (const m of ms) if (m.slot) out.set(m.slot, visit(m, new Set()))
+  return out
+}
+
+/** A match's position badge: a 2-wide final shows its exact pair ("1º/2º"); a feeder shows the range it
+ *  decides ("5º–8º"), from downstreamRanges. */
+interface PosBadge { chip?: string; feed?: string }
+function posBadge(m: BracketMatch, ranges: Map<string, [number, number]>): PosBadge {
+  if (m.placementFrom != null && m.placementTo === m.placementFrom + 1) return { chip: `${m.placementFrom}º/${m.placementTo}º` }
+  const r = m.slot ? ranges.get(m.slot) : undefined
+  if (r && Number.isFinite(r[0]) && r[0] !== r[1]) return { feed: `${r[0]}º–${r[1]}º` }
+  return {}
+}
+const posSort = (m: BracketMatch, ranges: Map<string, [number, number]>): number =>
+  m.placementFrom ?? (m.slot ? ranges.get(m.slot)?.[0] : undefined) ?? 999
+
+const teamsSpan = (f: BracketMatch): string => {
+  const w = winnerSide(f)
+  const hn = esc(f.homeResolved ?? f.home), an = esc(f.awayResolved ?? f.away)
+  const mid = f.homeScore != null && f.awayScore != null ? `${esc(f.homeScore)}–${esc(f.awayScore)}` : 'vs'
+  const decide = needsWinnerDecision(f) ? ' <span class="pf-mstatus pf-mstatus--decide">⚠ Chi passa?</span>' : ''
+  return `<span class="pf-brk__teams"><span class="${w === 'HOME' ? 'pf-brk__win' : ''}">${w === 'HOME' ? '✓ ' : ''}${hn}</span> <b>${mid}</b> <span class="${w === 'AWAY' ? 'pf-brk__win' : ''}">${w === 'AWAY' ? '✓ ' : ''}${an}</span>${decide}</span>`
+}
+const badgeSpan = (b: PosBadge): string =>
+  b.chip ? `<span class="pf-brk__pos">${esc(b.chip)}</span>` : b.feed ? `<span class="pf-brk__pos pf-brk__pos--range">${esc(b.feed)}</span>` : ''
+
+/** One match as a stacked two-team card (bracket tree); a 2-wide final carries its position chip. */
+function bracketCard(f: BracketMatch, badge: PosBadge): string {
   const w = winnerSide(f)
   const side = (raw: string, resolved: string | undefined, score: number | null | undefined, isWin: boolean) =>
     `<div class="pf-brk__t${isWin ? ' pf-brk__t--win' : ''}${resolved ? '' : ' pf-brk__t--tbd'}">
@@ -243,44 +308,65 @@ function bracketCard(f: BracketMatch): string {
       <span class="sc pf-mono">${score != null ? esc(score) : '—'}</span>
     </div>`
   return `<div class="pf-brk__m">
+    ${badge.chip ? `<div class="pf-brk__mpos">${badgeSpan(badge)}</div>` : ''}
     ${side(f.home, f.homeResolved, f.homeScore, w === 'HOME')}
     ${side(f.away, f.awayResolved, f.awayScore, w === 'AWAY')}
     ${needsWinnerDecision(f) ? '<div class="pf-brk__badge">⚠ Chi passa?</div>' : ''}
   </div>`
 }
 
-/** The per-round list (mobile fallback + non-tree brackets: placement finals, final group). */
-function bracketList(inBracket: BracketMatch[], rounds: string[]): string {
+/** The per-round list (mobile fallback + non-tree brackets). `ranges` (optional) adds position chips. */
+function bracketList(inBracket: BracketMatch[], rounds: string[], ranges?: Map<string, [number, number]>): string {
   return rounds.map((rd) => {
     const rows = sortByOrder(inBracket.filter((f) => (f.round ?? '') === rd)).map((f) => {
-      const w = winnerSide(f)
-      const hn = esc(f.homeResolved ?? f.home), an = esc(f.awayResolved ?? f.away)
-      const mid = f.homeScore != null && f.awayScore != null ? `${esc(f.homeScore)}–${esc(f.awayScore)}` : 'vs'
-      const decide = needsWinnerDecision(f) ? ' <span class="pf-mstatus pf-mstatus--decide">⚠ Chi passa?</span>' : ''
+      const badge = ranges ? badgeSpan(posBadge(f, ranges)) : ''
       return `<li class="pf-brk__match">
         ${f.time || f.field ? `<span class="pf-brk__slot pf-mono">${esc([f.time, f.field].filter(Boolean).join(' · '))}</span>` : ''}
-        <span class="pf-brk__teams"><span class="${w === 'HOME' ? 'pf-brk__win' : ''}">${w === 'HOME' ? '✓ ' : ''}${hn}</span> <b>${mid}</b> <span class="${w === 'AWAY' ? 'pf-brk__win' : ''}">${w === 'AWAY' ? '✓ ' : ''}${an}</span>${decide}</span>
+        ${badge}${teamsSpan(f)}
       </li>`
     }).join('')
     return `${rd ? `<div class="pf-brk__round pf-mono">${esc(roundLabel(rd))}</div>` : ''}<ul class="pf-brk__list">${rows}</ul>`
   }).join('')
 }
 
-/** The graphical bracket tree: one column per round, connectors in pure CSS. */
-function bracketTree(inBracket: BracketMatch[], rounds: string[]): string {
-  const heads = rounds.map((rd) => `<div>${esc(roundLabel(rd))}</div>`).join('')
+/** The classification/placement finals under the main tree: a flat list, each row led by its position
+ *  badge (exact pair for a final, range for a spareggio feeder). Ordered by target position. */
+function placementList(placeMs: BracketMatch[], ranges: Map<string, [number, number]>): string {
+  const rows = [...placeMs]
+    .sort((a, b) => (posSort(a, ranges) - posSort(b, ranges)) || (a.order ?? 0) - (b.order ?? 0))
+    .map((f) => `<li class="pf-brk__prow">${badgeSpan(posBadge(f, ranges))}${teamsSpan(f)}</li>`).join('')
+  return `<ul class="pf-brk__plist">${rows}</ul>`
+}
+
+/** The graphical bracket tree: one column per round, connectors in pure CSS. Feeder round headers show
+ *  the range they decide ("→ 1º–4º"); each column's cards carry their own position chip when final. */
+function bracketTree(inBracket: BracketMatch[], rounds: string[], ranges: Map<string, [number, number]>): string {
+  const heads = rounds.map((rd) => {
+    const ms = inBracket.filter((f) => (f.round ?? '') === rd)
+    const feed = ms.length ? posBadge(ms[0]!, ranges).feed : undefined
+    return `<div>${esc(roundLabel(rd))}${feed ? ` <span class="pf-brk__feed">→ ${esc(feed)}</span>` : ''}</div>`
+  }).join('')
   const cols = rounds.map((rd, i) => {
     const ms = sortByOrder(inBracket.filter((f) => (f.round ?? '') === rd))
-    return `<div class="pf-brk__col${i === rounds.length - 1 ? ' pf-brk__col--last' : ''}" style="--n:${ms.length}">${ms.map(bracketCard).join('')}</div>`
+    return `<div class="pf-brk__col${i === rounds.length - 1 ? ' pf-brk__col--last' : ''}" style="--n:${ms.length}">${ms.map((m) => bracketCard(m, posBadge(m, ranges))).join('')}</div>`
   }).join('')
   return `<div class="pf-brk-tree-wrap"><div class="pf-brk-heads">${heads}</div><div class="pf-brk-tree">${cols}</div></div>`
 }
 
-/** S12/S13: the finals for one category. The main knockout path (code rounds QF/SF/F) renders as a
- *  graphical tree (with a per-round list fallback on mobile); the classification/placement finals
- *  (3º/4º, 5º/6º, 7º/8º …) render as a list below the tree, and single-match finals / the round-robin
- *  final group render as a plain list. Winner highlighted (✓), drawn KO flagged "⚠ Chi passa?",
- *  unresolved slots muted. Read-only; shared by the E1 Finali tab and the E3 public Tabellone. */
+/** The bracket-level position range chip, e.g. "posizioni 1º–8º", from the 2-wide finals present. */
+function bracketRangeChip(inBracket: BracketMatch[]): string {
+  const fins = inBracket.filter((f) => f.placementFrom != null && f.placementTo === f.placementFrom + 1)
+  if (!fins.length) return ''
+  const lo = Math.min(...fins.map((f) => f.placementFrom!)), hi = Math.max(...fins.map((f) => f.placementTo!))
+  return `<span class="pf-brk__pos pf-brk__pos--range">posizioni ${lo}º–${hi}º</span>`
+}
+
+/** S12/S13 (variante B): the finals for one category. The main knockout path (code rounds QF/SF/F)
+ *  renders as a graphical tree — column headers show the range each feeder round decides ("→ 1º–4º")
+ *  and each 2-wide final carries its position chip ("1º/2º"); the classification/placement finals
+ *  (3º/4º, 5º/6º, spareggi …) list below, each led by its position badge. The bracket head shows the
+ *  overall range ("posizioni 1º–8º"). Non-tree brackets (single finals, girone finale) stay a plain
+ *  list. Winner highlighted (✓), drawn KO flagged "⚠ Chi passa?", unresolved slots muted. Read-only. */
 export function renderBracket(finals: BracketMatch[], catName: (id: string) => string): string {
   if (!finals.length) return `<p class="pf-muted">Nessun tabellone: configura la fase finale e genera il calendario.</p>`
   const brackets = [...new Set(finals.map((f) => f.bracketLabel ?? 'Finali'))]
@@ -288,16 +374,16 @@ export function renderBracket(finals: BracketMatch[], catName: (id: string) => s
     const inBracket = finals.filter((f) => (f.bracketLabel ?? 'Finali') === bl)
     const rounds = roundsInOrder(inBracket)
     const codeRounds = rounds.filter((r) => CODE_ROUNDS.has(r))
-    const otherRounds = rounds.filter((r) => !CODE_ROUNDS.has(r))
     const hasTree = codeRounds.length >= 2
-    const head = `<div class="pf-calday__head pf-mono">${esc(catName(inBracket[0]!.categoryId))} · ${esc(bl)}</div>`
+    const ranges = downstreamRanges(inBracket)
+    const head = `<div class="pf-calday__head pf-mono">${esc(catName(inBracket[0]!.categoryId))} · ${esc(bl)} ${bracketRangeChip(inBracket)}</div>`
     let body: string
     if (hasTree) {
       const treeMs = inBracket.filter((f) => CODE_ROUNDS.has(f.round ?? ''))
       const placeMs = inBracket.filter((f) => !CODE_ROUNDS.has(f.round ?? ''))
-      const tree = `<div class="pf-brk-desktop">${bracketTree(treeMs, codeRounds)}</div><div class="pf-brk-fallback">${bracketList(treeMs, codeRounds)}</div>`
-      const placements = otherRounds.length
-        ? `<div class="pf-brk-placements"><div class="pf-brk__sub pf-mono">Piazzamenti</div>${bracketList(placeMs, otherRounds)}</div>`
+      const tree = `<div class="pf-brk-desktop">${bracketTree(treeMs, codeRounds, ranges)}</div><div class="pf-brk-fallback">${bracketList(treeMs, codeRounds, ranges)}</div>`
+      const placements = placeMs.length
+        ? `<div class="pf-brk-placements"><div class="pf-brk__sub pf-mono">Piazzamenti</div>${placementList(placeMs, ranges)}</div>`
         : ''
       body = tree + placements
     } else {

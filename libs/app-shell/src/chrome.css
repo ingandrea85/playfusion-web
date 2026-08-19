@@ -202,6 +202,15 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 /* Classification/placement finals listed under the main tree. */
 .pf-brk-placements { margin-top: var(--space-md); border-top: 1px dashed var(--color-border-default); padding-top: var(--space-sm); }
 .pf-brk__sub { color: var(--color-text-muted); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: var(--space-xs); }
+.pf-brk__plist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
+.pf-brk__prow { display: flex; align-items: center; gap: var(--space-sm); padding: 6px 10px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); }
+
+/* Position badges (variante B): exact pair on finals ("1º/2º"), range on feeders/tier ("5º–8º"). */
+.pf-brk__pos { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--color-action-accent) 14%, transparent); color: var(--color-action-accent); white-space: nowrap; }
+.pf-brk__pos--range { background: transparent; border: 1px dashed color-mix(in srgb, var(--color-action-accent) 55%, transparent); font-weight: 650; }
+.pf-brk__mpos { display: flex; justify-content: flex-end; padding: 4px 8px 0; }
+.pf-brk__feed { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0; text-transform: none; color: var(--color-text-muted); font-weight: 600; }
 
 /* ---------- Final ranking (S13) ---------- */
 .pf-finrank { list-style: none; margin: var(--space-sm) 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
@@ -214,6 +223,11 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
   border-radius: var(--radius-pill); font: inherit; font-size: 13px; font-weight: 600; color: var(--color-text-muted); cursor: pointer; white-space: nowrap; }
 .pf-tab:hover { border-color: var(--color-border-strong); }
 .pf-tab--active { background: var(--color-action-primary); border-color: var(--color-action-primary); color: #fff; }
+/* S13 dynamic phase sub-filter: indented, smaller pills, accent rail — shown under the active "Finali" tab. */
+.pf-tabs--sub { margin: calc(-1 * var(--space-xs)) 0 var(--space-sm); padding-left: var(--space-sm); border-left: 2px solid var(--color-action-accent); }
+.pf-tabs--sub .pf-tabs { margin-bottom: 0; }
+.pf-tabs--sub .pf-tab { padding: 4px 10px; font-size: 12px; }
+.pf-tabs--sub .pf-tab--active { background: var(--color-action-accent); border-color: var(--color-action-accent); }
 
 /* ---------- Score stepper (S25, mobile-first) ---------- */
 .pf-stepper { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); }

@@ -1,4 +1,4 @@
-import { esc, renderCalendar, renderTabs, categoryKeys, renderStepper, wireSteppers, readStepper, copyToClipboard, displayStatus, matchStatusBadge, calendarGironeTabs, filterCalendarMatches } from '@playfusion/app-shell'
+import { esc, renderCalendar, renderTabs, categoryKeys, renderStepper, wireSteppers, readStepper, copyToClipboard, displayStatus, matchStatusBadge, calendarGironeTabs, filterCalendarMatches, finalsPhaseTabs, FINALS_TAB } from '@playfusion/app-shell'
 import type { CategorySchedule, EventDetail, FinalsType, ScheduleConfig, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
 
 const FINALS_TYPE_LABEL: Record<FinalsType, string> = {
@@ -94,15 +94,16 @@ function actionsCard(status: ScheduleView['status']): string {
   </div></div>`
 }
 
-const filterMatches = (matches: ScheduledMatchView[], selCat: string, selGir: string): ScheduledMatchView[] =>
-  filterCalendarMatches(matches, selCat, selGir)
+const filterMatches = (matches: ScheduledMatchView[], selCat: string, selGir: string, selPhase = 'ALL'): ScheduledMatchView[] =>
+  filterCalendarMatches(matches, selCat, selGir, selPhase)
 
-/** Calendar card with Category + (Gironi | Finali) filter tabs — shared UX with E3/director. */
+/** Calendar card with Category + (Gironi | Finali) + dynamic phase filter tabs — shared UX with E3/director. */
 function calendarCard(matches: ScheduledMatchView[], selCat: string, selGir: string): string {
   const gtabs = calendarGironeTabs(matches, selCat)
   return `<div class="pf-card"><h2 class="pf-h3">Calendario</h2>
     <div id="cal-cattabs">${renderTabs(categoryKeys(matches).map((c) => ({ key: c, label: c })), selCat)}</div>
     <div id="cal-girtabs">${renderTabs(gtabs, selGir)}</div>
+    <div id="cal-phasetabs"></div>
     <div id="editmatch"></div>
     <div id="calbody">${renderCalendar(filterMatches(matches, selCat, selGir), catName, true)}</div>
   </div>`
@@ -240,17 +241,23 @@ export const scheduleScreen: Screen<ScheduleData> = {
       const calbody = root.querySelector('#calbody'); if (!calbody) return
       const catbar = root.querySelector('#cal-cattabs')!
       const girbar = root.querySelector('#cal-girtabs')!
+      const phasebar = root.querySelector('#cal-phasetabs')!
       let selCat = categoryKeys(data.matches)[0] ?? ''
       let selGir = 'ALL'
+      let selPhase = 'ALL'
       function draw() {
         catbar.innerHTML = renderTabs(categoryKeys(data.matches).map((c) => ({ key: c, label: c })), selCat)
         catbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
-          b.addEventListener('click', () => { selCat = b.dataset.key!; selGir = 'ALL'; draw() }))
+          b.addEventListener('click', () => { selCat = b.dataset.key!; selGir = 'ALL'; selPhase = 'ALL'; draw() }))
         const gtabs = calendarGironeTabs(data.matches, selCat)
         girbar.innerHTML = renderTabs(gtabs, selGir)
         girbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
-          b.addEventListener('click', () => { selGir = b.dataset.key!; draw() }))
-        calbody!.innerHTML = renderCalendar(filterMatches(data.matches, selCat, selGir), catName, true)
+          b.addEventListener('click', () => { selGir = b.dataset.key!; selPhase = 'ALL'; draw() }))
+        const phaseTabs = selGir === FINALS_TAB ? finalsPhaseTabs(data.matches, selCat) : []
+        phasebar.innerHTML = phaseTabs.length ? `<div class="pf-tabs--sub">${renderTabs(phaseTabs, selPhase)}</div>` : ''
+        phasebar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
+          b.addEventListener('click', () => { selPhase = b.dataset.key!; draw() }))
+        calbody!.innerHTML = renderCalendar(filterMatches(data.matches, selCat, selGir, selPhase), catName, true)
         wireResult(); wireReschedule()
       }
       draw()
