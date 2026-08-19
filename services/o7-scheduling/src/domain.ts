@@ -32,7 +32,6 @@ export interface ScheduleConfig {
   periodMinutes: number;
   breakMinutes: number;
   dailyStart: string; // 'HH:mm'
-  slotsPerDay: number;
   groupsCount: number;
   legs: Legs;
   byCategory?: Record<string, CategorySchedule>;
@@ -128,7 +127,7 @@ export function slotConflict(matches: ScheduledMatch[], matchId: string, patch: 
 }
 
 export function defaultConfig(): ScheduleConfig {
-  return { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', slotsPerDay: 8, groupsCount: 1, legs: 'SINGLE' };
+  return { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', groupsCount: 1, legs: 'SINGLE' };
 }
 
 /** Generate is allowed only while the config is still editable (not yet approved). */

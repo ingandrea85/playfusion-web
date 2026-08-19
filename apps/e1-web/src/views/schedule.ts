@@ -49,9 +49,8 @@ function globalCard(config: ScheduleConfig, locked: boolean): string {
   return `<div class="pf-card"><h2 class="pf-h3">Finestra impianto</h2>
     <div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
       <div class="pf-field" style="margin-bottom:0"><label>Inizio giornata</label><input id="dailyStart" type="time" value="${esc(config.dailyStart)}" ${dis} /></div>
-      <div class="pf-field" style="margin-bottom:0"><label>Slot per giornata</label><input id="slotsPerDay" type="number" min="1" value="${config.slotsPerDay}" ${dis} /></div>
     </div>
-    <p class="pf-muted" style="margin:var(--space-sm) 0 0">I gironi si compongono nel tab <b>Gironi</b>.</p></div>`
+    <p class="pf-muted" style="margin:var(--space-sm) 0 0">Gli slot per giornata sono calcolati automaticamente per far stare tutte le partite nei giorni dell'evento. I gironi si compongono nel tab <b>Gironi</b>.</p></div>`
 }
 
 function configSection(config: ScheduleConfig, categorie: string[], status: ScheduleView['status']): string {
@@ -110,10 +109,6 @@ export const scheduleScreen: Screen<ScheduleData> = {
     const mode = (): 'all' | 'per' => (sameForAll?.checked ? 'all' : 'per')
     sameForAll?.addEventListener('change', () => { cfgbody.innerHTML = renderConfigBody(mode(), data.schedule.config, categorie, false) })
 
-    const numAt = (sel: string, fb: number): number => {
-      const v = Number(root.querySelector<HTMLInputElement>(sel)?.value)
-      return Number.isFinite(v) && v > 0 ? v : fb
-    }
     const readCard = (el: Element): CategorySchedule => {
       const val = (s: string) => el.querySelector<HTMLInputElement>(s)?.value ?? ''
       const num = (s: string, fb: number) => { const v = Number(val(s)); return Number.isFinite(v) && v > 0 ? v : fb }
@@ -126,14 +121,15 @@ export const scheduleScreen: Screen<ScheduleData> = {
     }
     const buildConfig = (): { config?: ScheduleConfig; error?: string } => {
       const dailyStart = root.querySelector<HTMLInputElement>('#dailyStart')?.value || '09:00'
-      const slotsPerDay = numAt('#slotsPerDay', 8)
+      // slotsPerDay is derived automatically by the o7 generator (fits all matches across the
+      // event days) — no longer a form input.
       // groupsCount is only the auto-split fallback for events with no composed gironi (set in
       // the Gironi tab); it's no longer a calendar-screen input. Preserve the stored value.
       const groupsCount = data.schedule.config.groupsCount || 1
       if (mode() === 'all') {
         const cc = readCard(cfgbody.querySelector('.js-playcard')!)
         if (!cc.fields.length) return { error: 'Indica almeno un campo.' }
-        return { config: { ...cc, dailyStart, slotsPerDay, groupsCount } }
+        return { config: { ...cc, dailyStart, groupsCount } }
       }
       const byCategory: Record<string, CategorySchedule> = {}
       for (const card of Array.from(cfgbody.querySelectorAll('.js-playcard'))) {
@@ -143,7 +139,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
         byCategory[c] = cc
       }
       const first = Object.values(byCategory)[0] ?? defaultCat(data.schedule.config)
-      return { config: { ...first, dailyStart, slotsPerDay, groupsCount, byCategory } }
+      return { config: { ...first, dailyStart, groupsCount, byCategory } }
     }
 
     root.querySelector('#generate')?.addEventListener('click', async (e) => {

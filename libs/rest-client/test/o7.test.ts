@@ -3,7 +3,7 @@ import { createClient } from '../src/client'
 import type { ScheduleConfig } from '../src/types'
 
 const res = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } })
-const config: ScheduleConfig = { fields: ['Campo A'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', slotsPerDay: 8, groupsCount: 1, legs: 'SINGLE' }
+const config: ScheduleConfig = { fields: ['Campo A'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', groupsCount: 1, legs: 'SINGLE' }
 
 describe('o7 api', () => {
   it('getSchedule GETs /o7/events/:id/schedule', async () => {

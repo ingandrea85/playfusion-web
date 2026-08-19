@@ -37,9 +37,15 @@ interface Cursor { field: number; slot: number; day: number }
  *  their own fields (no collisions because the fields differ). Two categories sharing only
  *  some fields can still overlap — accepted, and resolvable via the S9 reschedule editor.
  *
+ *  Slots-per-day is DERIVED automatically per field-signature so every match fits across the
+ *  event's days (`ceil(matches / (fields × days))`) — the organizer never sets an insufficient
+ *  value, and the day cursor never wraps (no silent collisions).
+ *
  *  Deterministic: no `Math.random`; ids `sm-${n}` in category → group → pair order. */
+const placeKey = (p: Placement): string => `${p.fields.join('|')}@${p.slotMinutes}`;
+
 export function buildFixtures(
-  eventId: string, startDate: string, endDate: string, dailyStart: string, slotsPerDay: number, cats: FixtureCategory[],
+  eventId: string, startDate: string, endDate: string, dailyStart: string, cats: FixtureCategory[],
 ): ScheduledMatch[] {
   const raw: Array<{ categoryId: string; groupLabel: string; home: string; away: string; place: Placement }> = [];
   for (const cat of cats) {
@@ -55,10 +61,16 @@ export function buildFixtures(
   }
 
   const days = dateRange(startDate, endDate);
+  // Per field-signature: how many matches, and thus the minimum slots/day to fit them in `days`.
+  const counts = new Map<string, number>();
+  for (const r of raw) counts.set(placeKey(r.place), (counts.get(placeKey(r.place)) ?? 0) + 1);
+  const slotsFor = (p: Placement): number => Math.max(1, Math.ceil((counts.get(placeKey(p)) ?? 0) / (p.fields.length * days.length)));
+
   const cursors = new Map<string, Cursor>();
   return raw.map((r, idx) => {
-    const key = `${r.place.fields.join('|')}@${r.place.slotMinutes}`;
+    const key = placeKey(r.place);
     const cur = cursors.get(key) ?? { field: 0, slot: 0, day: 0 };
+    const slotsPerDay = slotsFor(r.place);
     const match: ScheduledMatch = {
       id: `sm-${idx + 1}`, sportEventId: eventId, categoryId: r.categoryId, groupLabel: r.groupLabel,
       day: days[cur.day % days.length]!, time: addMinutes(dailyStart, cur.slot * r.place.slotMinutes),

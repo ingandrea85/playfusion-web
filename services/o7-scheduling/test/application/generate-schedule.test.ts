@@ -6,7 +6,7 @@ import { EventNotFoundError } from '../../src/errors.js';
 import type { ScheduleConfig } from '../../src/domain.js';
 import { FakeEventSource, FakeTeamSource, InMemoryMatchRepository, InMemoryScheduleRepository } from '../fakes.js';
 
-const config: ScheduleConfig = { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', slotsPerDay: 8, groupsCount: 1, legs: 'SINGLE' };
+const config: ScheduleConfig = { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', groupsCount: 1, legs: 'SINGLE' };
 
 let schedules: InMemoryScheduleRepository;
 let matches: InMemoryMatchRepository;

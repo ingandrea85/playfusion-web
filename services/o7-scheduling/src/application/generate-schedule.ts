@@ -43,7 +43,7 @@ export function generateSchedule(deps: GenerateScheduleDeps) {
       const cc = categoryConfig(input.config, categoria);
       return { id: categoria, name: categoria, legs: cc.legs, groups, fields: cc.fields, periods: cc.periods, periodMinutes: cc.periodMinutes, breakMinutes: cc.breakMinutes };
     });
-    const fixtures = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config.dailyStart, input.config.slotsPerDay, cats);
+    const fixtures = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config.dailyStart, cats);
     await matches.replace(input.sportEventId, fixtures);
 
     const next: Schedule = { ...current, organizationId: current.organizationId, config: input.config, status: 'GENERATED' };
