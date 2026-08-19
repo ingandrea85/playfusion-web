@@ -28,3 +28,19 @@ describe('enroll render', () => {
       .toMatch(/Nessuna richiesta/i)
   })
 })
+
+describe('enroll link (enrollment token)', () => {
+  it('embeds the enroll token as ?token= before the hash when present', () => {
+    const html = renderEnroll({
+      ...base, enrollToken: 'tok-123',
+      window: { sportEventId: 'e1', state: 'Open', categories: [] }, pending: [],
+    })
+    expect(html).toContain('https://host/e3/?token=tok-123#/events/e1')
+    expect(html).toContain('Invia questo link agli allenatori')
+  })
+  it('falls back to the plain landing link when no token yet', () => {
+    const html = renderEnroll({ ...base, window: { sportEventId: 'e1', state: 'Open', categories: [] }, pending: [] })
+    expect(html).toContain('https://host/e3/#/events/e1')
+    expect(html).not.toContain('?token=')
+  })
+})

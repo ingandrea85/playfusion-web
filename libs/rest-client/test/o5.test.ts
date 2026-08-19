@@ -31,3 +31,19 @@ describe('o5 api', () => {
     expect(JSON.parse(init.body)).toEqual({ capacities: { U10: 8 } })
   })
 })
+
+describe('o5 enroll token (enrollment link)', () => {
+  const res = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } })
+  it('openRegistrationWindow surfaces the returned enrollToken', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ sportEventId: 'e1', state: 'Open', enrollToken: 'tok-1' }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    expect((await c.o5.openRegistrationWindow('e1', { U10: 4 })).enrollToken).toBe('tok-1')
+  })
+  it('getEnrollToken GETs /o5/events/:id/enroll-token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ enrollToken: 'tok-2' }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o5.getEnrollToken('e1')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api/prod/o5/events/e1/enroll-token')
+    expect(out.enrollToken).toBe('tok-2')
+  })
+})
