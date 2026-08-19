@@ -176,3 +176,12 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
   cursor: pointer; display: inline-flex; align-items: center; justify-content: center; touch-action: manipulation; }
 .pf-stepper__btn:active { background: var(--color-action-primary); border-color: var(--color-action-primary); color: #fff; }
 .pf-stepper__val { min-width: 44px; text-align: center; font-family: var(--font-mono); font-size: 30px; font-weight: 700; }
+
+/* ---------- Director match rows (S25, mobile-first) ---------- */
+.pf-dirmatch { display: grid; grid-template-columns: 52px 1fr; row-gap: 2px; column-gap: var(--space-sm); width: 100%;
+  text-align: left; padding: var(--space-sm); margin-bottom: var(--space-xs); border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md); background: var(--color-surface-default); font: inherit; cursor: pointer; }
+.pf-dirmatch:active { background: var(--color-surface-sunken); }
+.pf-dirmatch__teams { font-weight: 700; color: var(--color-text-default); }
+.pf-dirmatch__teams b { color: var(--color-text-muted); margin: 0 4px; }
+.pf-dirmatch__cat { grid-column: 2; font-size: 12px; color: var(--color-text-muted); }
