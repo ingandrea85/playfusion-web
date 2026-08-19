@@ -61,15 +61,21 @@ describe('schedule generate', () => {
 
   it('ON mode: generate sends a flat config (fields/legs from the single card, no byCategory)', async () => {
     const { root, o7, refresh } = mountWith('NONE')
-    ;(root.querySelector('#groupsCount') as HTMLInputElement).value = '2'
     ;(root.querySelector('.cfg-legs') as HTMLSelectElement).value = 'HOME_AWAY'
     root.querySelector<HTMLButtonElement>('#generate')!.click()
     await vi.waitFor(() => expect(o7.generateSchedule).toHaveBeenCalled())
     const [idArg, config] = o7.generateSchedule.mock.calls[0]
     expect(idArg).toBe('e1')
-    expect(config).toMatchObject({ groupsCount: 2, legs: 'HOME_AWAY', fields: ['Campo A', 'Campo B'] })
+    // groupsCount is no longer a calendar input — it's preserved from the stored config (1).
+    expect(config).toMatchObject({ groupsCount: 1, legs: 'HOME_AWAY', fields: ['Campo A', 'Campo B'] })
     expect(config.byCategory).toBeUndefined()
     expect(refresh).toHaveBeenCalled()
+  })
+
+  it('does not render a groupsCount input (gironi are set in the Gironi tab)', () => {
+    const { root } = mountWith('NONE')
+    expect(root.querySelector('#groupsCount')).toBeNull()
+    expect(root.innerHTML).toContain('tab <b>Gironi</b>')
   })
 
   it('per-category mode: toggling off yields a card per category; generate sends byCategory', async () => {
