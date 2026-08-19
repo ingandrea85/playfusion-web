@@ -50,8 +50,8 @@ function globalCard(config: ScheduleConfig, locked: boolean): string {
     <div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
       <div class="pf-field" style="margin-bottom:0"><label>Inizio giornata</label><input id="dailyStart" type="time" value="${esc(config.dailyStart)}" ${dis} /></div>
       <div class="pf-field" style="margin-bottom:0"><label>Slot per giornata</label><input id="slotsPerDay" type="number" min="1" value="${config.slotsPerDay}" ${dis} /></div>
-      <div class="pf-field" style="margin-bottom:0"><label>Gironi per categoria (auto)</label><input id="groupsCount" type="number" min="1" value="${config.groupsCount}" ${dis} /></div>
-    </div></div>`
+    </div>
+    <p class="pf-muted" style="margin:var(--space-sm) 0 0">I gironi si compongono nel tab <b>Gironi</b>.</p></div>`
 }
 
 function configSection(config: ScheduleConfig, categorie: string[], status: ScheduleView['status']): string {
@@ -126,7 +126,9 @@ export const scheduleScreen: Screen<ScheduleData> = {
     const buildConfig = (): { config?: ScheduleConfig; error?: string } => {
       const dailyStart = root.querySelector<HTMLInputElement>('#dailyStart')?.value || '09:00'
       const slotsPerDay = numAt('#slotsPerDay', 8)
-      const groupsCount = numAt('#groupsCount', 1)
+      // groupsCount is only the auto-split fallback for events with no composed gironi (set in
+      // the Gironi tab); it's no longer a calendar-screen input. Preserve the stored value.
+      const groupsCount = data.schedule.config.groupsCount || 1
       if (mode() === 'all') {
         const cc = readCard(cfgbody.querySelector('.js-playcard')!)
         if (!cc.fields.length) return { error: 'Indica almeno un campo.' }
