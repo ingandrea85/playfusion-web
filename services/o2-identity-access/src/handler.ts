@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { handle } from 'hono/aws-lambda';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { withCorrelation, makeDocClient, toHttpError, resourceName } from '@playfusion/platform-lib';
+import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken } from '@playfusion/platform-lib';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { signToken, verifyToken } from './token.js';
 
@@ -28,7 +28,9 @@ app.post('/identities/magic-link', async (c) => {
   return c.json({ subject, token: signToken(subject, b.roles, { purpose: b.purpose, ttlSeconds: b.ttlSeconds }) }, 201);
 });
 app.get('/identities/verify', (c) => {
-  const claims = verifyToken(c.req.header('authorization') ?? '');
+  // Accept both a raw token and a `Bearer <token>` header (the rest-client sends Bearer, like
+  // every other authed call). bearerToken strips the prefix; without this a Bearer token 401s.
+  const claims = verifyToken(bearerToken(c));
   return claims ? c.json(claims) : c.json({ code: 'INVALID_TOKEN' }, 401);
 });
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
