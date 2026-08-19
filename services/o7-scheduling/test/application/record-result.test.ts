@@ -35,3 +35,14 @@ test('test_recordResult_missingMatch404', async () => {
   await expect(recordResult(matches)({ sportEventId: 'evt-1', matchId: 'nope', homeScore: 1, awayScore: 0 }))
     .rejects.toBeInstanceOf(MatchNotFoundError);
 });
+
+import { ForbiddenError } from '@playfusion/platform-lib';
+test('test_recordResult_directorScope_allowsOwnField_rejectsOther', async () => {
+  await matches.replace('evt-1', [{ ...mk('sm-1', 'A', 'B'), field: 'Campo A' }, { ...mk('sm-2', 'C', 'D'), field: 'Campo B' }]);
+  // director restricted to Campo A can report sm-1...
+  const m = await recordResult(matches)({ sportEventId: 'evt-1', matchId: 'sm-1', homeScore: 1, awayScore: 0, restrictToField: 'Campo A' });
+  expect(m).toMatchObject({ id: 'sm-1', homeScore: 1 });
+  // ...but not sm-2 (Campo B)
+  await expect(recordResult(matches)({ sportEventId: 'evt-1', matchId: 'sm-2', homeScore: 1, awayScore: 0, restrictToField: 'Campo A' }))
+    .rejects.toBeInstanceOf(ForbiddenError);
+});

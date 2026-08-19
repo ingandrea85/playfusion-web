@@ -10,6 +10,7 @@ export interface O7Api {
   rescheduleMatch(eventId: string, matchId: string, patch: { day: string; time: string; field: string; home?: string; away?: string }): Promise<ScheduledMatchView>
   recordResult(eventId: string, matchId: string, result: { homeScore: number; awayScore: number }): Promise<ScheduledMatchView>
   getStandings(eventId: string): Promise<GroupStanding[]>
+  getDirectorToken(eventId: string, field: string): Promise<{ field: string; token: string }>
 }
 export const o7 = (cfg: HttpConfig): O7Api => ({
   getSchedule: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/schedule`),
@@ -20,4 +21,5 @@ export const o7 = (cfg: HttpConfig): O7Api => ({
   rescheduleMatch: (id, matchId, patch) => request(cfg, 'PUT', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}`, patch),
   recordResult: (id, matchId, result) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/result`, result),
   getStandings: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/standings`),
+  getDirectorToken: (id, field) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/director-token`, { field }),
 })

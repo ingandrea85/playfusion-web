@@ -468,6 +468,15 @@ team must be a confirmed team of the category (422, read from o5, fail-open if u
 changing the teams resets the match result. Per-match override — the gironi composition is
 unchanged; standings recompute from the edited matches.
 
+**Phase S25 (Field directors, O8/E2) — complete.** Per-field directors report results from the
+phone. `POST /o7/events/:id/director-token {field}` (organizer) mints a role=`director` magic-link
+(subject `director:<eventId>:<field>`, TTL to the event's end) that the organizer shares — one link
+per field. `recordResult` accepts the organizer OR a director; a director is restricted to their
+token's event + field (403 otherwise, `requireResultReporter` + `restrictToField`). The E3 route
+`#/events/:id/director` is a mobile-first view listing only that field's matches, each opening a
+big −/+ score stepper (`renderStepper`, reused in the E1 result panel). Client-side field parse is
+display-only; the backend re-enforces the scope on every write.
+
 ## 13. Where to read more
 
 - [`README.md`](../README.md) — quick start.

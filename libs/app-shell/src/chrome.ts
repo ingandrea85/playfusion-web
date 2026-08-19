@@ -54,6 +54,28 @@ export function renderCalendar(matches: CalendarMatch[], catName: (id: string) =
   }).join('')
 }
 
+/** Big tappable −/+ score stepper (S25, mobile-first). `id` is unique within the form
+ *  (e.g. 'home'/'away'); read the value back with readStepper and wire the buttons with
+ *  wireSteppers after mounting. Value clamps at 0. */
+export function renderStepper(id: string, label: string, value = 0): string {
+  return `<div class="pf-stepper">
+    <div class="pf-stepper__label">${esc(label)}</div>
+    <div class="pf-stepper__ctl">
+      <button type="button" class="pf-stepper__btn" data-step="${esc(id)}" data-delta="-1" aria-label="meno">−</button>
+      <span class="pf-stepper__val" id="stp-${esc(id)}">${Math.max(0, Math.floor(value))}</span>
+      <button type="button" class="pf-stepper__btn" data-step="${esc(id)}" data-delta="1" aria-label="più">+</button>
+    </div>
+  </div>`
+}
+export function wireSteppers(root: ParentNode): void {
+  root.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) => b.addEventListener('click', () => {
+    const el = root.querySelector<HTMLElement>(`#stp-${b.dataset.step}`); if (!el) return
+    el.textContent = String(Math.max(0, (Number(el.textContent) || 0) + Number(b.dataset.delta)))
+  }))
+}
+export const readStepper = (root: ParentNode, id: string): number =>
+  Math.max(0, Number(root.querySelector<HTMLElement>(`#stp-${id}`)?.textContent ?? '0') || 0)
+
 /** Category/girone filter tabs (S23) — shared by the calendar & standings surfaces (E1+E3).
  *  Stateless: screens read `data-key` on click and re-render. Scrollable on mobile. */
 export interface Tab { key: string; label: string }

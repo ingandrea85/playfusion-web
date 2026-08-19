@@ -44,3 +44,18 @@ describe('S23 tabs', () => {
     expect(groupKeys(items, 'U10')).toEqual(['Girone A', 'Girone B'])
   })
 })
+
+import { renderStepper, wireSteppers, readStepper } from '../src/chrome'
+describe('S25 score stepper', () => {
+  it('renders a +/- stepper and reads/updates the value (clamped at 0)', () => {
+    const root = document.createElement('div')
+    root.innerHTML = renderStepper('home', 'Casa', 2)
+    wireSteppers(root)
+    expect(readStepper(root, 'home')).toBe(2)
+    root.querySelector<HTMLButtonElement>('[data-step="home"][data-delta="1"]')!.click()
+    expect(readStepper(root, 'home')).toBe(3)
+    const minus = root.querySelector<HTMLButtonElement>('[data-step="home"][data-delta="-1"]')!
+    minus.click(); minus.click(); minus.click(); minus.click() // 3 → 0, then clamp
+    expect(readStepper(root, 'home')).toBe(0)
+  })
+})

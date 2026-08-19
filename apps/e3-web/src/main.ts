@@ -7,6 +7,7 @@ import { readConfig } from './config.js'
 import { renderLanding, renderParticipants } from './views/landing.js'
 import { renderPublicCalendar, wirePublicCalendar } from './views/calendar.js'
 import { renderPublicStandings, wirePublicStandings } from './views/standings.js'
+import { renderDirector, wireDirector, directorScopeFromToken } from './views/director.js'
 import { renderApply, buildApplyInput } from './views/apply.js'
 import { captureMagicLink, magicLinkAuthProvider, storedToken, clearToken } from './auth/magic-link.js'
 
@@ -60,6 +61,15 @@ new HashRouter()
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/apply', ({ id }) => applyRoute(id))
+  .on('#/events/:id/director', async ({ id }) => {
+    try {
+      const scope = directorScopeFromToken(storedToken(sessionStorage))
+      if (!scope) { app.innerHTML = errorCard('Apri il link direttore ricevuto dall\'organizzatore.'); return }
+      if (scope.eventId !== id) { app.innerHTML = errorCard('Questo link direttore non vale per questo evento.'); return }
+      const [ev, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getMatches(id)])
+      app.innerHTML = renderDirector(ev, scope.field, matches); wireDirector(app, client.o7, id, scope.field, matches)
+    } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
+  })
   .on('#/events/:id/standings', async ({ id }) => {
     try { const [ev, standings] = await Promise.all([client.o3.getEvent(id), client.o7.getStandings(id)]); app.innerHTML = renderPublicStandings(ev, standings); wirePublicStandings(app, standings) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }

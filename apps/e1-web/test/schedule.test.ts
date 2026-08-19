@@ -162,24 +162,26 @@ describe('schedule result entry (S10)', () => {
     expect(html).toContain('2–1') // score on the row
   })
 
-  it('Risultato → Salva records the result then refreshes', async () => {
+  const tap = (root: HTMLElement, id: string, delta: 1 | -1, n: number) => {
+    const b = root.querySelector<HTMLButtonElement>(`[data-step="${id}"][data-delta="${delta}"]`)!
+    for (let i = 0; i < n; i++) b.click()
+  }
+
+  it('Risultato → +/- stepper → Salva records the result then refreshes', async () => {
     const { root, o7, refresh } = mountWith()
     root.querySelector<HTMLButtonElement>('.js-resultmatch')!.click()
-    ;(root.querySelector('#rr-home') as HTMLInputElement).value = '3'
-    ;(root.querySelector('#rr-away') as HTMLInputElement).value = '1'
+    tap(root, 'home', 1, 3) // 0 → 3
+    tap(root, 'away', 1, 1) // 0 → 1
     root.querySelector<HTMLButtonElement>('#rr-save')!.click()
     await vi.waitFor(() => expect(o7.recordResult).toHaveBeenCalledWith('e1', 'sm-1', { homeScore: 3, awayScore: 1 }))
     expect(refresh).toHaveBeenCalled()
   })
 
-  it('rejects invalid scores without calling recordResult', async () => {
-    const { root, o7 } = mountWith()
+  it('stepper clamps at 0 (minus below zero stays 0)', () => {
+    const { root } = mountWith()
     root.querySelector<HTMLButtonElement>('.js-resultmatch')!.click()
-    ;(root.querySelector('#rr-home') as HTMLInputElement).value = '-1'
-    ;(root.querySelector('#rr-away') as HTMLInputElement).value = '2'
-    root.querySelector<HTMLButtonElement>('#rr-save')!.click()
-    await vi.waitFor(() => expect(root.querySelector('#err')!.innerHTML).toContain('punteggi validi'))
-    expect(o7.recordResult).not.toHaveBeenCalled()
+    tap(root, 'home', -1, 2) // already 0 → stays 0
+    expect(root.querySelector('#stp-home')!.textContent).toBe('0')
   })
 })
 
