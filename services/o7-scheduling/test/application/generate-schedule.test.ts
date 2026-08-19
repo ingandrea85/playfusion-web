@@ -111,3 +111,19 @@ test('test_generate_noFinalsWhenNoFinalsType', async () => {
   })();
   expect(all.some((m) => m.phase === 'FINAL')).toBe(false);
 });
+
+test('test_generate_finalsMatchesHaveNoUndefinedValues_splitGroup', async () => {
+  // Regression: FINAL_GROUP draws carry no placement range; the persisted match objects must not
+  // contain `undefined` values (DynamoDB's document marshaller rejects them → 500 on generate).
+  events = new FakeEventSource({ 'evt-s': {
+    sportEventId: 'evt-s', dates: { from: '2026-08-29', to: '2026-08-31' }, categorie: ['U10'],
+    gironi: { U10: { groups: [{ label: 'Girone A', teams: ['A', 'B', 'C', 'D'] }], locked: true } },
+    finalsType: 'SPLIT_GROUP_FINALS', finalsTeamsToBracket: 2,
+  } });
+  teams = new FakeTeamSource({ 'evt-s': { U10: ['A', 'B', 'C', 'D'] } });
+  await generateSchedule(deps())({ sportEventId: 'evt-s', organizationId: 'org-1', config: { ...config, finalsDate: '2026-08-31' } });
+  const all = await matches.list('evt-s');
+  expect(all.some((m) => m.phase === 'FINAL')).toBe(true);
+  expect(all.some((m) => m.phase === 'FINAL_GROUP')).toBe(true);
+  for (const m of all) for (const [k, v] of Object.entries(m)) expect(v, `${m.id}.${k} is undefined`).not.toBeUndefined();
+})
