@@ -36,7 +36,7 @@ const app = new Hono();
 // Actual (non-preflight) responses need CORS headers too: API Gateway's
 // defaultCorsPreflightOptions only answers OPTIONS, so browsers block GET/POST replies
 // unless the Lambda sets Access-Control-Allow-Origin itself.
-app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'OPTIONS'] }));
+app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'] }));
 
 const applyBody = z.object({ participantRef: z.string(), sportEventId: z.string(), categoria: z.string() });
 app.post('/registrations', coach, async (c) => {

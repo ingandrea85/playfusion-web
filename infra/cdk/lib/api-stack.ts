@@ -109,7 +109,7 @@ export class ApiStack extends Stack {
       // not known at synth time, so allow any origin; tighten to the exact domain in pr.
       defaultCorsPreflightOptions: {
         allowOrigins: Cors.ALL_ORIGINS,
-        allowMethods: ['GET', 'POST', 'OPTIONS'],
+        allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
         allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'],
       },
     });

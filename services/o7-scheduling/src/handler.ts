@@ -23,7 +23,7 @@ const teams = new HttpTeamSource();
 
 const app = new Hono();
 // Actual (non-preflight) responses need CORS headers too (see o3/o5 handlers).
-app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'OPTIONS'] }));
+app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'] }));
 const orgOf = (c: any) => getIdentity(c)?.organizationId ?? c.req.header('x-organization-id') ?? 'org-pilot';
 
 // S7.1: match-format params + fields + the (uniform, until S8) group structure are the
