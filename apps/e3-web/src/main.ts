@@ -5,8 +5,8 @@ import { HashRouter } from '@playfusion/app-shell'
 import { createClient } from '@playfusion/rest-client'
 import { readConfig } from './config.js'
 import { renderLanding, renderParticipants } from './views/landing.js'
-import { renderPublicCalendar } from './views/calendar.js'
-import { renderPublicStandings } from './views/standings.js'
+import { renderPublicCalendar, wirePublicCalendar } from './views/calendar.js'
+import { renderPublicStandings, wirePublicStandings } from './views/standings.js'
 import { renderApply, buildApplyInput } from './views/apply.js'
 import { captureMagicLink, magicLinkAuthProvider, storedToken, clearToken } from './auth/magic-link.js'
 
@@ -61,11 +61,11 @@ new HashRouter()
   })
   .on('#/events/:id/apply', ({ id }) => applyRoute(id))
   .on('#/events/:id/standings', async ({ id }) => {
-    try { const [ev, standings] = await Promise.all([client.o3.getEvent(id), client.o7.getStandings(id)]); app.innerHTML = renderPublicStandings(ev, standings) }
+    try { const [ev, standings] = await Promise.all([client.o3.getEvent(id), client.o7.getStandings(id)]); app.innerHTML = renderPublicStandings(ev, standings); wirePublicStandings(app, standings) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/calendar', async ({ id }) => {
-    try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); app.innerHTML = renderPublicCalendar(ev, sched, matches) }
+    try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); app.innerHTML = renderPublicCalendar(ev, sched, matches); wirePublicCalendar(app, matches) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id', async ({ id }) => {
