@@ -25,23 +25,22 @@ function addMinutes(hhmm: string, mins: number): string {
 }
 
 interface Placement { fields: string[]; slotMinutes: number }
-interface Cursor { field: number; slot: number; day: number }
+interface Slot { teams: Set<string>; count: number }
 
 /** Deterministic "plausible" fixture generator (S22 per-category placement). For each
  *  category's resolved groups (the gironi composition — S8), build each group's round-robin
  *  (doubled for HOME_AWAY), tagging every match with that category's own fields + slot length.
  *
- *  Placement uses one cursor PER (fields + slot-length) signature: categories sharing the
- *  same fields+timing lay out sequentially on a single cursor (no collisions — the "same for
- *  all" case behaves like before); categories with distinct fields lay out in parallel on
- *  their own fields (no collisions because the fields differ). Two categories sharing only
- *  some fields can still overlap — accepted, and resolvable via the S9 reschedule editor.
+ *  Placement is greedy first-fit over (time-slot → day → field), keeping one cursor space per
+ *  (fields + slot-length) signature: categories sharing the same fields+timing share the grid,
+ *  categories with distinct fields lay out on their own fields.
  *
- *  Slots-per-day is DERIVED automatically per field-signature so every match fits across the
- *  event's days (`ceil(matches / (fields × days))`) — the organizer never sets an insufficient
- *  value, and the day cursor never wraps (no silent collisions).
- *
- *  Deterministic: no `Math.random`; ids `sm-${n}` in category → group → pair order. */
+ *  HARD constraint: a team plays at most ONE match per (day, time) — a team can't be on two
+ *  fields at once. Within a (day, slot) the field positions must hold disjoint teams; a match
+ *  whose team is already busy in a slot is pushed to the next free, conflict-free (slot, day).
+ *  Scanning slot-major (then day) spreads matches across the event's days at the earliest time
+ *  first; slots grow as needed, so nothing overflows the day range. Deterministic (no random);
+ *  ids `sm-${n}` in category → group → pair order. */
 const placeKey = (p: Placement): string => `${p.fields.join('|')}@${p.slotMinutes}`;
 
 export function buildFixtures(
@@ -61,24 +60,31 @@ export function buildFixtures(
   }
 
   const days = dateRange(startDate, endDate);
-  // Per field-signature: how many matches, and thus the minimum slots/day to fit them in `days`.
-  const counts = new Map<string, number>();
-  for (const r of raw) counts.set(placeKey(r.place), (counts.get(placeKey(r.place)) ?? 0) + 1);
-  const slotsFor = (p: Placement): number => Math.max(1, Math.ceil((counts.get(placeKey(p)) ?? 0) / (p.fields.length * days.length)));
-
-  const cursors = new Map<string, Cursor>();
+  const D = days.length;
+  // slots[`${signature}#${day}:${slot}`] = which teams + how many fields are already used there.
+  const slots = new Map<string, Slot>();
   return raw.map((r, idx) => {
-    const key = placeKey(r.place);
-    const cur = cursors.get(key) ?? { field: 0, slot: 0, day: 0 };
-    const slotsPerDay = slotsFor(r.place);
-    const match: ScheduledMatch = {
+    const F = r.place.fields.length;
+    let day = 0, slot = 0, field = 0;
+    // First conflict-free position: slot-major (spread across days at the earliest time first).
+    for (let s = 0; ; s++) {
+      let done = false;
+      for (let d = 0; d < D; d++) {
+        const key = `${placeKey(r.place)}#${d}:${s}`;
+        const cell = slots.get(key) ?? { teams: new Set<string>(), count: 0 };
+        if (cell.count < F && !cell.teams.has(r.home) && !cell.teams.has(r.away)) {
+          field = cell.count; day = d; slot = s;
+          cell.count++; cell.teams.add(r.home); cell.teams.add(r.away);
+          slots.set(key, cell);
+          done = true; break;
+        }
+      }
+      if (done) break;
+    }
+    return {
       id: `sm-${idx + 1}`, sportEventId: eventId, categoryId: r.categoryId, groupLabel: r.groupLabel,
-      day: days[cur.day % days.length]!, time: addMinutes(dailyStart, cur.slot * r.place.slotMinutes),
-      field: r.place.fields[cur.field]!, home: r.home, away: r.away,
+      day: days[day]!, time: addMinutes(dailyStart, slot * r.place.slotMinutes),
+      field: r.place.fields[field]!, home: r.home, away: r.away,
     };
-    cur.field++;
-    if (cur.field >= r.place.fields.length) { cur.field = 0; cur.slot++; if (cur.slot >= slotsPerDay) { cur.slot = 0; cur.day++; } }
-    cursors.set(key, cur);
-    return match;
   });
 }
