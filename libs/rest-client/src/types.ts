@@ -117,4 +117,9 @@ export interface GroupStanding {
   categoryId: string
   groupLabel: string
   rows: StandingRow[]
+  // S11: sets of teams still perfectly tied after the policy (mutual order in `rows` is
+  // name-based, non-sporting); empty/absent when fully resolved.
+  unresolved?: string[][]
+  // S11: audit of the manual override applied to this group, if one currently resolves a tie.
+  override?: { order: string[]; resolvedBy: string; resolvedAt: string }
 }

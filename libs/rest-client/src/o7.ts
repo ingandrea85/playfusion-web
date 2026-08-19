@@ -10,6 +10,8 @@ export interface O7Api {
   rescheduleMatch(eventId: string, matchId: string, patch: { day: string; time: string; field: string; home?: string; away?: string }): Promise<ScheduledMatchView>
   recordResult(eventId: string, matchId: string, result: { homeScore: number; awayScore: number }): Promise<ScheduledMatchView>
   getStandings(eventId: string): Promise<GroupStanding[]>
+  // S11: manually resolve a group's residual tie (organizer). `order` is the tied teams' decided order.
+  setTieOverride(eventId: string, categoryId: string, groupLabel: string, order: string[]): Promise<{ order: string[]; resolvedBy: string; resolvedAt: string }>
   getDirectorToken(eventId: string, field: string): Promise<{ field: string; token: string }>
   // S26: match lifecycle transitions.
   startMatch(eventId: string, matchId: string): Promise<ScheduledMatchView>
@@ -25,6 +27,7 @@ export const o7 = (cfg: HttpConfig): O7Api => ({
   rescheduleMatch: (id, matchId, patch) => request(cfg, 'PUT', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}`, patch),
   recordResult: (id, matchId, result) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/result`, result),
   getStandings: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/standings`),
+  setTieOverride: (id, categoryId, groupLabel, order) => request(cfg, 'PUT', `/o7/events/${encodeURIComponent(id)}/standings/${encodeURIComponent(categoryId)}/${encodeURIComponent(groupLabel)}/override`, { order }),
   getDirectorToken: (id, field) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/director-token`, { field }),
   startMatch: (id, matchId) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/start`),
   finishMatch: (id, matchId) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/finish`),

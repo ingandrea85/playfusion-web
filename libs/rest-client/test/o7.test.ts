@@ -86,12 +86,28 @@ describe('o7 results + standings (S10)', () => {
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body)).toEqual({ homeScore: 3, awayScore: 1 })
   })
-  it('getStandings GETs /o7/events/:id/standings', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(r([{ categoryId: 'U10', groupLabel: 'Girone A', rows: [{ team: 'A', points: 3 }] }]))
+  it('getStandings GETs /o7/events/:id/standings and carries unresolved/override', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(r([{ categoryId: 'U10', groupLabel: 'Girone A', rows: [{ team: 'A', points: 3 }], unresolved: [['B', 'C']], override: { order: ['A'], resolvedBy: 'org', resolvedAt: 't' } }]))
     const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
     const out = await c.o7.getStandings('e1')
     expect(fetchMock.mock.calls[0][0]).toBe('https://api/prod/o7/events/e1/standings')
     expect(out[0].rows[0].team).toBe('A')
+    expect(out[0].unresolved).toEqual([['B', 'C']])
+    expect(out[0].override?.resolvedBy).toBe('org')
+  })
+})
+
+describe('o7 tie-break resolution (S11)', () => {
+  const r = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } })
+  it('setTieOverride PUTs the order, URL-encoding category and group label', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(r({ order: ['Bravo', 'Alfa'], resolvedBy: 'org', resolvedAt: 't' }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o7.setTieOverride('e1', 'U10', 'Girone A', ['Bravo', 'Alfa'])
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://api/prod/o7/events/e1/standings/U10/Girone%20A/override')
+    expect(init.method).toBe('PUT')
+    expect(JSON.parse(init.body)).toEqual({ order: ['Bravo', 'Alfa'] })
+    expect(out.order).toEqual(['Bravo', 'Alfa'])
   })
 })
 
