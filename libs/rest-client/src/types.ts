@@ -74,7 +74,6 @@ export interface ScheduleConfig {
   periodMinutes: number
   breakMinutes: number
   dailyStart: string // 'HH:mm'
-  slotsPerDay: number
   groupsCount: number
   legs: Legs
   byCategory?: Record<string, CategorySchedule>

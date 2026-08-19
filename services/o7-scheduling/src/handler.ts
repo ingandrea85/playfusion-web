@@ -42,7 +42,6 @@ export const scheduleConfigBody = z.object({
   periodMinutes: z.number().int().positive().default(20),
   breakMinutes: z.number().int().nonnegative().default(10),
   dailyStart: z.string().default('09:00'),
-  slotsPerDay: z.number().int().positive().default(8),
   groupsCount: z.number().int().positive().default(1),
   legs: z.enum(['SINGLE', 'HOME_AWAY']).default('SINGLE'),
   // S22: optional per-category override of fields + match params + legs.
