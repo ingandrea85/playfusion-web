@@ -2,7 +2,9 @@ import { renderOrganizerWorkspace, esc, copyToClipboard, type WorkspaceTab } fro
 import type { EventDetail, RegistrationView, RegistrationWindowView } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
 
-export interface EnrollData { event: EventDetail; window: RegistrationWindowView; pending: RegistrationView[]; e3BaseUrl: string; enrollToken?: string }
+export interface EnrollData { event: EventDetail; window: RegistrationWindowView; pending: RegistrationView[]; confirmed: RegistrationView[]; e3BaseUrl: string; enrollToken?: string }
+
+const teamLabel = (r: RegistrationView): string => r.teamName ?? r.participantRef
 
 /** The shareable coach enrollment link. Points straight to the SEPARATE registration page
  *  (`/apply`), not the public landing (option A). When the window has minted a token (at open)
@@ -20,7 +22,37 @@ const tabs = (id: string): WorkspaceTab[] => [
   { key: 'participants', label: 'Partecipanti', href: `#/events/${encodeURIComponent(id)}/participants` },
 ]
 
+/** S14 — PB-2 direct roster: the organizer types teams straight in (no invite window / inbox). */
+function renderRoster(d: EnrollData): string {
+  const id = d.event.sportEventId
+  const opts = d.event.categorie.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('')
+  const byCat = (c: string) => d.confirmed.filter((r) => r.categoria === c)
+  const lists = d.event.categorie.map((c) => {
+    const teams = byCat(c)
+    const items = teams.length
+      ? teams.map((r) => `<li class="pf-row" style="justify-content:space-between">
+          <span><b>${esc(teamLabel(r))}</b></span>
+          <button class="pf-btn pf-btn--ghost" data-remove="${esc(r.registrationId)}">Rimuovi</button></li>`).join('')
+      : `<li class="pf-muted">Nessuna squadra.</li>`
+    return `<div class="pf-card"><h3 class="pf-h4">${esc(c)} · <span class="pf-mono">${teams.length}</span></h3>
+      <ul class="pf-stack" style="list-style:none;padding:0">${items}</ul></div>`
+  }).join('')
+  return `${renderOrganizerWorkspace({ name: `${esc(d.event.name ?? d.event.sport)}`, meta: `${esc(d.event.dates.from)}→${esc(d.event.dates.to)}` }, tabs(id), 'enroll')}
+    <main class="pf-container">
+      <div id="err"></div>
+      <div class="pf-card"><h2>Squadre (inserimento diretto)</h2>
+        <p class="pf-muted">PB-2: aggiungi qui le squadre. Il nome inserito è quello che comparirà nel calendario, nelle classifiche e nel tabellone.</p>
+        <div class="pf-row">
+          <select id="rteam-cat">${opts}</select>
+          <input id="rteam-name" placeholder="Nome squadra" style="flex:1" />
+          <button class="pf-btn pf-btn--primary" data-addteam>Aggiungi</button>
+        </div></div>
+      ${lists}
+    </main>`
+}
+
 export function renderEnroll(d: EnrollData): string {
+  if (d.event.playbook === 'PB-2') return renderRoster(d)
   const id = d.event.sportEventId
   const open = d.window.state === 'Open'
   const capFor = (c: string) => d.window.categories.find((x) => x.categoria === c)
@@ -55,19 +87,21 @@ export function renderEnroll(d: EnrollData): string {
 
 export const enrollScreen: Screen<EnrollData> = {
   load: async (ctx, p) => {
-    const [event, win, pending, enroll] = await Promise.all([
+    const [event, win, pending, confirmed, enroll] = await Promise.all([
       ctx.client.o3.getEvent(p.id),
       ctx.client.o5.getRegistrationWindow(p.id),
       ctx.client.o5.listRegistrations(p.id, 'Applied'),
+      ctx.client.o5.listRegistrations(p.id, 'Confirmed'),
       ctx.client.o5.getEnrollToken(p.id).catch(() => ({ enrollToken: undefined })),
     ])
-    return { event, window: win, pending, e3BaseUrl: ctx.e3BaseUrl, enrollToken: enroll.enrollToken }
+    return { event, window: win, pending, confirmed, e3BaseUrl: ctx.e3BaseUrl, enrollToken: enroll.enrollToken }
   },
   render: renderEnroll,
   mount(root, ctx, d) {
     const id = d.event.sportEventId
     const err = root.querySelector('#err')!
     const fail = (m: string) => { err.innerHTML = inlineError(m) }
+    if (d.event.playbook === 'PB-2') { mountRoster(root, ctx, d, fail); return }
     root.querySelector('[data-open]')?.addEventListener('click', async () => {
       const caps: Record<string, number> = {}
       root.querySelectorAll<HTMLInputElement>('[data-cap]').forEach((i) => {
@@ -91,4 +125,21 @@ export const enrollScreen: Screen<EnrollData> = {
       } catch { fail('Operazione non riuscita.') }
     })
   },
+}
+
+/** Wires the PB-2 roster editor: add a team by name, remove a team; refresh on success. */
+function mountRoster(root: ParentNode, ctx: ViewCtx, d: EnrollData, fail: (m: string) => void): void {
+  const id = d.event.sportEventId
+  root.querySelector('[data-addteam]')?.addEventListener('click', async () => {
+    const cat = root.querySelector<HTMLSelectElement>('#rteam-cat')?.value ?? ''
+    const name = (root.querySelector<HTMLInputElement>('#rteam-name')?.value ?? '').trim()
+    if (!cat || !name) { fail('Indica categoria e nome squadra.'); return }
+    try { await ctx.client.o5.addTeam(id, { categoria: cat, teamName: name }); ctx.refresh() }
+    catch (e) { fail((e as { code?: string }).code === 'DUPLICATE_TEAM' ? 'Squadra già presente in questa categoria.' : 'Aggiunta non riuscita.') }
+  })
+  root.addEventListener('click', async (e) => {
+    const rId = (e.target as HTMLElement).closest('[data-remove]')?.getAttribute('data-remove')
+    if (!rId) return
+    try { await ctx.client.o5.removeTeam(rId); ctx.refresh() } catch { fail('Rimozione non riuscita.') }
+  })
 }

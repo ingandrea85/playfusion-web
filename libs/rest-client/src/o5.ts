@@ -1,5 +1,5 @@
 import { request, type HttpConfig } from './http.js'
-import type { RegistrationStatus, RegistrationView, ApplyRegistrationInput, RegistrationWindowView } from './types.js'
+import type { RegistrationStatus, RegistrationView, ApplyRegistrationInput, AddTeamInput, RegistrationWindowView } from './types.js'
 
 export interface O5Api {
   listRegistrations(eventId: string, state?: RegistrationStatus): Promise<RegistrationView[]>
@@ -7,6 +7,9 @@ export interface O5Api {
   applyRegistration(input: ApplyRegistrationInput): Promise<RegistrationView>
   confirmRegistration(id: string): Promise<RegistrationView>
   rejectRegistration(id: string, reason: string): Promise<RegistrationView>
+  /** S14 — PB-2 direct roster (organizer). */
+  addTeam(eventId: string, input: AddTeamInput): Promise<RegistrationView>
+  removeTeam(id: string): Promise<void>
   openRegistrationWindow(eventId: string, capacities?: Record<string, number>): Promise<{ sportEventId: string; state: string; enrollToken?: string }>
   getEnrollToken(eventId: string): Promise<{ enrollToken?: string }>
 }
@@ -18,6 +21,8 @@ export const o5 = (cfg: HttpConfig): O5Api => ({
   applyRegistration: (input) => request(cfg, 'POST', '/o5/registrations', input),
   confirmRegistration: (id) => request(cfg, 'POST', `/o5/registrations/${encodeURIComponent(id)}/confirm`),
   rejectRegistration: (id, reason) => request(cfg, 'POST', `/o5/registrations/${encodeURIComponent(id)}/reject`, { reason }),
+  addTeam: (eventId, input) => request(cfg, 'POST', `/o5/events/${encodeURIComponent(eventId)}/teams`, input),
+  removeTeam: (id) => request(cfg, 'DELETE', `/o5/registrations/${encodeURIComponent(id)}`),
   openRegistrationWindow: (eventId, capacities) =>
     request(cfg, 'POST', `/o5/events/${encodeURIComponent(eventId)}/registration-window:open`, capacities ? { capacities } : {}),
   getEnrollToken: (eventId) =>
