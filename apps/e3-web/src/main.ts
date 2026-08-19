@@ -6,6 +6,7 @@ import { createClient } from '@playfusion/rest-client'
 import { readConfig } from './config.js'
 import { renderLanding, renderParticipants } from './views/landing.js'
 import { renderPublicCalendar } from './views/calendar.js'
+import { renderPublicStandings } from './views/standings.js'
 import { renderApply, buildApplyInput } from './views/apply.js'
 import { captureMagicLink, magicLinkAuthProvider, storedToken, clearToken } from './auth/magic-link.js'
 
@@ -59,6 +60,10 @@ new HashRouter()
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/apply', ({ id }) => applyRoute(id))
+  .on('#/events/:id/standings', async ({ id }) => {
+    try { const [ev, standings] = await Promise.all([client.o3.getEvent(id), client.o7.getStandings(id)]); app.innerHTML = renderPublicStandings(ev, standings) }
+    catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
+  })
   .on('#/events/:id/calendar', async ({ id }) => {
     try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); app.innerHTML = renderPublicCalendar(ev, sched, matches) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }

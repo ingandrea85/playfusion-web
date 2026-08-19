@@ -26,6 +26,7 @@ export function renderLanding(event: EventDetail, window: RegistrationWindowView
       <div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">
         ${applyCta}
         ${calendarCta}
+        <a class="pf-btn pf-btn--ghost" href="#/events/${id}/standings">Classifiche →</a>
         <a class="pf-btn pf-btn--ghost" href="#/events/${id}/participants">Squadre iscritte →</a>
       </div>
     </div></section>`
