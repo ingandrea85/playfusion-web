@@ -28,10 +28,14 @@ test('test_applyRegistration_eventClosed', async () => {
   await expect(applyRegistration(d)(cmd)).rejects.toThrow(DomainError);
 });
 
-test('test_applyRegistration_unknownParticipant', async () => {
+test('test_applyRegistration_selfEnrollsUnknownParticipant', async () => {
+  // Coach self-enrollment: an unknown team is registered on the fly and applied (matches the
+  // open public form; the token gate + organizer confirm/reject are the guardrails).
   const d = deps();
   await d.windows.save({ sportEventId: 'evt-1', state: 'Open' });
-  await expect(applyRegistration(d)(cmd)).rejects.toThrow(DomainError);
+  const r = await applyRegistration(d)(cmd);
+  expect(r.status).toBe('Applied');
+  expect(await d.participants.exists('team-7')).toBe(true);
 });
 
 test('test_applyRegistration_doubleApply', async () => {
