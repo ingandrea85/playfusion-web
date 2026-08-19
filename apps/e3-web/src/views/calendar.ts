@@ -11,11 +11,12 @@ const filterMatches = (matches: ScheduledMatchView[], selCat: string, selGir: st
 
 /** Public, read-only match calendar (S7) with Category + Girone filter tabs (S23). Gated on
  *  PUBLISHED; scores shown when a match is played. Call wirePublicCalendar after mounting. */
-export function renderPublicCalendar(event: EventDetail, schedule: ScheduleView, allMatches: ScheduledMatchView[]): string {
+export function renderPublicCalendar(event: EventDetail, schedule: ScheduleView, allMatches: ScheduledMatchView[], initialCat?: string): string {
   const id = encodeURIComponent(event.sportEventId)
   const published = schedule.status === 'PUBLISHED'
   const matches = groupPhaseOnly(allMatches)
-  const selCat = categoryKeys(matches)[0] ?? ''
+  const keys = categoryKeys(matches)
+  const selCat = (initialCat && keys.includes(initialCat) ? initialCat : keys[0]) ?? ''
   const inner = published
     ? `<div id="cal-cattabs">${renderTabs(categoryKeys(matches).map((c) => ({ key: c, label: c })), selCat)}</div>
        <div id="cal-girtabs">${renderTabs([{ key: 'ALL', label: 'Tutti' }, ...groupKeys(matches, selCat).map((g) => ({ key: g, label: g }))], 'ALL')}</div>
@@ -30,12 +31,13 @@ export function renderPublicCalendar(event: EventDetail, schedule: ScheduleView,
 }
 
 /** Wires the category/girone tabs (S23): redraws the tab bars + calendar body on each change. */
-export function wirePublicCalendar(root: ParentNode, allMatches: ScheduledMatchView[]): void {
+export function wirePublicCalendar(root: ParentNode, allMatches: ScheduledMatchView[], initialCat?: string): void {
   const calbody = root.querySelector('#calbody'); if (!calbody) return
   const matches = groupPhaseOnly(allMatches)
   const catbar = root.querySelector('#cal-cattabs')!
   const girbar = root.querySelector('#cal-girtabs')!
-  let selCat = categoryKeys(matches)[0] ?? ''
+  const keys = categoryKeys(matches)
+  let selCat = (initialCat && keys.includes(initialCat) ? initialCat : keys[0]) ?? ''
   let selGir = 'ALL'
   function draw() {
     catbar.innerHTML = renderTabs(categoryKeys(matches).map((c) => ({ key: c, label: c })), selCat)
