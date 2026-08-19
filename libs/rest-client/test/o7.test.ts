@@ -64,3 +64,13 @@ describe('o7 reschedule (S9)', () => {
     await expect(c.o7.rescheduleMatch('e1', 'sm-1', { day: 'd', time: 't', field: 'f' })).rejects.toMatchObject({ status: 409, code: 'SLOT_CONFLICT' })
   })
 })
+
+describe('o7 per-category config (S22)', () => {
+  it('generateSchedule carries byCategory through in the PUT/POST body', async () => {
+    const cfgWith = { ...config, byCategory: { U14: { fields: ['Campo Grande'], periods: 2, periodMinutes: 30, breakMinutes: 5, legs: 'HOME_AWAY' as const } } }
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ sportEventId: 'e1', organizationId: 'o', status: 'GENERATED', config: cfgWith }), { status: 200, headers: { 'content-type': 'application/json' } }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    await c.o7.generateSchedule('e1', cfgWith)
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).byCategory.U14).toMatchObject({ periodMinutes: 30, legs: 'HOME_AWAY' })
+  })
+})

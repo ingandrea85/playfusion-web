@@ -60,6 +60,14 @@ export interface FeeView { registrationId: string; status: FeeStatus }
 // o7 scheduling (services/o7-scheduling/src/domain.ts) — S7
 export type ScheduleStatus = 'NONE' | 'GENERATED' | 'APPROVED' | 'PUBLISHED'
 export type Legs = 'SINGLE' | 'HOME_AWAY'
+// S22: per-category playing config override (fields + match params + legs).
+export interface CategorySchedule {
+  fields: string[]
+  periods: number
+  periodMinutes: number
+  breakMinutes: number
+  legs: Legs
+}
 export interface ScheduleConfig {
   fields: string[]
   periods: number
@@ -69,6 +77,7 @@ export interface ScheduleConfig {
   slotsPerDay: number
   groupsCount: number
   legs: Legs
+  byCategory?: Record<string, CategorySchedule>
 }
 export interface ScheduleView {
   sportEventId: string
