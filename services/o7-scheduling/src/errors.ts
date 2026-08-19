@@ -49,3 +49,10 @@ export class InvalidTieOverrideError extends DomainError {
     super('INVALID_TIE_OVERRIDE', message, 422);
   }
 }
+
+/** 409 — cannot decree an advancing side unless the match is a FINISHED, drawn knockout (FINAL). */
+export class CannotDecideWinnerError extends DomainError {
+  constructor(message = 'the winner can only be decreed on a finished, drawn knockout match') {
+    super('CANNOT_DECIDE_WINNER', message, 409);
+  }
+}

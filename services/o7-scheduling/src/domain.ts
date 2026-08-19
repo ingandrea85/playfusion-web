@@ -116,6 +116,9 @@ export interface ScheduledMatch {
   slot?: string;
   placementFrom?: number;
   placementTo?: number;
+  // Which side advances when a knockout (FINAL) match ends level: the organizer/director decrees it
+  // (rules applied offline — no shootout modelled). Used by winner propagation on a draw.
+  decidedWinner?: 'HOME' | 'AWAY';
   homeResolved?: string; // read-only (derived); never persisted
   awayResolved?: string;
 }

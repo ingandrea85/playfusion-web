@@ -54,8 +54,10 @@ export function resolvePlaceholders(matches: ScheduledMatch[], standings: GroupS
   const winnerOf = (m: ScheduledMatch): string | undefined => {
     if (m.status !== 'FINISHED') return undefined;
     const hs = m.homeScore, as = m.awayScore;
-    if (hs == null || as == null || hs === as) return undefined; // draw = no propagation this slice
-    return nameOf(m, hs > as ? 'home' : 'away');
+    if (hs == null || as == null) return undefined;
+    if (hs !== as) return nameOf(m, hs > as ? 'home' : 'away');
+    // Draw: advance the side the organizer/director decreed; else the bracket stays blocked.
+    return m.decidedWinner ? nameOf(m, m.decidedWinner === 'HOME' ? 'home' : 'away') : undefined;
   };
   const resolveOne = (label: string, categoryId: string): string | undefined => {
     const w = WIN_RE.exec(label);

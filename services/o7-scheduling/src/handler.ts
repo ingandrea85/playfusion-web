@@ -17,6 +17,7 @@ import { generateSchedule } from './application/generate-schedule.js';
 import { approveSchedule, publishSchedule } from './application/change-status.js';
 import { rescheduleMatch } from './application/reschedule-match.js';
 import { recordResult } from './application/record-result.js';
+import { decideWinner } from './application/decide-winner.js';
 import { setTieOverride } from './application/resolve-tie.js';
 import { startMatch, finishMatch, cancelMatch } from './application/transition-status.js';
 import { getScheduleOrDefault, listMatches, listStandings } from './application/read.js';
@@ -150,6 +151,15 @@ app.post('/events/:id/matches/:matchId/finish', requireResultReporter, async (c)
 });
 app.post('/events/:id/matches/:matchId/cancel', organizer, async (c) =>
   c.json(await cancelMatch(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId') })));
+
+// Decree which side advances when a knockout (FINAL) match ends level (organizer OR the field's
+// director). Rules applied offline (no shootout modelled). Only on a finished, drawn FINAL match.
+const decideBody = z.object({ winner: z.enum(['HOME', 'AWAY']) });
+app.post('/events/:id/matches/:matchId/decide-winner', requireResultReporter, async (c) => {
+  const { winner } = decideBody.parse(await c.req.json());
+  const restrictToField = reporterFieldScope(c, c.req.param('id'));
+  return c.json(await decideWinner(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), winner, restrictToField }));
+});
 
 // S25: mint a per-field director link (organizer). The token lasts the whole tournament — TTL
 // runs to the event's end date (+2 days), with a generous fallback. The organizer shares one
