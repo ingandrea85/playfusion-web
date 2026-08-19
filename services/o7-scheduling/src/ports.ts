@@ -1,4 +1,4 @@
-import type { ResolvedGroup, Schedule, ScheduledMatch } from './domain.js';
+import type { ResolvedGroup, Schedule, ScheduledMatch, TieBreakCriterion, TieOverride } from './domain.js';
 
 /** Persistence seam for the Schedule aggregate (one per event). */
 export interface ScheduleRepository {
@@ -22,9 +22,20 @@ export interface EventView {
   /** S8: explicit per-category group composition from o3 (structural — o7 must not import
    *  o3's type, ADR-002). When present for a category, it overrides the auto-split. */
   gironi?: Record<string, { groups: ResolvedGroup[]; locked: boolean }>;
+  /** S11: the sport (for `defaultTieBreak`) and the event's configured tie-break policy (S6).
+   *  Both read from the o3 event over HTTP. */
+  sport?: string;
+  tieBreak?: TieBreakCriterion[];
 }
 export interface EventSource {
   get(sportEventId: string): Promise<EventView | undefined>;
+}
+
+/** S11: persistence seam for manual tie-break resolutions. One event's overrides are stored
+ *  together; `upsert` replaces the override for its (categoryId, groupLabel). */
+export interface TieOverrideRepository {
+  list(sportEventId: string): Promise<TieOverride[]>;
+  upsert(override: TieOverride): Promise<void>;
 }
 
 /** Confirmed teams per category, from o5. Teams are labelled by participantRef (no

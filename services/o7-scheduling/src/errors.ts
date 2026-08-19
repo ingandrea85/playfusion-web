@@ -42,3 +42,10 @@ export class InvalidMatchTransitionError extends DomainError {
     super('INVALID_MATCH_TRANSITION', `cannot ${action} a match in status ${from}`, 409);
   }
 }
+
+/** 422 — a manual tie-break override with an empty or duplicate-team order (S11). */
+export class InvalidTieOverrideError extends DomainError {
+  constructor(message = 'override order must be non-empty and contain distinct teams') {
+    super('INVALID_TIE_OVERRIDE', message, 422);
+  }
+}
