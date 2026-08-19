@@ -6,21 +6,31 @@ import type { EventSource, MatchRepository, ScheduleRepository, TeamSource } fro
 
 /** Add minutes to an 'HH:mm' clock (wraps at 24h; mirrors the fixtures placer). */
 function addMinutes(hhmm: string, mins: number): string {
-  const [h, m] = hhmm.split(':').map(Number);
-  const total = (h ?? 0) * 60 + (m ?? 0) + mins;
+  const total = toMinutes(hhmm) + mins;
   const hh = Math.floor(total / 60) % 24;
   return `${String(hh).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
+const toMinutes = (hhmm: string): number => { const [h, m] = hhmm.split(':').map(Number); return (h ?? 0) * 60 + (m ?? 0); };
 
-/** S12: build the finals bracket matches for every category (from its resolved group labels +
- *  the event's finalsType/qualifiersPerGroup) and place them on `finalsDate` — day fixed, time/field
- *  sequential per category from `dailyStart`, NO conflict-check (finals are few; declared
- *  simplification). Returns [] when no finalsType is configured. `home`/`away` are placeholders
- *  (`Nª Girone X`, `Vincente …`) resolved to real teams on read. */
+/** S12/S13: build the finals matches for every category and place them on `finalsDate`.
+ *  Finals must start AFTER the group matches of that day finish, so the start time is the latest
+ *  group-match end on `finalsDate` (else `dailyStart`); from there time/field are sequential per
+ *  category. NO cross-finals conflict-check (finals are few; declared simplification). Returns [] when
+ *  no category has a finals format. `home`/`away` are placeholders resolved to real teams on read. */
 function buildFinalMatches(
   sportEventId: string, finalsDate: string, dailyStart: string,
-  cats: FixtureCategory[], config: ScheduleConfig,
+  cats: FixtureCategory[], config: ScheduleConfig, fixtures: ScheduledMatch[],
 ): ScheduledMatch[] {
+  // Latest end among group fixtures scheduled on the finals day → finals start there (or dailyStart).
+  const slotOf = new Map(cats.map((c) => [c.id, c.periods * c.periodMinutes + c.breakMinutes]));
+  let startMin = toMinutes(dailyStart);
+  for (const f of fixtures) {
+    if (f.day !== finalsDate) continue;
+    const end = toMinutes(f.time) + (slotOf.get(f.categoryId) ?? 0);
+    if (end > startMin) startMin = end;
+  }
+  const finalsStart = `${String(Math.floor(startMin / 60) % 24).padStart(2, '0')}:${String(startMin % 60).padStart(2, '0')}`;
+
   const out: ScheduledMatch[] = [];
   let n = 0;
   for (const cat of cats) {
@@ -36,7 +46,7 @@ function buildFinalMatches(
       // (FINAL_GROUP draws carry no placement range).
       out.push({
         id: `fm-${++n}`, sportEventId, categoryId: cat.id, groupLabel: d.bracketLabel,
-        day: finalsDate, time: addMinutes(dailyStart, Math.floor(i / fields.length) * slotMinutes),
+        day: finalsDate, time: addMinutes(finalsStart, Math.floor(i / fields.length) * slotMinutes),
         field: fields[i % fields.length]!, home: d.home, away: d.away, status: 'SCHEDULED',
         phase: d.phase, bracketLabel: d.bracketLabel, round: d.round, order: d.order, slot: d.slot,
         ...(d.placementFrom !== undefined ? { placementFrom: d.placementFrom } : {}),
@@ -90,7 +100,7 @@ export function generateSchedule(deps: GenerateScheduleDeps) {
     const fixtures = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config.dailyStart, cats);
     // S12/S13: append each category's finals bracket (per-category format from the schedule config —
     // moved off the o3 event; buildFinalMatches skips categories with no format).
-    const finals = buildFinalMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, cats, input.config);
+    const finals = buildFinalMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, cats, input.config, fixtures);
     await matches.replace(input.sportEventId, [...fixtures, ...finals]);
 
     const next: Schedule = { ...current, organizationId: current.organizationId, config: input.config, status: 'GENERATED' };
