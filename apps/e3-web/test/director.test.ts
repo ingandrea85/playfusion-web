@@ -99,3 +99,21 @@ describe('e3 director decrees winner on a drawn knockout', () => {
     await vi.waitFor(() => expect(o7.decideWinner).toHaveBeenCalledWith('e1', 'fm-1', 'HOME'))
   })
 })
+
+describe('e3 director Gironi/Finali filter', () => {
+  const grp: ScheduledMatchView = { id: 'g1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Girone A', day: '2026-09-01', time: '09:00', field: 'Campo A', home: 'A', away: 'B', phase: 'GROUP' }
+  const fin: ScheduledMatchView = { id: 'f1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-09-02', time: '14:00', field: 'Campo A', home: 'Alfa', away: 'Bravo', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'F' }
+  it('shows the filter only with both phases and filters the list', () => {
+    const html = renderDirector(event, 'Campo A', [grp, fin])
+    expect(html).toContain('id="dir-filter"')
+    const root = document.createElement('div'); root.innerHTML = html
+    wireDirector(root, {} as any, 'e1', 'Campo A', [grp, fin])
+    ;(root.querySelector('#dir-filter [data-key="FINALS"]') as HTMLButtonElement).click()
+    const body = root.querySelector('#dir-body')!.innerHTML
+    expect(body).toContain('Alfa')       // final shown
+    expect(body).not.toContain('A <b>vs</b> B') // group hidden
+  })
+  it('no filter bar when the field has only group matches', () => {
+    expect(renderDirector(event, 'Campo A', [grp])).not.toContain('id="dir-filter"')
+  })
+})

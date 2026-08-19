@@ -173,6 +173,25 @@ export function groupKeys(items: Array<{ categoryId: string; groupLabel: string;
   return out
 }
 
+/** S13: shared calendar filter — one UX across E1 organizer, E3 public and the director view. The
+ *  girone tab bar lists the real gironi + a "Finali" tab; "Tutti" shows the whole category. */
+export const FINALS_TAB = 'FINALS'
+export const isFinalPhase = (m: { phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' }): boolean => m.phase === 'FINAL' || m.phase === 'FINAL_GROUP'
+export function calendarGironeTabs<T extends { categoryId: string; groupLabel: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' }>(matches: T[], categoryId: string): { key: string; label: string }[] {
+  const gironi = groupKeys(matches.filter((m) => !isFinalPhase(m)), categoryId).map((g) => ({ key: g, label: g }))
+  const tabs = [{ key: 'ALL', label: 'Tutti' }, ...gironi]
+  if (matches.some((m) => m.categoryId === categoryId && isFinalPhase(m))) tabs.push({ key: FINALS_TAB, label: 'Finali' })
+  return tabs
+}
+export function filterCalendarMatches<T extends { categoryId: string; groupLabel: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' }>(matches: T[], categoryId: string, selGir: string): T[] {
+  return matches.filter((m) => {
+    if (m.categoryId !== categoryId) return false
+    if (selGir === 'ALL') return true
+    if (selGir === FINALS_TAB) return isFinalPhase(m)
+    return !isFinalPhase(m) && m.groupLabel === selGir
+  })
+}
+
 /** Structural standings shapes (app-shell stays free of rest-client; its DTOs satisfy these). */
 export interface StandingRowView { team: string; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; goalDiff: number; points: number }
 export interface GroupStandingView { categoryId: string; groupLabel: string; rows: StandingRowView[] }
