@@ -32,8 +32,11 @@ export interface SportEvent {
   playbook?: Playbook;
   /** S8: per-category group composition (O6). Optional; absent on pre-S8 events. */
   gironi?: import('./gironi.js').GironiMap;
-  /** S12: finals config (O6). `finalsType` absent ⇒ no finals bracket generated;
-   *  `qualifiersPerGroup` defaults to 2 in the read model. */
+  /** S12/S13: finals config (O6). `finalsType` absent (or `finalsEnabled === false`) ⇒ no finals
+   *  bracket. `finalsTeamsToBracket` sizes the SPLIT_GROUP_FINALS bracket (S13, v1 semantics).
+   *  `qualifiersPerGroup` is deprecated (unused by the v1 formats; kept for back-compat). */
   finalsType?: FinalsType;
+  finalsEnabled?: boolean;
+  finalsTeamsToBracket?: number;
   qualifiersPerGroup?: number;
 }
