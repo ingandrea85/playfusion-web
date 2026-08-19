@@ -6,7 +6,9 @@ import { randomUUID } from 'node:crypto';
 import {
   withCorrelation, currentCorrelationId, checkpoint, makeDocClient, toHttpError,
   auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, getIdentity,
+  bearerToken, verifyMagicLink, signMagicLink, ForbiddenError, UnauthorizedError,
 } from '@playfusion/platform-lib';
+import { DIRECTOR_ROLE, DIRECTOR_PURPOSE, directorSubject, parseDirectorScope } from './director-token.js';
 import { DynamoDbScheduleRepository } from './adapters/dynamodb-schedule-repository.js';
 import { DynamoDbMatchRepository } from './adapters/dynamodb-match-repository.js';
 import { HttpEventSource, HttpTeamSource } from './adapters/http-sources.js';
@@ -50,7 +52,34 @@ export const scheduleConfigBody = z.object({
 
 // Generate/approve/publish are organizer mutations (S2.4 bridge / Auth0 JWT).
 const auth0cfg = auth0ConfigFromEnv();
-const organizer = requireOrganizer({ auth0: auth0cfg ? createAuth0Verifier(auth0cfg) : undefined });
+const auth0verify = auth0cfg ? createAuth0Verifier(auth0cfg) : undefined;
+const organizer = requireOrganizer({ auth0: auth0verify });
+
+// S25: who may report a result — the organizer (Auth0 / RegistrationManager bridge) OR a field
+// director (magic-link, role 'director'). Stashes the reporter's scope: `{ full: true }` for the
+// organizer, or `{ field, eventId }` for a director (the handler then restricts to that field).
+type ReporterScope = { full: true } | { field: string; eventId: string };
+const requireResultReporter = async (c: any, next: () => Promise<unknown>) => {
+  const token = bearerToken(c);
+  if (!token) throw new UnauthorizedError('missing token');
+  const magic = verifyMagicLink(token);
+  if (magic) {
+    if (magic.roles.includes('RegistrationManager')) { c.set('reporterScope', { full: true } as ReporterScope); return next(); }
+    if (magic.roles.includes(DIRECTOR_ROLE)) {
+      const scope = parseDirectorScope(magic.subject);
+      if (!scope) throw new ForbiddenError('invalid director token');
+      c.set('reporterScope', { field: scope.field, eventId: scope.eventId } as ReporterScope);
+      return next();
+    }
+    throw new ForbiddenError('actor cannot report results');
+  }
+  if (auth0verify) {
+    const id = await auth0verify(token);
+    if (!id.roles.includes('organizer')) throw new ForbiddenError('actor cannot report results');
+    c.set('reporterScope', { full: true } as ReporterScope); return next();
+  }
+  throw new UnauthorizedError('invalid token');
+};
 
 app.post('/events/:id/schedule:generate', organizer, async (c) => {
   const config = scheduleConfigBody.parse(await c.req.json().catch(() => ({})));
@@ -77,10 +106,29 @@ app.put('/events/:id/matches/:matchId', organizer, async (c) => {
 
 // S10: record/correct a group match result (organizer). Standings derive from it on read.
 const resultBody = z.object({ homeScore: z.number().int().nonnegative(), awayScore: z.number().int().nonnegative() });
-app.post('/events/:id/matches/:matchId/result', organizer, async (c) => {
+app.post('/events/:id/matches/:matchId/result', requireResultReporter, async (c) => {
   const b = resultBody.parse(await c.req.json());
-  const match = await recordResult(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), homeScore: b.homeScore, awayScore: b.awayScore });
+  const scope = c.get('reporterScope' as never) as ReporterScope;
+  // A field director's token is bound to one event + field.
+  const restrictToField = 'field' in scope ? scope.field : undefined;
+  if ('field' in scope && scope.eventId !== c.req.param('id')) throw new ForbiddenError('token is for another event');
+  const match = await recordResult(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), homeScore: b.homeScore, awayScore: b.awayScore, restrictToField });
   return c.json(match);
+});
+
+// S25: mint a per-field director link (organizer). The token lasts the whole tournament — TTL
+// runs to the event's end date (+2 days), with a generous fallback. The organizer shares one
+// link per field; the director then reports only that field's results.
+const directorBody = z.object({ field: z.string().min(1) });
+app.post('/events/:id/director-token', organizer, async (c) => {
+  const { field } = directorBody.parse(await c.req.json());
+  const sportEventId = c.req.param('id');
+  const ev = await events.get(sportEventId);
+  const now = Math.floor(Date.now() / 1000);
+  const endSec = ev ? Math.floor(Date.parse(`${ev.dates.to}T23:59:59Z`) / 1000) : NaN;
+  const ttlSeconds = Number.isFinite(endSec) && endSec > now ? (endSec - now) + 2 * 86400 : 180 * 86400;
+  const token = signMagicLink({ subject: directorSubject(sportEventId, field), roles: [DIRECTOR_ROLE], purpose: DIRECTOR_PURPOSE, ttlSeconds });
+  return c.json({ field, token });
 });
 
 // S10: live standings computed from results (public).
