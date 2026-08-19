@@ -41,12 +41,26 @@ test('test_resolve_unresolvedTie_blocksThatPosition', () => {
   expect(out.awayResolved).toBeUndefined();     // position 2 is inside the unresolved {B,C} tie
 });
 
-test('test_resolve_winnerPlaceholderNeverResolvedInS12', () => {
-  const ms = [grp('A', 'B', 1, 0), grp('A', 'C', 1, 0), grp('B', 'C', 1, 0),
-    { ...fin('Vincente SF1', 'Vincente SF2'), round: 'Finale' }];
-  const out = resolvePlaceholders(ms, ranked(ms)).find((m) => m.phase === 'FINAL')!;
-  expect(out.homeResolved).toBeUndefined();
-  expect(out.awayResolved).toBeUndefined();
+test('test_resolve_winnerPropagates_fromFinishedSemifinal', () => {
+  // A single group of 4 (A>B>C>D by points) seeds two semis; finishing them advances the winners.
+  const ms: ScheduledMatch[] = [
+    grp('A', 'B', 3, 0), grp('A', 'C', 3, 0), grp('A', 'D', 3, 0), grp('B', 'C', 3, 0), grp('B', 'D', 3, 0), grp('C', 'D', 3, 0),
+    { ...fin('1ª Girone A', '4ª Girone A'), slot: 'SF1', round: 'SF', homeScore: 2, awayScore: 0, status: 'FINISHED' },
+    { ...fin('2ª Girone A', '3ª Girone A'), slot: 'SF2', round: 'SF', homeScore: 1, awayScore: 0, status: 'FINISHED' },
+    { ...fin('Vincente SF1', 'Vincente SF2'), slot: 'F1', round: 'F' },
+  ];
+  const final = resolvePlaceholders(ms, ranked(ms)).find((m) => m.slot === 'F1')!;
+  expect(final.homeResolved).toBe('A'); // 1ª beat 4ª in SF1
+  expect(final.awayResolved).toBe('B'); // 2ª beat 3ª in SF2
+});
+
+test('test_resolve_winnerNotPropagated_whenSemifinalUnfinishedOrDrawn', () => {
+  const base: ScheduledMatch[] = [grp('A', 'B', 3, 0), grp('A', 'C', 3, 0), grp('A', 'D', 3, 0), grp('B', 'C', 3, 0), grp('B', 'D', 3, 0), grp('C', 'D', 3, 0)];
+  const drawnSemi = { ...fin('1ª Girone A', '4ª Girone A'), slot: 'SF1', round: 'SF', homeScore: 1, awayScore: 1, status: 'FINISHED' as const };
+  const ms = [...base, drawnSemi, { ...fin('Vincente SF1', '2ª Girone A'), slot: 'F1', round: 'F' }];
+  const final = resolvePlaceholders(ms, ranked(ms)).find((m) => m.slot === 'F1')!;
+  expect(final.homeResolved).toBeUndefined(); // drawn semi → winner not propagated (no shootout this slice)
+  expect(final.awayResolved).toBe('B'); // the qualifier side still resolves
 });
 
 test('test_computeStandings_ignoresFinalMatches', () => {

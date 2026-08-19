@@ -51,7 +51,14 @@ export function listStandings(matches: MatchRepository, deps: ReadDeps = {}) {
   return async (sportEventId: string): Promise<GroupStanding[]> => {
     const all = await matches.list(sportEventId);
     if (!deps.overrides && !deps.events) return computeStandings(all); // S10 behaviour
-    return rankedStandings(all, deps, sportEventId);
+    const ranked = await rankedStandings(all, deps, sportEventId);
+    // S13: the FINAL_GROUP is a round-robin among qualifier placeholders; resolve them to real teams
+    // (from the group standings) and recompute so its mini-table reads real names + results.
+    if (!all.some((m) => m.phase === 'FINAL_GROUP')) return ranked;
+    const resolved = resolvePlaceholders(all, ranked);
+    const swapped = resolved.map((m) =>
+      m.phase === 'FINAL_GROUP' && m.homeResolved && m.awayResolved ? { ...m, home: m.homeResolved, away: m.awayResolved } : m);
+    return rankedStandings(swapped, deps, sportEventId);
   };
 }
 
