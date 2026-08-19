@@ -11,13 +11,13 @@ describe('e3 views', () => {
     expect(html).toContain('pf-hero')
     expect(html).toContain('3/8')
   })
-  it('landing shows the apply CTA when the window is Open', () => {
-    const html = renderLanding(ev, win)
-    expect(html).toContain(`#/events/${ev.sportEventId}/apply`)
+  it('landing has NO apply CTA (registration is a separate page via the organizer link)', () => {
+    expect(renderLanding(ev, win)).not.toContain(`#/events/${ev.sportEventId}/apply`)
+    expect(renderLanding(ev, closedWin)).not.toContain(`#/events/${ev.sportEventId}/apply`)
   })
-  it('landing hides the apply CTA when the window is Closed', () => {
-    const html = renderLanding(ev, closedWin)
-    expect(html).not.toContain(`#/events/${ev.sportEventId}/apply`)
+  it('landing shows an enroll hint while the window is Open, none when Closed', () => {
+    expect(renderLanding(ev, win)).toContain('link ricevuto dall\'organizzatore')
+    expect(renderLanding(ev, closedWin)).not.toContain('link ricevuto')
   })
   it('participants lists confirmed teams', () => {
     const html = renderParticipants([{ registrationId: 'r', participantRef: 'Team A', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' }])

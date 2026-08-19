@@ -18,7 +18,7 @@ describe('enroll render', () => {
       window: { sportEventId: 'e1', state: 'Open', categories: [{ categoria: 'U10', cap: 8, count: 1, remaining: 7 }] },
       pending: [{ registrationId: 'r1', participantRef: 'Team A', sportEventId: 'e1', categoria: 'U10', status: 'Applied' }],
     })
-    expect(html).toContain('https://host/e3/#/events/e1')
+    expect(html).toContain('https://host/e3/#/events/e1/apply')
     expect(html).toContain('Team A')
     expect(html).toContain('data-confirm="r1"')
     expect(html).toContain('data-reject="r1"')
@@ -35,12 +35,12 @@ describe('enroll link (enrollment token)', () => {
       ...base, enrollToken: 'tok-123',
       window: { sportEventId: 'e1', state: 'Open', categories: [] }, pending: [],
     })
-    expect(html).toContain('https://host/e3/?token=tok-123#/events/e1')
+    expect(html).toContain('https://host/e3/?token=tok-123#/events/e1/apply')
     expect(html).toContain('Invia questo link agli allenatori')
   })
   it('falls back to the plain landing link when no token yet', () => {
     const html = renderEnroll({ ...base, window: { sportEventId: 'e1', state: 'Open', categories: [] }, pending: [] })
-    expect(html).toContain('https://host/e3/#/events/e1')
+    expect(html).toContain('https://host/e3/#/events/e1/apply')
     expect(html).not.toContain('?token=')
   })
 })
