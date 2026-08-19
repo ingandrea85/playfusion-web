@@ -12,6 +12,8 @@ import { DIRECTOR_ROLE, DIRECTOR_PURPOSE, directorSubject, parseDirectorScope } 
 import { DynamoDbScheduleRepository } from './adapters/dynamodb-schedule-repository.js';
 import { DynamoDbMatchRepository } from './adapters/dynamodb-match-repository.js';
 import { DynamoDbTieOverrideRepository } from './adapters/dynamodb-tie-override-repository.js';
+import { DynamoDbResourceRepository } from './adapters/dynamodb-resource-repository.js';
+import { getResources, saveResources, getResourcePlan } from './application/resources.js';
 import { HttpEventSource, HttpTeamSource } from './adapters/http-sources.js';
 import { generateSchedule } from './application/generate-schedule.js';
 import { approveSchedule, publishSchedule } from './application/change-status.js';
@@ -26,6 +28,7 @@ const db = makeDocClient();
 const schedules = new DynamoDbScheduleRepository(db);
 const matches = new DynamoDbMatchRepository(db);
 const overrides = new DynamoDbTieOverrideRepository(db);
+const resourceRepo = new DynamoDbResourceRepository(db);
 const events = new HttpEventSource();
 const teams = new HttpTeamSource();
 
@@ -175,6 +178,21 @@ app.post('/events/:id/director-token', organizer, async (c) => {
   const token = signMagicLink({ subject: directorSubject(sportEventId, field), roles: [DIRECTOR_ROLE], purpose: DIRECTOR_PURPOSE, ttlSeconds });
   return c.json({ field, token });
 });
+
+// S17: event resources & post-match logistics. GET config / plan are public reads; PUT is organizer.
+const resourceItem = z.object({ resourceId: z.string().min(1), name: z.string().min(1), icon: z.string().optional(), occupancyMinutes: z.number().int().positive(), capacityPersons: z.number().int().positive(), offsetMinutes: z.number().int().min(0) });
+const assignmentItem = z.object({ resourceId: z.string().min(1), day: z.string().min(1), team: z.string().min(1), slotTime: z.string().min(1) });
+const resourceConfigBody = z.object({
+  resources: z.array(resourceItem),
+  defaultTeamSize: z.number().int().positive().optional(),
+  teamSizes: z.record(z.number().int().positive()).optional(),
+  assignments: z.array(assignmentItem).optional(),
+});
+app.get('/events/:id/resources', async (c) => c.json(await getResources(resourceRepo)(c.req.param('id'))));
+app.put('/events/:id/resources', organizer, async (c) =>
+  c.json(await saveResources(resourceRepo)(c.req.param('id'), resourceConfigBody.parse(await c.req.json()))));
+app.get('/events/:id/resource-plan', async (c) =>
+  c.json(await getResourcePlan({ resources: resourceRepo, matches, schedules, teams })(c.req.param('id'))));
 
 // S10/S11: live standings computed from results, ranked by the event's tie-break policy with
 // manual overrides applied (public).

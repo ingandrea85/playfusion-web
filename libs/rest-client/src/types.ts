@@ -144,6 +144,21 @@ export interface StandingRow {
 // S13 final ranking (podium/placements) per category — progressive; pending where undecided.
 export interface FinalStandingRow { position: number; team?: string; pending?: 'result' | 'tie' }
 export interface CategoryFinalStanding { categoryId: string; rows: FinalStandingRow[] }
+
+// S17 — event resources & post-match logistics.
+export interface Resource { resourceId: string; name: string; icon?: string; occupancyMinutes: number; capacityPersons: number; offsetMinutes: number }
+export interface ResourceAssignment { resourceId: string; day: string; team: string; slotTime: string }
+export interface ResourceConfig { resources: Resource[]; defaultTeamSize?: number; teamSizes?: Record<string, number>; assignments?: ResourceAssignment[] }
+export interface TurnTeam { team: string; categoryId: string; size: number; pinned?: boolean }
+export interface ResourceSlot { time: string; teams: TurnTeam[]; persons: number; capacity: number; overflow: boolean }
+export interface ResourceDayTurns { resourceId: string; day: string; slots: ResourceSlot[] }
+export interface ResourcePlan {
+  days: string[]
+  defaultTeamSize: number
+  teams: { team: string; categoryId: string; size: number }[]
+  turns: ResourceDayTurns[]
+  finishesByDay: Record<string, { team: string; categoryId: string; finish: string }[]>
+}
 export interface GroupStanding {
   categoryId: string
   groupLabel: string

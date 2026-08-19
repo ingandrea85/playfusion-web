@@ -1,5 +1,5 @@
 import { request, type HttpConfig } from './http.js'
-import type { CategoryFinalStanding, GroupStanding, ScheduleConfig, ScheduleView, ScheduledMatchView } from './types.js'
+import type { CategoryFinalStanding, GroupStanding, ResourceConfig, ResourcePlan, ScheduleConfig, ScheduleView, ScheduledMatchView } from './types.js'
 
 export interface O7Api {
   getSchedule(eventId: string): Promise<ScheduleView>
@@ -21,6 +21,10 @@ export interface O7Api {
   cancelMatch(eventId: string, matchId: string): Promise<ScheduledMatchView>
   // Decree which side advances when a knockout (FINAL) match ends level.
   decideWinner(eventId: string, matchId: string, winner: 'HOME' | 'AWAY'): Promise<ScheduledMatchView>
+  // S17: event resources & post-match logistics.
+  getResources(eventId: string): Promise<ResourceConfig>
+  saveResources(eventId: string, config: ResourceConfig): Promise<ResourceConfig>
+  getResourcePlan(eventId: string): Promise<ResourcePlan>
 }
 export const o7 = (cfg: HttpConfig): O7Api => ({
   getSchedule: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/schedule`),
@@ -38,4 +42,7 @@ export const o7 = (cfg: HttpConfig): O7Api => ({
   finishMatch: (id, matchId) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/finish`),
   cancelMatch: (id, matchId) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/cancel`),
   decideWinner: (id, matchId, winner) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/decide-winner`, { winner }),
+  getResources: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/resources`),
+  saveResources: (id, config) => request(cfg, 'PUT', `/o7/events/${encodeURIComponent(id)}/resources`, config),
+  getResourcePlan: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/resource-plan`),
 })

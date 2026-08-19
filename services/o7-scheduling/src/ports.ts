@@ -1,9 +1,17 @@
 import type { ResolvedGroup, Schedule, ScheduledMatch, TieBreakCriterion, TieOverride } from './domain.js';
+import type { ResourceConfig } from './resources.js';
 
 /** Persistence seam for the Schedule aggregate (one per event). */
 export interface ScheduleRepository {
   get(sportEventId: string): Promise<Schedule | undefined>;
   save(schedule: Schedule): Promise<void>;
+}
+
+/** S17: persistence seam for the event's resource config (resources + team sizes + manual
+ *  assignments). One item per event, keyed by sportEventId. */
+export interface ResourceRepository {
+  get(sportEventId: string): Promise<ResourceConfig | undefined>;
+  save(sportEventId: string, config: ResourceConfig): Promise<void>;
 }
 
 /** Persistence seam for the generated fixtures. Stored as one item per event, so a
