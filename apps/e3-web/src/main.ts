@@ -19,8 +19,12 @@ function errorCard(msg: string): string {
   return `<main class="pf-container"><div class="pf-card">${msg}</div></main>`
 }
 
+// Capture ?token but KEEP it in the URL: these links (coach enrollment, field director) are the
+// shareable credential and are reopened across devices/sessions. Stripping it made a URL copied
+// from the address bar (post-open) token-less, so a second device saw "open your link". Storing
+// in sessionStorage is only a same-tab convenience; the URL is the source of truth.
 const token = captureMagicLink(new URL(window.location.href), sessionStorage)
-if (token) window.history.replaceState({}, '', '/e3/' + window.location.hash) // strip ?token from the bar
+void token
 const client = createClient({ baseUrl: cfg.apiBaseUrl, auth: magicLinkAuthProvider(sessionStorage) })
 
 // Optional: confirm the link once and surface an invalid-link notice.
