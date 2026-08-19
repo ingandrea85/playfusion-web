@@ -37,12 +37,15 @@ describe('landing calendar link', () => {
   })
 })
 
-describe('public calendar excludes finals (finals live in the Tabellone)', () => {
-  it('does not render FINAL / FINAL_GROUP matches', () => {
-    const finalM: ScheduledMatchView = { id: 'fm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-08-29', time: '14:00', field: 'Campo A', home: '1ª Girone A', away: '2ª Girone A', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'Finale' }
+describe('public calendar includes finals + a "Finali" filter tab', () => {
+  const finalM: ScheduledMatchView = { id: 'fm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-08-29', time: '14:00', field: 'Campo A', home: '1ª Girone A', away: '2ª Girone A', homeScore: 2, awayScore: 1, status: 'FINISHED', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'F' }
+  it('shows finals under "Tutti" (default) so results are visible + a Finali tab', () => {
     const html = renderPublicCalendar(event, sched('PUBLISHED'), [match, finalM])
-    expect(html).toContain('09:00')          // the group match shows
-    expect(html).not.toContain('14:00')       // the final does not
-    expect(html).not.toContain('Tabellone')
+    expect(html).toContain('09:00')  // group match
+    expect(html).toContain('14:00')  // the final is now visible
+    expect(html).toContain('Finali') // filter tab present
+  })
+  it('has no Finali tab when there are no finals', () => {
+    expect(renderPublicCalendar(event, sched('PUBLISHED'), [match])).not.toContain('>Finali<')
   })
 })

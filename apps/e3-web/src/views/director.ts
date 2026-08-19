@@ -2,7 +2,7 @@ import type { EventDetail, ScheduledMatchView } from '@playfusion/rest-client'
 import type { O7Api } from '@playfusion/rest-client'
 import {
   renderPublicTopbar, renderStepper, wireSteppers, readStepper, esc,
-  displayStatus, matchStatusBadge, matchDelayLabel, openSheet, needsWinnerDecision,
+  displayStatus, matchStatusBadge, matchDelayLabel, openSheet, needsWinnerDecision, renderTabs, isFinalPhase,
 } from '@playfusion/app-shell'
 
 /** The field director's scope, decoded from their magic-link (subject `director:<eventId>:<field>`).
@@ -50,6 +50,12 @@ function listBody(matches: ScheduledMatchView[], now: Date): string {
   }).join('')
 }
 
+// Tutte | Gironi | Finali — shown only when the field has both phases (shared UX with the calendars).
+const dirFilterTabs = (mine: ScheduledMatchView[]): string =>
+  mine.some(isFinalPhase) && mine.some((m) => !isFinalPhase(m))
+    ? `<div id="dir-filter">${renderTabs([{ key: 'ALL', label: 'Tutte' }, { key: 'GROUP', label: 'Gironi' }, { key: 'FINALS', label: 'Finali' }], 'ALL')}</div>`
+    : ''
+
 export function renderDirector(event: EventDetail, field: string, matches: ScheduledMatchView[]): string {
   const mine = matches.filter((m) => m.field === field)
   return `${renderPublicTopbar()}
@@ -57,6 +63,7 @@ export function renderDirector(event: EventDetail, field: string, matches: Sched
       <div class="pf-pagehead"><div class="pf-eyebrow">Direttore di campo</div><h1>${esc(field)}</h1>
         <div class="pf-mono pf-muted">${esc(event.name ?? event.sport)}</div></div>
       <div id="dir-err"></div>
+      ${dirFilterTabs(mine)}
       <div id="dir-body">${listBody(mine, new Date())}</div>
       <div id="dir-sheet"></div>
     </main>`
@@ -76,8 +83,17 @@ export function wireDirector(root: ParentNode, o7: O7Api, eventId: string, field
   const clearError = () => { err.innerHTML = '' }
   const upsert = (m: ScheduledMatchView) => { const i = local.findIndex((x) => x.id === m.id); if (i >= 0) local[i] = { ...local[i]!, ...m } }
 
+  const filterbar = root.querySelector<HTMLElement>('#dir-filter')
+  let filter = 'ALL'
+  const shown = () => local.filter((m) => filter === 'ALL' || (filter === 'FINALS' ? isFinalPhase(m) : !isFinalPhase(m)))
+
   function draw() {
-    body.innerHTML = listBody(local, new Date())
+    if (filterbar) {
+      filterbar.innerHTML = renderTabs([{ key: 'ALL', label: 'Tutte' }, { key: 'GROUP', label: 'Gironi' }, { key: 'FINALS', label: 'Finali' }], filter)
+      filterbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
+        b.addEventListener('click', () => { filter = b.dataset.key!; draw() }))
+    }
+    body.innerHTML = listBody(shown(), new Date())
     body.querySelectorAll<HTMLButtonElement>('.js-dirmatch').forEach((b) =>
       b.addEventListener('click', () => openMatch(b.dataset.match!)))
   }

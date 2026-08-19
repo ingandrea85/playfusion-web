@@ -1,4 +1,4 @@
-import { esc, renderCalendar, renderTabs, categoryKeys, groupKeys, renderStepper, wireSteppers, readStepper, copyToClipboard, displayStatus, matchStatusBadge } from '@playfusion/app-shell'
+import { esc, renderCalendar, renderTabs, categoryKeys, renderStepper, wireSteppers, readStepper, copyToClipboard, displayStatus, matchStatusBadge, calendarGironeTabs, filterCalendarMatches } from '@playfusion/app-shell'
 import type { CategorySchedule, EventDetail, FinalsType, ScheduleConfig, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
 
 const FINALS_TYPE_LABEL: Record<FinalsType, string> = {
@@ -95,11 +95,11 @@ function actionsCard(status: ScheduleView['status']): string {
 }
 
 const filterMatches = (matches: ScheduledMatchView[], selCat: string, selGir: string): ScheduledMatchView[] =>
-  matches.filter((m) => m.categoryId === selCat && (selGir === 'ALL' || m.groupLabel === selGir))
+  filterCalendarMatches(matches, selCat, selGir)
 
-/** Calendar card with Category + Girone filter tabs (S23). Default: first category, all gironi. */
+/** Calendar card with Category + (Gironi | Finali) filter tabs — shared UX with E3/director. */
 function calendarCard(matches: ScheduledMatchView[], selCat: string, selGir: string): string {
-  const gtabs = [{ key: 'ALL', label: 'Tutti' }, ...groupKeys(matches, selCat).map((g) => ({ key: g, label: g }))]
+  const gtabs = calendarGironeTabs(matches, selCat)
   return `<div class="pf-card"><h2 class="pf-h3">Calendario</h2>
     <div id="cal-cattabs">${renderTabs(categoryKeys(matches).map((c) => ({ key: c, label: c })), selCat)}</div>
     <div id="cal-girtabs">${renderTabs(gtabs, selGir)}</div>
@@ -246,7 +246,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
         catbar.innerHTML = renderTabs(categoryKeys(data.matches).map((c) => ({ key: c, label: c })), selCat)
         catbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
           b.addEventListener('click', () => { selCat = b.dataset.key!; selGir = 'ALL'; draw() }))
-        const gtabs = [{ key: 'ALL', label: 'Tutti' }, ...groupKeys(data.matches, selCat).map((g) => ({ key: g, label: g }))]
+        const gtabs = calendarGironeTabs(data.matches, selCat)
         girbar.innerHTML = renderTabs(gtabs, selGir)
         girbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
           b.addEventListener('click', () => { selGir = b.dataset.key!; draw() }))
