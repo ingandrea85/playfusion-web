@@ -75,7 +75,8 @@ function actionsCard(status: ScheduleView['status']): string {
 
 export function renderSchedule(data: ScheduleData): string {
   const { event, schedule, matches } = data
-  const calendar = schedule.status === 'NONE' ? '' : `<div class="pf-card"><h2 class="pf-h3">Calendario</h2>${renderCalendar(matches, catName)}</div>`
+  const calendar = schedule.status === 'NONE' ? ''
+    : `<div class="pf-card"><h2 class="pf-h3">Calendario</h2><div id="editmatch"></div>${renderCalendar(matches, catName, true)}</div>`
   return workspaceShell(event, 'schedule',
     `<div id="err"></div>${configCard(schedule.config, schedule.status)}${actionsCard(schedule.status)}${calendar}`)
 }
@@ -93,6 +94,10 @@ export const scheduleScreen: Screen<ScheduleData> = {
   mount(root, ctx: ViewCtx, data) {
     const id = data.event.sportEventId
     const err = root.querySelector('#err')!
+
+    // Reschedule works in every status (incl. APPROVED/PUBLISHED — D-O7-3), so wire it before
+    // the config-lock early return.
+    wireReschedule()
     if (isLocked(data.schedule.status)) { wireStatus(); return }
 
     let fields = [...data.schedule.config.fields]
@@ -142,6 +147,44 @@ export const scheduleScreen: Screen<ScheduleData> = {
         try { await ctx.client.o7.publishSchedule(id); ctx.refresh() }
         catch { err.innerHTML = inlineError('Pubblicazione non riuscita.'); publish.disabled = false }
       })
+    }
+
+    /** S9: per-match reschedule. "Modifica" opens a panel (field/day/time prefilled); Salva →
+     *  o7.rescheduleMatch → refresh; a 409 slot conflict keeps the panel and shows the clash. */
+    function wireReschedule() {
+      const panel = root.querySelector('#editmatch')
+      if (!panel) return
+      root.querySelectorAll<HTMLButtonElement>('.js-editmatch').forEach((btn) =>
+        btn.addEventListener('click', () => openPanel(btn.dataset.match!)))
+
+      function openPanel(matchId: string) {
+        const m = data.matches.find((x) => x.id === matchId)
+        if (!m) return
+        const fieldOpts = data.schedule.config.fields.length ? data.schedule.config.fields : [...new Set(data.matches.map((x) => x.field))]
+        panel!.innerHTML = `<div class="pf-card"><h3 class="pf-h4" style="margin-top:0">${esc(m.home)} vs ${esc(m.away)}</h3>
+          <div class="pf-row" style="justify-content:flex-start;gap:var(--space-md);align-items:flex-end">
+            <div class="pf-field" style="margin-bottom:0"><label>Campo</label><select id="rs-field">${fieldOpts.map((f) => `<option ${f === m.field ? 'selected' : ''}>${esc(f)}</option>`).join('')}</select></div>
+            <div class="pf-field" style="margin-bottom:0"><label>Giorno</label><input id="rs-day" type="date" value="${esc(m.day)}" /></div>
+            <div class="pf-field" style="margin-bottom:0"><label>Ora</label><input id="rs-time" type="time" value="${esc(m.time)}" /></div>
+            <button type="button" class="pf-btn pf-btn--primary" id="rs-save">Salva</button>
+            <button type="button" class="pf-btn" id="rs-cancel">Annulla</button>
+          </div></div>`
+        panel!.querySelector('#rs-cancel')!.addEventListener('click', () => { panel!.innerHTML = '' })
+        panel!.querySelector('#rs-save')!.addEventListener('click', async (e) => {
+          const b = e.currentTarget as HTMLButtonElement; b.disabled = true
+          const patch = {
+            field: (panel!.querySelector('#rs-field') as HTMLSelectElement).value,
+            day: (panel!.querySelector('#rs-day') as HTMLInputElement).value,
+            time: (panel!.querySelector('#rs-time') as HTMLInputElement).value,
+          }
+          try { await ctx.client.o7.rescheduleMatch(id, matchId, patch); ctx.refresh() }
+          catch (e2: unknown) {
+            const conflict = (e2 as { status?: number })?.status === 409
+            err.innerHTML = inlineError(conflict ? 'Slot già occupato: scegli un altro campo o orario.' : 'Riprogrammazione non riuscita. Riprova.')
+            b.disabled = false
+          }
+        })
+      }
     }
   },
 }

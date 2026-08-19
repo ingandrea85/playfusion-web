@@ -12,6 +12,7 @@ import { DynamoDbMatchRepository } from './adapters/dynamodb-match-repository.js
 import { HttpEventSource, HttpTeamSource } from './adapters/http-sources.js';
 import { generateSchedule } from './application/generate-schedule.js';
 import { approveSchedule, publishSchedule } from './application/change-status.js';
+import { rescheduleMatch } from './application/reschedule-match.js';
 import { getScheduleOrDefault, listMatches } from './application/read.js';
 
 const db = makeDocClient();
@@ -55,6 +56,15 @@ app.post('/events/:id/schedule:approve', organizer, async (c) =>
 
 app.post('/events/:id/schedule:publish', organizer, async (c) =>
   c.json(await publishSchedule(schedules)(c.req.param('id'))));
+
+// S9: reschedule a single match (day/time/field). Organizer mutation, allowed in any status
+// (reschedules happen mid-tournament); rejects a clash with another match's slot (409).
+const rescheduleBody = z.object({ day: z.string(), time: z.string(), field: z.string() });
+app.put('/events/:id/matches/:matchId', organizer, async (c) => {
+  const patch = rescheduleBody.parse(await c.req.json());
+  const match = await rescheduleMatch(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), patch });
+  return c.json(match);
+});
 
 // Public reads: schedule status/config + the placed fixtures.
 app.get('/events/:id/schedule', async (c) =>

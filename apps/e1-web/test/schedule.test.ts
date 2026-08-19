@@ -48,6 +48,7 @@ describe('schedule mount', () => {
       generateSchedule: vi.fn().mockResolvedValue({}),
       approveSchedule: vi.fn().mockResolvedValue({}),
       publishSchedule: vi.fn().mockResolvedValue({}),
+      rescheduleMatch: vi.fn().mockResolvedValue({}),
     }
     const refresh = vi.fn()
     const ctx = { client: { o7 } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh }
@@ -80,5 +81,53 @@ describe('schedule mount', () => {
     const { root, o7 } = mountWith('APPROVED')
     root.querySelector<HTMLButtonElement>('#publish')!.click()
     await vi.waitFor(() => expect(o7.publishSchedule).toHaveBeenCalledWith('e1'))
+  })
+})
+
+describe('schedule reschedule (S9)', () => {
+  const mountWith = (status: ScheduleView['status'], reschedule = vi.fn().mockResolvedValue({})) => {
+    const o7 = { generateSchedule: vi.fn(), approveSchedule: vi.fn(), publishSchedule: vi.fn(), rescheduleMatch: reschedule }
+    const refresh = vi.fn()
+    const ctx = { client: { o7 } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh }
+    const d = data(status, [match])
+    const root = document.createElement('div'); root.innerHTML = renderSchedule(d)
+    scheduleScreen.mount!(root, ctx as any, d)
+    return { root, o7, refresh }
+  }
+
+  it('renders a per-match Modifica control in the editable calendar', () => {
+    expect(renderSchedule(data('GENERATED', [match]))).toContain('js-editmatch')
+    // E3 default (non-editable) has no edit control
+    expect(renderSchedule(data('NONE'))).not.toContain('js-editmatch')
+  })
+
+  it('Modifica opens a prefilled panel and Salva calls rescheduleMatch then refresh', async () => {
+    const { root, o7, refresh } = mountWith('GENERATED')
+    root.querySelector<HTMLButtonElement>('.js-editmatch')!.click()
+    const day = root.querySelector('#rs-day') as HTMLInputElement
+    expect(day.value).toBe('2026-08-29') // prefilled from the match
+    day.value = '2026-08-30'
+    ;(root.querySelector('#rs-time') as HTMLInputElement).value = '11:00'
+    root.querySelector<HTMLButtonElement>('#rs-save')!.click()
+    await vi.waitFor(() => expect(o7.rescheduleMatch).toHaveBeenCalled())
+    const [id, matchId, patch] = o7.rescheduleMatch.mock.calls[0]
+    expect(id).toBe('e1'); expect(matchId).toBe('sm-1')
+    expect(patch).toMatchObject({ day: '2026-08-30', time: '11:00' })
+    expect(refresh).toHaveBeenCalled()
+  })
+
+  it('surfaces a 409 slot conflict without refreshing', async () => {
+    const conflict = vi.fn().mockRejectedValue({ status: 409, code: 'SLOT_CONFLICT' })
+    const { root, refresh } = mountWith('GENERATED', conflict)
+    root.querySelector<HTMLButtonElement>('.js-editmatch')!.click()
+    root.querySelector<HTMLButtonElement>('#rs-save')!.click()
+    await vi.waitFor(() => expect(root.querySelector('#err')!.innerHTML).toContain('Slot già occupato'))
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('reschedule is available even when the schedule is PUBLISHED', () => {
+    const { root } = mountWith('PUBLISHED')
+    root.querySelector<HTMLButtonElement>('.js-editmatch')!.click()
+    expect(root.querySelector('#rs-save')).not.toBeNull()
   })
 })
