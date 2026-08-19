@@ -4,9 +4,9 @@ import type { FinalsType, MatchPhase } from './domain.js';
  *  structural draws (bracket label + round + slot + placeholder home/away + placement range) for one
  *  category from its resolved groups; the scheduler assigns id/day/time/field/phase mapping.
  *
- *  Placeholders (our convention): qualifier seed `Nª Girone X` (resolved from group standings), and
- *  winner link `Vincente <slot>` (resolved from the finished FINAL match with that slot — S13
- *  propagation). Third place / shootout / loser-links are a follow-up slice. */
+ *  Placeholders (our convention): qualifier seed `Nª Girone X` (resolved from group standings),
+ *  winner link `Vincente <slot>` and loser link `Perdente <slot>` (resolved from the finished FINAL
+ *  match with that slot — S13 propagation; loser links feed the classification/placement finals). */
 
 export interface FinalDraw {
   bracketLabel: string;
@@ -23,11 +23,13 @@ export interface FinalDraw {
 /** One category group fed to buildFinals: its label + team count (sizes drive tiers/pairs/rest). */
 export interface FinalGroupInput { label: string; size: number }
 
-const ROUND_LABELS = ['R64', 'R32', 'R16', 'QF', 'SF', 'F'];
 const seed = (pos: number, girone: string): string => `${pos}ª ${girone}`;
 const win = (slot: string): string => `Vincente ${slot}`;
+const lose = (slot: string): string => `Perdente ${slot}`;
 const largestPow2LE = (n: number): number => { let p = 1; while (p * 2 <= n) p *= 2; return p; };
-const log2 = (n: number): number => Math.round(Math.log2(n));
+/** Code round label for a knockout round of `n` entrants (n a power of 2 ≥ 2). Only the winners' path
+ *  uses these — the classification (loser) branches use human "Finale Nº/Mº" / "Sp." labels instead. */
+const codeLabel = (n: number): string => (n === 2 ? 'F' : n === 4 ? 'SF' : n === 8 ? 'QF' : `R${n}`);
 
 /** Every unordered pair of a list — a single round-robin (for the FINAL_GROUP). */
 function roundRobinPairs<T>(items: T[]): Array<[T, T]> {
@@ -36,42 +38,47 @@ function roundRobinPairs<T>(items: T[]): Array<[T, T]> {
   return out;
 }
 
-/** PLACEMENT (v1): a single-elim bracket per finishing tier (1st-of-each-group, 2nd-of-each-group, …).
- *  #groups is truncated to the largest power of 2; round 0 crosses adjacent groups, later rounds pair
- *  the previous round's winners via `Vincente <slot>`. */
+/** Full-classification single-elim over `entrants`, assigning positions `base+1 .. base+entrants.length`.
+ *  Each round splits into a winners' branch (top half of positions) and a losers' branch (bottom half),
+ *  so every entrant ends with an exact placement. Only the main winners' path carries code rounds
+ *  (QF/SF/F → the graphical tree); every classification branch uses human "Finale Nº/Mº" / "Sp." labels
+ *  and renders as a placement list. A 2-team round is the deciding final for its two positions. */
+function classify(entrants: string[], base: number, prefix: string, mainPath: boolean, bracketLabel: string, draws: FinalDraw[]): void {
+  const n = entrants.length;
+  if (n < 2) return;
+  if (n === 2) {
+    const round = mainPath ? 'F' : `Finale ${base + 1}º/${base + 2}º`;
+    draws.push({ bracketLabel, round, order: draws.length + 1, slot: `${prefix}F`, home: entrants[0]!, away: entrants[1]!, phase: 'FINAL', placementFrom: base + 1, placementTo: base + 2 });
+    return;
+  }
+  const round = mainPath ? codeLabel(n) : `Sp. ${base + 1}º-${base + n}º`;
+  const winners: string[] = [];
+  const losers: string[] = [];
+  for (let i = 0, k = 1; i + 1 < n; i += 2, k++) {
+    const slot = `${prefix}${codeLabel(n)}${k}`;
+    draws.push({ bracketLabel, round, order: k, slot, home: entrants[i]!, away: entrants[i + 1]!, phase: 'FINAL' });
+    winners.push(win(slot)); losers.push(lose(slot));
+  }
+  classify(winners, base, `${prefix}W`, mainPath, bracketLabel, draws);
+  classify(losers, base + n / 2, `${prefix}L`, false, bracketLabel, draws);
+}
+
+/** PLACEMENT (v1 + classifica completa): a full-classification single-elim per finishing tier
+ *  (1st-of-each-group, 2nd-of-each-group, …). #groups is truncated to the largest power of 2; each tier
+ *  crosses the same-rank team of the effective groups, then classifies them into every position of the
+ *  tier's block (winners toward 1º/2º, losers into 3º/4º, 5º/6º, 7º/8º …). */
 function placement(groups: FinalGroupInput[]): FinalDraw[] {
   const effective = largestPow2LE(groups.length);
   if (effective < 2) return [];
   const teamsPerGroup = Math.min(...groups.map((g) => g.size));
-  const rounds = log2(effective);
-  const labels = ROUND_LABELS.slice(-rounds);
+  const eff = groups.slice(0, effective);
   const draws: FinalDraw[] = [];
   for (let tier = 0; tier < teamsPerGroup; tier++) {
     const place = tier + 1;
     const base = tier * effective;
     const bracketLabel = tier === 0 ? 'Tabellone' : `Piazzamento ${place}ª`;
-    const prefix = `T${place}`;
-    // round 0: cross adjacent groups.
-    let prev: string[] = [];
-    let counter = 1;
-    for (let g = 0; g + 1 < effective; g += 2) {
-      const slot = `${prefix}-${labels[0]}${counter}`;
-      const last = rounds === 1;
-      draws.push({ bracketLabel, round: labels[0]!, order: counter, slot, home: seed(place, groups[g]!.label), away: seed(place, groups[g + 1]!.label), phase: 'FINAL', placementFrom: base + 1, placementTo: last ? base + 2 : base + effective });
-      prev.push(slot); counter++;
-    }
-    // later rounds: pair winners.
-    for (let r = 1; r < rounds; r++) {
-      const next: string[] = [];
-      counter = 1;
-      const last = r === rounds - 1;
-      for (let i = 0; i + 1 < prev.length; i += 2) {
-        const slot = `${prefix}-${labels[r]}${counter}`;
-        draws.push({ bracketLabel, round: labels[r]!, order: counter, slot, home: win(prev[i]!), away: win(prev[i + 1]!), phase: 'FINAL', placementFrom: base + 1, placementTo: last ? base + 2 : base + effective });
-        next.push(slot); counter++;
-      }
-      prev = next;
-    }
+    const seeds = eff.map((g) => seed(place, g.label));
+    classify(seeds, base, `T${place}`, true, bracketLabel, draws);
   }
   return draws;
 }

@@ -153,3 +153,20 @@ describe('bracket tree vs list (S13)', () => {
     expect(html).toContain('pf-brk__list')
   })
 })
+
+describe('bracket full classification (S13)', () => {
+  const cat = (c: string) => c
+  it('renders the main path as a tree and the placement finals as a list below', () => {
+    const finals = [
+      { categoryId: 'U10', bracketLabel: 'Tabellone', round: 'SF', order: 1, slot: 'T1SF1', home: 'Vincente A', away: 'Vincente B', phase: 'FINAL' as const },
+      { categoryId: 'U10', bracketLabel: 'Tabellone', round: 'SF', order: 2, slot: 'T1SF2', home: 'Vincente C', away: 'Vincente D', phase: 'FINAL' as const },
+      { categoryId: 'U10', bracketLabel: 'Tabellone', round: 'F', order: 3, slot: 'T1WF', home: 'Vincente T1SF1', away: 'Vincente T1SF2', phase: 'FINAL' as const },
+      { categoryId: 'U10', bracketLabel: 'Tabellone', round: 'Finale 3º/4º', order: 4, slot: 'T1WLF', home: 'Perdente T1SF1', away: 'Perdente T1SF2', phase: 'FINAL' as const },
+    ]
+    const html = renderBracket(finals, cat)
+    expect(html).toContain('pf-brk-tree')        // main path is a graphical tree
+    expect(html).toContain('pf-brk-placements')  // placement finals listed below
+    expect(html).toContain('Piazzamenti')
+    expect(html).toContain('Finale 3º/4º')        // the placement round header
+  })
+})

@@ -29,6 +29,20 @@ test('test_finalStandings_split_bracketPlusFinalGroup', async () => {
   ]);
 });
 
+test('test_finalStandings_placement_fullClassification_1to4', async () => {
+  // A played 4-team classification bracket assigns every position: F → 1º/2º, Finale 3º/4º → 3º/4º.
+  await matches.replace('e', [
+    fin({ slot: 'SF1', round: 'SF', home: 'A', away: 'D', homeScore: 2, awayScore: 0, status: 'FINISHED' }),
+    fin({ slot: 'SF2', round: 'SF', home: 'B', away: 'C', homeScore: 1, awayScore: 0, status: 'FINISHED' }),
+    fin({ slot: 'F1', round: 'F', home: 'Vincente SF1', away: 'Vincente SF2', placementFrom: 1, placementTo: 2, homeScore: 2, awayScore: 1, status: 'FINISHED' }),
+    fin({ slot: 'B1', round: 'Finale 3º/4º', home: 'Perdente SF1', away: 'Perdente SF2', placementFrom: 3, placementTo: 4, homeScore: 1, awayScore: 0, status: 'FINISHED' }),
+  ]);
+  const [cat] = await listFinalStandings(matches, { overrides, events })('e');
+  expect(cat.rows).toEqual([
+    { position: 1, team: 'A' }, { position: 2, team: 'B' }, { position: 3, team: 'D' }, { position: 4, team: 'C' },
+  ]);
+});
+
 test('test_finalStandings_pendingOnUndecidedDrawnFinal', async () => {
   await matches.replace('e', [
     ...groupAllPlayed(),

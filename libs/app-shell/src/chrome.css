@@ -199,6 +199,9 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 /* Show the tree on wide screens, the per-round list on mobile. */
 .pf-brk-fallback { display: none; }
 @media (max-width: 640px) { .pf-brk-desktop { display: none; } .pf-brk-fallback { display: block; } }
+/* Classification/placement finals listed under the main tree. */
+.pf-brk-placements { margin-top: var(--space-md); border-top: 1px dashed var(--color-border-default); padding-top: var(--space-sm); }
+.pf-brk__sub { color: var(--color-text-muted); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: var(--space-xs); }
 
 /* ---------- Final ranking (S13) ---------- */
 .pf-finrank { list-style: none; margin: var(--space-sm) 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-xs); }

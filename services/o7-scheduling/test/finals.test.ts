@@ -19,22 +19,45 @@ test('test_single_requiresExactlyOneGroup', () => {
   expect(buildFinals([g('A', 4), g('B', 4)], 'SINGLE_GROUP_CROSSOVER')).toEqual([]);
 });
 
-// --- PLACEMENT (v1): multi-group bracket per tier ---
+// --- PLACEMENT (v1 + classifica completa): full-classification single-elim per tier ---
 test('test_placement_twoGroups_oneFinalPerTier', () => {
-  // 2 groups of 2 → effectiveGroups=2, teamsPerGroup=2 → 2 tiers, 1 round (Finale) each.
+  // 2 groups of 2 → effectiveGroups=2, teamsPerGroup=2 → 2 tiers, 1 round (Finale) each (no consolation).
   const d = buildFinals([g('Girone A', 2), g('Girone B', 2)], 'PLACEMENT');
   expect(d).toHaveLength(2);
   expect(d[0]).toMatchObject({ bracketLabel: 'Tabellone', round: 'F', home: '1ª Girone A', away: '1ª Girone B', placementFrom: 1, placementTo: 2 });
   expect(d[1]).toMatchObject({ bracketLabel: 'Piazzamento 2ª', round: 'F', home: '2ª Girone A', away: '2ª Girone B', placementFrom: 3, placementTo: 4 });
 });
-test('test_placement_fourGroups_semisThenFinal_withWinnerLinks', () => {
-  // 4 groups of 1 → effectiveGroups=4, teamsPerGroup=1 → 1 tier, 2 rounds (SF, F).
+test('test_placement_fourGroups_semisThenFinalPlus3rd4th', () => {
+  // 4 groups of 1 → 1 tier: SF (winner links) → Finale 1º/2º + Finale 3º/4º (SF losers).
   const d = buildFinals([g('Girone A', 1), g('Girone B', 1), g('Girone C', 1), g('Girone D', 1)], 'PLACEMENT');
   const sfs = d.filter((x) => x.round === 'SF');
   const fin = d.find((x) => x.round === 'F')!;
+  const third = d.find((x) => x.round === 'Finale 3º/4º')!;
   expect(sfs).toHaveLength(2);
-  expect(sfs[0]).toMatchObject({ home: '1ª Girone A', away: '1ª Girone B', slot: 'T1-SF1' });
-  expect(fin).toMatchObject({ home: 'Vincente T1-SF1', away: 'Vincente T1-SF2', slot: 'T1-F1' });
+  expect(sfs[0]).toMatchObject({ home: '1ª Girone A', away: '1ª Girone B', slot: 'T1SF1' });
+  expect(fin).toMatchObject({ home: 'Vincente T1SF1', away: 'Vincente T1SF2', placementFrom: 1, placementTo: 2 });
+  expect(third).toMatchObject({ home: 'Perdente T1SF1', away: 'Perdente T1SF2', placementFrom: 3, placementTo: 4 });
+});
+test('test_placement_eightGroups_fullClassification_1to8', () => {
+  // 8 groups of 1 → 1 tier: QF→SF→Finale (1/2) + 3º/4º + spareggio perdenti quarti → 5º/6º, 7º/8º.
+  const d = buildFinals(Array.from({ length: 8 }, (_, i) => g(`Girone ${String.fromCharCode(65 + i)}`, 1)), 'PLACEMENT');
+  expect(d.filter((x) => x.round === 'QF')).toHaveLength(4);
+  expect(d.filter((x) => x.round === 'SF')).toHaveLength(2);
+  // The classification finals assign every position 1..8, each exactly once.
+  const finals2wide = d.filter((x) => x.placementTo === (x.placementFrom ?? 0) + 1);
+  const covered = finals2wide.flatMap((x) => [x.placementFrom!, x.placementTo!]).sort((a, b) => a - b);
+  expect(covered).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  // 5º/6º is fed by the winners of the QF-losers spareggio; 7º/8º by its losers.
+  const fifth = d.find((x) => x.round === 'Finale 5º/6º')!;
+  const seventh = d.find((x) => x.round === 'Finale 7º/8º')!;
+  expect(fifth).toMatchObject({ home: 'Vincente T1LSF1', away: 'Vincente T1LSF2' });
+  expect(seventh).toMatchObject({ home: 'Perdente T1LSF1', away: 'Perdente T1LSF2' });
+  expect(d.filter((x) => x.round === 'Sp. 5º-8º').every((x) => /^Perdente T1QF/.test(x.home))).toBe(true);
+});
+test('test_placement_noUndefinedPlacementOnFeeders', () => {
+  // Intermediate (winner/loser-fed) rounds carry no placement; only 2-wide finals do (DynamoDB-safe).
+  const d = buildFinals(Array.from({ length: 8 }, (_, i) => g(`Girone ${i}`, 1)), 'PLACEMENT');
+  expect(d.filter((x) => x.placementFrom == null).every((x) => x.placementTo == null)).toBe(true);
 });
 test('test_placement_truncatesToPowerOfTwoGroups', () => {
   // 3 groups → effectiveGroups=2 (3rd dropped).

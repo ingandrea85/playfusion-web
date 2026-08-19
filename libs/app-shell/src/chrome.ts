@@ -276,21 +276,33 @@ function bracketTree(inBracket: BracketMatch[], rounds: string[]): string {
   return `<div class="pf-brk-tree-wrap"><div class="pf-brk-heads">${heads}</div><div class="pf-brk-tree">${cols}</div></div>`
 }
 
-/** S12/S13: the finals for one category. Multi-round knockout brackets render as a graphical tree
- *  (with a per-round list fallback on mobile); single-match placement finals and the round-robin
- *  final group render as a list. Winner highlighted (✓), drawn KO flagged "⚠ Chi passa?", unresolved
- *  slots shown muted. Read-only; shared by the E1 Finali tab and the E3 public Tabellone. */
+/** S12/S13: the finals for one category. The main knockout path (code rounds QF/SF/F) renders as a
+ *  graphical tree (with a per-round list fallback on mobile); the classification/placement finals
+ *  (3º/4º, 5º/6º, 7º/8º …) render as a list below the tree, and single-match finals / the round-robin
+ *  final group render as a plain list. Winner highlighted (✓), drawn KO flagged "⚠ Chi passa?",
+ *  unresolved slots muted. Read-only; shared by the E1 Finali tab and the E3 public Tabellone. */
 export function renderBracket(finals: BracketMatch[], catName: (id: string) => string): string {
   if (!finals.length) return `<p class="pf-muted">Nessun tabellone: configura la fase finale e genera il calendario.</p>`
   const brackets = [...new Set(finals.map((f) => f.bracketLabel ?? 'Finali'))]
   return brackets.map((bl) => {
     const inBracket = finals.filter((f) => (f.bracketLabel ?? 'Finali') === bl)
     const rounds = roundsInOrder(inBracket)
-    const isTree = rounds.length >= 2 && rounds.every((r) => CODE_ROUNDS.has(r))
+    const codeRounds = rounds.filter((r) => CODE_ROUNDS.has(r))
+    const otherRounds = rounds.filter((r) => !CODE_ROUNDS.has(r))
+    const hasTree = codeRounds.length >= 2
     const head = `<div class="pf-calday__head pf-mono">${esc(catName(inBracket[0]!.categoryId))} · ${esc(bl)}</div>`
-    const body = isTree
-      ? `<div class="pf-brk-desktop">${bracketTree(inBracket, rounds)}</div><div class="pf-brk-fallback">${bracketList(inBracket, rounds)}</div>`
-      : bracketList(inBracket, rounds)
+    let body: string
+    if (hasTree) {
+      const treeMs = inBracket.filter((f) => CODE_ROUNDS.has(f.round ?? ''))
+      const placeMs = inBracket.filter((f) => !CODE_ROUNDS.has(f.round ?? ''))
+      const tree = `<div class="pf-brk-desktop">${bracketTree(treeMs, codeRounds)}</div><div class="pf-brk-fallback">${bracketList(treeMs, codeRounds)}</div>`
+      const placements = otherRounds.length
+        ? `<div class="pf-brk-placements"><div class="pf-brk__sub pf-mono">Piazzamenti</div>${bracketList(placeMs, otherRounds)}</div>`
+        : ''
+      body = tree + placements
+    } else {
+      body = bracketList(inBracket, rounds)
+    }
     return `<div class="pf-bracket">${head}${body}</div>`
   }).join('')
 }
