@@ -1,32 +1,34 @@
-import { renderBracket, renderTabs, categoryKeys } from '@playfusion/app-shell'
-import type { EventDetail, ScheduledMatchView } from '@playfusion/rest-client'
+import { renderBracket, renderFinalStanding, renderTabs, categoryKeys } from '@playfusion/app-shell'
+import type { CategoryFinalStanding, EventDetail, ScheduledMatchView } from '@playfusion/rest-client'
 import type { Screen, ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
 
-export interface FinalsData { event: EventDetail; finals: ScheduledMatchView[] }
+export interface FinalsData { event: EventDetail; finals: ScheduledMatchView[]; ranking: CategoryFinalStanding[] }
 
 const catName = (c: string): string => c
+const rowsFor = (ranking: CategoryFinalStanding[], cat: string) => ranking.find((r) => r.categoryId === cat)?.rows ?? []
 
-/** S12: organizer Finali tab — the bracket per selected category. Finals ride the matches list
- *  (phase FINAL) with `homeResolved`/`awayResolved` filled by the backend as groups complete. */
-function finalsCard(finals: ScheduledMatchView[], selCat: string): string {
-  const cats = categoryKeys(finals)
-  const tabs = cats.map((c) => ({ key: c, label: c }))
-  const body = finals.length
-    ? `<div id="ft-cattabs">${renderTabs(tabs, selCat)}</div>
-       <div id="fnbody">${renderBracket(finals.filter((f) => f.categoryId === selCat), catName)}</div>`
-    : `<p class="pf-muted">Nessun tabellone: configura la <b>Fase finale</b> (tab Competizione) e genera il calendario.</p>`
-  return `<div class="pf-card"><h2 class="pf-h3">Finali</h2>${body}</div>`
+/** S12/S13: organizer Finali tab — the bracket + the progressive final ranking, per category. */
+function finalsBody(data: FinalsData, selCat: string): string {
+  const cats = categoryKeys(data.finals)
+  if (!cats.length) return `<p class="pf-muted">Nessun tabellone: configura la <b>Fase finale</b> (tab Competizione/Calendario) e genera il calendario.</p>`
+  return `<div id="ft-cattabs">${renderTabs(cats.map((c) => ({ key: c, label: c })), selCat)}</div>
+    <div id="fnbody">${finalsSection(data, selCat)}</div>`
+}
+function finalsSection(data: FinalsData, selCat: string): string {
+  return `${renderBracket(data.finals.filter((f) => f.categoryId === selCat), catName)}
+    <h3 class="pf-h4">Classifica finale</h3>
+    ${renderFinalStanding(rowsFor(data.ranking, selCat))}`
 }
 
 export function renderFinalsView(data: FinalsData): string {
-  return workspaceShell(data.event, 'finals', finalsCard(data.finals, categoryKeys(data.finals)[0] ?? ''))
+  return workspaceShell(data.event, 'finals', `<div class="pf-card"><h2 class="pf-h3">Finali</h2>${finalsBody(data, categoryKeys(data.finals)[0] ?? '')}</div>`)
 }
 
 export const finalsScreen: Screen<FinalsData> = {
   load: async (ctx, p) => {
-    const [event, matches] = await Promise.all([ctx.client.o3.getEvent(p.id), ctx.client.o7.getMatches(p.id)])
-    return { event, finals: matches.filter((m) => m.phase === 'FINAL' || m.phase === 'FINAL_GROUP') }
+    const [event, matches, ranking] = await Promise.all([ctx.client.o3.getEvent(p.id), ctx.client.o7.getMatches(p.id), ctx.client.o7.getFinalStandings(p.id)])
+    return { event, finals: matches.filter((m) => m.phase === 'FINAL' || m.phase === 'FINAL_GROUP'), ranking }
   },
   render: renderFinalsView,
   mount(root, _ctx: ViewCtx, data) {
@@ -37,7 +39,7 @@ export const finalsScreen: Screen<FinalsData> = {
       catbar.innerHTML = renderTabs(categoryKeys(data.finals).map((c) => ({ key: c, label: c })), selCat)
       catbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
         b.addEventListener('click', () => { selCat = b.dataset.key!; draw() }))
-      body!.innerHTML = renderBracket(data.finals.filter((f) => f.categoryId === selCat), catName)
+      body!.innerHTML = finalsSection(data, selCat)
     }
     draw()
   },

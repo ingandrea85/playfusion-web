@@ -260,6 +260,18 @@ export function renderBracket(finals: BracketMatch[], catName: (id: string) => s
   }).join('')
 }
 
+/** S13: one category's progressive final ranking (podium/placements). `team` set = decided;
+ *  otherwise "— da definire" (a result/decision/tie still pending). */
+export interface FinalStandingRowView { position: number; team?: string; pending?: 'result' | 'tie' }
+export function renderFinalStanding(rows: FinalStandingRowView[]): string {
+  if (!rows.length) return `<p class="pf-muted">Classifica finale non ancora disponibile: gioca le fasi finali.</p>`
+  const li = rows.map((r) => `<li class="pf-finrank__row">
+    <span class="pf-finrank__pos pf-mono">${r.position}º</span>
+    <span>${r.team ? esc(r.team) : `<span class="pf-muted">— da definire${r.pending === 'tie' ? ' (parità da risolvere)' : ''}</span>`}</span>
+  </li>`).join('')
+  return `<ol class="pf-finrank">${li}</ol>`
+}
+
 export function renderCategoryTag(name: string, count: number, maxTeams: number): string {
   const full = maxTeams > 0 && count >= maxTeams
   // Only the enrolled/total count — just the numbers, no label, no "completa", no bar.

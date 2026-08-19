@@ -1,5 +1,5 @@
 import { request, type HttpConfig } from './http.js'
-import type { GroupStanding, ScheduleConfig, ScheduleView, ScheduledMatchView } from './types.js'
+import type { CategoryFinalStanding, GroupStanding, ScheduleConfig, ScheduleView, ScheduledMatchView } from './types.js'
 
 export interface O7Api {
   getSchedule(eventId: string): Promise<ScheduleView>
@@ -10,6 +10,8 @@ export interface O7Api {
   rescheduleMatch(eventId: string, matchId: string, patch: { day: string; time: string; field: string; home?: string; away?: string }): Promise<ScheduledMatchView>
   recordResult(eventId: string, matchId: string, result: { homeScore: number; awayScore: number }): Promise<ScheduledMatchView>
   getStandings(eventId: string): Promise<GroupStanding[]>
+  // S13: progressive final ranking (podium) per category.
+  getFinalStandings(eventId: string): Promise<CategoryFinalStanding[]>
   // S11: manually resolve a group's residual tie (organizer). `order` is the tied teams' decided order.
   setTieOverride(eventId: string, categoryId: string, groupLabel: string, order: string[]): Promise<{ order: string[]; resolvedBy: string; resolvedAt: string }>
   getDirectorToken(eventId: string, field: string): Promise<{ field: string; token: string }>
@@ -29,6 +31,7 @@ export const o7 = (cfg: HttpConfig): O7Api => ({
   rescheduleMatch: (id, matchId, patch) => request(cfg, 'PUT', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}`, patch),
   recordResult: (id, matchId, result) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/result`, result),
   getStandings: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/standings`),
+  getFinalStandings: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/final-standings`),
   setTieOverride: (id, categoryId, groupLabel, order) => request(cfg, 'PUT', `/o7/events/${encodeURIComponent(id)}/standings/${encodeURIComponent(categoryId)}/${encodeURIComponent(groupLabel)}/override`, { order }),
   getDirectorToken: (id, field) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/director-token`, { field }),
   startMatch: (id, matchId) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/start`),
