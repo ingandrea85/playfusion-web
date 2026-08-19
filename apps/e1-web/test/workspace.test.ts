@@ -56,3 +56,13 @@ describe('workspace Categorie tab', () => {
     expect(html).toContain('U12')
   })
 })
+
+describe('competition finals editor (S12)', () => {
+  it('renders the finals-config editor with the current values', () => {
+    const html = renderCompetition({ ...full, finalsType: 'SPLIT_GROUP_FINALS', qualifiersPerGroup: 3 })
+    expect(html).toContain('Fase finale')
+    expect(html).toContain('SPLIT_GROUP_FINALS')
+    expect(html).toContain('value="3"')
+    expect(html).toContain('rigenera il calendario')
+  })
+})
