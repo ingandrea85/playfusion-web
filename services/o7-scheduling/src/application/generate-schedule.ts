@@ -1,7 +1,43 @@
 import { buildFixtures } from '../fixtures.js';
-import { autoSplit, canGenerate, categoryConfig, defaultConfig, type FixtureCategory, type Schedule, type ScheduleConfig } from '../domain.js';
+import { buildFinals } from '../finals.js';
+import { autoSplit, canGenerate, categoryConfig, defaultConfig, type FinalsType, type FixtureCategory, type Schedule, type ScheduleConfig, type ScheduledMatch } from '../domain.js';
 import { EventNotFoundError } from '../errors.js';
 import type { EventSource, MatchRepository, ScheduleRepository, TeamSource } from '../ports.js';
+
+/** Add minutes to an 'HH:mm' clock (wraps at 24h; mirrors the fixtures placer). */
+function addMinutes(hhmm: string, mins: number): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const total = (h ?? 0) * 60 + (m ?? 0) + mins;
+  const hh = Math.floor(total / 60) % 24;
+  return `${String(hh).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+/** S12: build the finals bracket matches for every category (from its resolved group labels +
+ *  the event's finalsType/qualifiersPerGroup) and place them on `finalsDate` — day fixed, time/field
+ *  sequential per category from `dailyStart`, NO conflict-check (finals are few; declared
+ *  simplification). Returns [] when no finalsType is configured. `home`/`away` are placeholders
+ *  (`Nª Girone X`, `Vincente …`) resolved to real teams on read. */
+function buildFinalMatches(
+  sportEventId: string, finalsDate: string, dailyStart: string,
+  cats: FixtureCategory[], qualifiersPerGroup: number, finalsType: FinalsType,
+): ScheduledMatch[] {
+  const out: ScheduledMatch[] = [];
+  let n = 0;
+  for (const cat of cats) {
+    const draws = buildFinals(cat.groups.map((g) => g.label), qualifiersPerGroup, finalsType);
+    const fields = cat.fields.length ? cat.fields : ['Campo 1'];
+    const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
+    draws.forEach((d, i) => {
+      out.push({
+        id: `fm-${++n}`, sportEventId, categoryId: cat.id, groupLabel: d.bracketLabel,
+        day: finalsDate, time: addMinutes(dailyStart, Math.floor(i / fields.length) * slotMinutes),
+        field: fields[i % fields.length]!, home: d.home, away: d.away, status: 'SCHEDULED',
+        phase: 'FINAL', bracketLabel: d.bracketLabel, round: d.round, order: d.order,
+      });
+    });
+  }
+  return out;
+}
 
 export interface GenerateScheduleDeps {
   schedules: ScheduleRepository;
@@ -44,7 +80,11 @@ export function generateSchedule(deps: GenerateScheduleDeps) {
       return { id: categoria, name: categoria, legs: cc.legs, groups, fields: cc.fields, periods: cc.periods, periodMinutes: cc.periodMinutes, breakMinutes: cc.breakMinutes };
     });
     const fixtures = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config.dailyStart, cats);
-    await matches.replace(input.sportEventId, fixtures);
+    // S12: append the finals bracket (placeholders on finalsDate) when the event has a finalsType.
+    const finals = event.finalsType
+      ? buildFinalMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, cats, event.qualifiersPerGroup ?? 2, event.finalsType as FinalsType)
+      : [];
+    await matches.replace(input.sportEventId, [...fixtures, ...finals]);
 
     const next: Schedule = { ...current, organizationId: current.organizationId, config: input.config, status: 'GENERATED' };
     await schedules.save(next);

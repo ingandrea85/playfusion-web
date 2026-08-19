@@ -35,6 +35,8 @@ export interface ScheduleConfig {
   groupsCount: number;
   legs: Legs;
   byCategory?: Record<string, CategorySchedule>;
+  /** S12: the day the finals bracket is played on. Absent ⇒ defaults to the event's last day. */
+  finalsDate?: string;
 }
 
 /** Resolve a category's playing config: its `byCategory` override if present, else the
@@ -60,6 +62,15 @@ export interface Schedule {
  *  is counted in the standings as if FINISHED (see `countsForStandings`). */
 export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED';
 
+/** S12: a match belongs to the group stage or the finals bracket. Absent ⇒ GROUP (legacy). Only
+ *  GROUP matches feed the standings; FINAL matches carry bracket metadata + placeholder home/away
+ *  (`1ª Girone A`, `Vincente SF1`) resolved to real teams on read. */
+export type MatchPhase = 'GROUP' | 'FINAL';
+
+/** S12: how the finals bracket is drawn (mirrors o3's FinalsType — defined locally, ADR-002 forbids
+ *  importing o3). */
+export type FinalsType = 'SINGLE_GROUP_CROSSOVER' | 'SPLIT_GROUP_FINALS' | 'PLACEMENT';
+
 /** A placed group-stage fixture. `categoryId` is the categoria string (categories are
  *  plain strings on the o3 event today); `home`/`away` are the confirmed teams' labels
  *  (participantRef until a real team name exists — S14). */
@@ -79,6 +90,15 @@ export interface ScheduledMatch {
   // S26: lifecycle. Absent on legacy fixtures → treated as SCHEDULED.
   status?: MatchStatus;
   startedAt?: string | null; // ISO instant of kickoff (set on start), else null/undefined.
+  // S12: finals. `phase` absent ⇒ GROUP. FINAL matches carry bracket metadata; `home`/`away` hold
+  // placeholders (`1ª Girone A`, `Vincente SF1`) and `homeResolved`/`awayResolved` are filled on read
+  // once the qualifier is known (S12) — winner propagation for `Vincente …` is S13.
+  phase?: MatchPhase;
+  bracketLabel?: string;
+  round?: string;
+  order?: number;
+  homeResolved?: string; // read-only (derived); never persisted
+  awayResolved?: string;
 }
 
 /** A match with a result recorded (both scores set). */
