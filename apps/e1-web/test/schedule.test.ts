@@ -253,3 +253,23 @@ describe('schedule edit teams (S24)', () => {
     expect(o7.rescheduleMatch).not.toHaveBeenCalled()
   })
 })
+
+describe('schedule finals format per category (finals moved to Calendario)', () => {
+  it('renders a Fase finale select in the config card, prefilled from config', () => {
+    const html = renderSchedule(data('NONE', [], { ...cfg, finalsType: 'SPLIT_GROUP_FINALS', finalsTeamsToBracket: 4 }))
+    expect(html).toContain('Fase finale')
+    expect(html).toContain('cfg-finalsType')
+    expect(html).toContain('cfg-finalsTeamsToBracket')
+    expect(html).toMatch(/value="SPLIT_GROUP_FINALS"[^>]*selected/)
+  })
+  it('per-category cards each carry their own finals select', () => {
+    const perCat = { ...cfg, byCategory: {
+      U10: { fields: ['A'], periods: 2, periodMinutes: 20, breakMinutes: 10, legs: 'SINGLE' as const, finalsType: 'SINGLE_GROUP_CROSSOVER' as const },
+      U12: { fields: ['A'], periods: 2, periodMinutes: 20, breakMinutes: 10, legs: 'SINGLE' as const },
+    } }
+    const html = renderSchedule(data('NONE', [], perCat))
+    // two play cards, each with a finals select
+    expect((html.match(/cfg-finalsType/g) ?? []).length).toBe(2)
+    expect(html).toMatch(/value="SINGLE_GROUP_CROSSOVER"[^>]*selected/)
+  })
+})

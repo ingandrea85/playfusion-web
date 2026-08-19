@@ -1,15 +1,7 @@
-import type { EventDetail, Playbook, FinalsType } from '@playfusion/rest-client'
+import type { EventDetail, Playbook } from '@playfusion/rest-client'
 import { renderOrganizerWorkspace, esc, type WorkspaceTab } from '@playfusion/app-shell'
-import type { Screen, ViewCtx } from '../view.js'
-import { inlineError } from '../view.js'
+import type { Screen } from '../view.js'
 import { criterionLabel } from './tiebreak.js'
-
-const FINALS_TYPE_LABEL: Record<FinalsType, string> = {
-  SINGLE_GROUP_CROSSOVER: 'Girone unico · incroci (1ª-4ª / 2ª-3ª)',
-  SPLIT_GROUP_FINALS: 'Tabelloni per posizione (Oro/Argento…)',
-  PLACEMENT: 'Finali di piazzamento',
-}
-const FINALS_TYPES: FinalsType[] = ['SINGLE_GROUP_CROSSOVER', 'SPLIT_GROUP_FINALS', 'PLACEMENT']
 
 export const workspaceTabs = (id: string): WorkspaceTab[] => {
   const e = encodeURIComponent(id)
@@ -80,24 +72,6 @@ export function renderWorkspace(event: EventDetail, activeTab: string): string {
     </div>`)
 }
 
-/** S12: finals-config editor (finalsType + qualifiers). Changing it after the calendar is generated
- *  requires regenerating (the bracket is built at generate time) — hence the hint. */
-function finalsEditor(event: EventDetail): string {
-  const opts = FINALS_TYPES.map((t) =>
-    `<option value="${t}"${event.finalsType === t ? ' selected' : ''}>${esc(FINALS_TYPE_LABEL[t])}</option>`).join('')
-  return `<div class="pf-card">
-    <h2 class="pf-h3">Fase finale</h2>
-    <div class="pf-field"><label for="fc-type">Formato</label>
-      <select id="fc-type"><option value=""${event.finalsType ? '' : ' selected'}>Nessuna fase finale</option>${opts}</select></div>
-    <div class="pf-field"><label for="fc-bracket">Squadre al tabellone</label>
-      <input id="fc-bracket" type="number" min="2" step="2" value="${esc(String(event.finalsTeamsToBracket ?? ''))}" placeholder="es. 4" />
-      <small class="pf-muted">Solo per "Gironi + girone finale": quante squadre vanno al tabellone (il resto gioca il girone finale).</small></div>
-    <div id="fc-err"></div>
-    <div class="pf-row" style="gap:var(--space-sm)"><button type="button" class="pf-btn pf-btn--primary" id="fc-save">Salva fase finale</button></div>
-    <p class="pf-muted" style="margin-top:var(--space-sm)">Dopo la modifica <b>rigenera il calendario</b> (tab Calendario) per applicare il tabellone.</p>
-  </div>`
-}
-
 export function renderCompetition(event: EventDetail, activeTab = 'competition'): string {
   return shell(event, activeTab, `<div class="pf-card">
     <h2 class="pf-h3">Configurazione competizione</h2>
@@ -106,9 +80,8 @@ export function renderCompetition(event: EventDetail, activeTab = 'competition')
     </dl>
     <h3 class="pf-h4">Criteri di spareggio</h3>
     ${tieBreakList(event)}
-    <p class="pf-muted">La modifica dei criteri avviene alla creazione dell'evento.</p>
-  </div>
-  ${finalsEditor(event)}`)
+    <p class="pf-muted">La modifica dei criteri avviene alla creazione dell'evento. La <b>fase finale</b> si configura per categoria nel tab <b>Calendario</b>.</p>
+  </div>`)
 }
 
 export function renderCategorie(event: EventDetail, activeTab = 'categorie'): string {
@@ -127,20 +100,6 @@ export const workspaceScreen: Screen<EventDetail> = {
 export const competitionScreen: Screen<EventDetail> = {
   load: (ctx, p) => ctx.client.o3.getEvent(p.id),
   render: (e) => renderCompetition(e),
-  mount(root, ctx: ViewCtx, event) {
-    const save = root.querySelector<HTMLButtonElement>('#fc-save'); if (!save) return
-    const err = root.querySelector('#fc-err')!
-    save.addEventListener('click', async () => {
-      const finalsType = root.querySelector<HTMLSelectElement>('#fc-type')!.value as FinalsType | ''
-      const bracketRaw = Number(root.querySelector<HTMLInputElement>('#fc-bracket')!.value)
-      const finalsTeamsToBracket = Number.isFinite(bracketRaw) && bracketRaw >= 2 ? Math.floor(bracketRaw) : undefined
-      if (!finalsType) { err.innerHTML = inlineError('Scegli un formato di fase finale.'); return }
-      if (finalsType === 'SPLIT_GROUP_FINALS' && !finalsTeamsToBracket) { err.innerHTML = inlineError('Indica quante squadre vanno al tabellone (≥ 2, pari).'); return }
-      save.disabled = true
-      try { await ctx.client.o3.updateFinalsConfig(event.sportEventId, { finalsType, finalsEnabled: true, finalsTeamsToBracket }); ctx.refresh() }
-      catch { err.innerHTML = inlineError('Salvataggio della fase finale non riuscito. Riprova.'); save.disabled = false }
-    })
-  },
 }
 
 export const categorieScreen: Screen<EventDetail> = {
