@@ -26,8 +26,12 @@ export interface EventView {
    *  Both read from the o3 event over HTTP. */
   sport?: string;
   tieBreak?: TieBreakCriterion[];
-  /** S12: finals config (O6, from o3). `finalsType` absent ⇒ no bracket generated. */
+  /** S12/S13: finals config (O6, from o3). `finalsType` absent (or `finalsEnabled === false`) ⇒ no
+   *  bracket. `finalsTeamsToBracket` sizes the SPLIT_GROUP_FINALS bracket (S13, v1). `qualifiersPerGroup`
+   *  is deprecated (unused by the v1 formats). */
   finalsType?: FinalsType;
+  finalsEnabled?: boolean;
+  finalsTeamsToBracket?: number;
   qualifiersPerGroup?: number;
 }
 export interface EventSource {

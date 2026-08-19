@@ -65,7 +65,7 @@ export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED';
 /** S12: a match belongs to the group stage or the finals bracket. Absent ⇒ GROUP (legacy). Only
  *  GROUP matches feed the standings; FINAL matches carry bracket metadata + placeholder home/away
  *  (`1ª Girone A`, `Vincente SF1`) resolved to real teams on read. */
-export type MatchPhase = 'GROUP' | 'FINAL';
+export type MatchPhase = 'GROUP' | 'FINAL' | 'FINAL_GROUP';
 
 /** S12: how the finals bracket is drawn (mirrors o3's FinalsType — defined locally, ADR-002 forbids
  *  importing o3). */
@@ -97,6 +97,12 @@ export interface ScheduledMatch {
   bracketLabel?: string;
   round?: string;
   order?: number;
+  // S13: finals bracket wiring. `slot` labels a knockout match (e.g. 'SF1', 'F1', 'T2-SF1', 'FG1')
+  // so a later round's `Vincente <slot>` placeholder can be resolved to its winner (propagation).
+  // `placementFrom`/`placementTo` are the two ranks a placement/final match decides.
+  slot?: string;
+  placementFrom?: number;
+  placementTo?: number;
   homeResolved?: string; // read-only (derived); never persisted
   awayResolved?: string;
 }
