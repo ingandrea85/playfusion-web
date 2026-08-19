@@ -182,3 +182,43 @@ describe('schedule result entry (S10)', () => {
     expect(o7.recordResult).not.toHaveBeenCalled()
   })
 })
+
+describe('schedule category/girone tabs (S23)', () => {
+  const m2 = (id: string, cat: string, grp: string, home: string, away: string): ScheduledMatchView =>
+    ({ id, sportEventId: 'e1', categoryId: cat, groupLabel: grp, day: '2026-08-29', time: '09:00', field: 'C', home, away })
+  const matches = [m2('s1', 'U10', 'Girone A', 'A', 'B'), m2('s2', 'U10', 'Girone B', 'C', 'D'), m2('s3', 'U12', 'Girone A', 'E', 'F')]
+  const mount = () => {
+    const o7 = { generateSchedule: vi.fn(), approveSchedule: vi.fn(), publishSchedule: vi.fn(), rescheduleMatch: vi.fn(), recordResult: vi.fn(), getStandings: vi.fn() }
+    const ctx = { client: { o7 } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh: vi.fn() }
+    const d = data('GENERATED', matches)
+    const root = document.createElement('div'); root.innerHTML = renderSchedule(d)
+    scheduleScreen.mount!(root, ctx as any, d)
+    return root
+  }
+
+  it('defaults to the first category (all gironi) and offers category + girone tabs', () => {
+    const root = mount()
+    const calbody = root.querySelector('#calbody')!.innerHTML
+    expect(calbody).toContain('A <b>vs</b> B') // U10 Girone A
+    expect(calbody).toContain('C <b>vs</b> D') // U10 Girone B
+    expect(calbody).not.toContain('E <b>vs</b> F') // U12 hidden
+    expect(root.querySelector('#cal-cattabs')!.innerHTML).toContain('data-key="U12"')
+    expect(root.querySelector('#cal-girtabs')!.innerHTML).toContain('data-key="Girone B"')
+  })
+
+  it('selecting a category filters to it and resets girone to Tutti', () => {
+    const root = mount()
+    ;(root.querySelector('#cal-cattabs [data-key="U12"]') as HTMLButtonElement).click()
+    const calbody = root.querySelector('#calbody')!.innerHTML
+    expect(calbody).toContain('E <b>vs</b> F')
+    expect(calbody).not.toContain('A <b>vs</b> B')
+  })
+
+  it('selecting a girone filters within the category', () => {
+    const root = mount()
+    ;(root.querySelector('#cal-girtabs [data-key="Girone B"]') as HTMLButtonElement).click()
+    const calbody = root.querySelector('#calbody')!.innerHTML
+    expect(calbody).toContain('C <b>vs</b> D')      // U10 Girone B
+    expect(calbody).not.toContain('A <b>vs</b> B')  // U10 Girone A hidden
+  })
+})
