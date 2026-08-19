@@ -52,3 +52,52 @@ describe('e1 standings category/girone tabs (S23)', () => {
     expect(body).not.toContain('U10 · Girone A')
   })
 })
+
+describe('e1 tie-break resolution (S11)', () => {
+  const rows = (teams: string[]) => teams.map((t) => ({ team: t, played: 1, won: 0, drawn: 1, lost: 0, goalsFor: 1, goalsAgainst: 1, goalDiff: 0, points: 1 }))
+  const tied: GroupStanding[] = [{ categoryId: 'U10', groupLabel: 'Girone A', rows: rows(['Alfa', 'Bravo']), unresolved: [['Alfa', 'Bravo']] }]
+
+  const mountWith = (st: GroupStanding[], setTieOverride = vi.fn().mockResolvedValue({})) => {
+    const refresh = vi.fn()
+    const ctx = { client: { o7: { setTieOverride } } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh }
+    const d = { event, standings: st }
+    const root = document.createElement('div'); root.innerHTML = renderStandingsView(d)
+    standingsScreen.mount!(root, ctx as any, d)
+    return { root, setTieOverride, refresh }
+  }
+
+  it('shows a note + a resolve panel for an unresolved group', () => {
+    const { root } = mountWith(tied)
+    const body = root.querySelector('#stbody')!.innerHTML
+    expect(body).toContain('Parità da definire')
+    expect(root.querySelector('.pf-tiepanel')).not.toBeNull()
+    expect(root.querySelectorAll('.pf-tieitem').length).toBe(2)
+  })
+
+  it('Salva ordine calls o7.setTieOverride with the current order, then refresh', async () => {
+    const { root, setTieOverride, refresh } = mountWith(tied)
+    ;(root.querySelector('.pf-tiepanel .js-tiesave') as HTMLButtonElement).click()
+    await Promise.resolve(); await Promise.resolve()
+    expect(setTieOverride).toHaveBeenCalledWith('e1', 'U10', 'Girone A', ['Alfa', 'Bravo'])
+    expect(refresh).toHaveBeenCalled()
+  })
+
+  it('↑/↓ reorders before saving', async () => {
+    const { root, setTieOverride } = mountWith(tied)
+    // Move Bravo (2nd) up → order becomes [Bravo, Alfa]
+    ;(root.querySelectorAll('.pf-tieitem')[1]!.querySelector('.js-tieup') as HTMLButtonElement).click()
+    ;(root.querySelector('.pf-tiepanel .js-tiesave') as HTMLButtonElement).click()
+    await Promise.resolve(); await Promise.resolve()
+    expect(setTieOverride).toHaveBeenCalledWith('e1', 'U10', 'Girone A', ['Bravo', 'Alfa'])
+  })
+
+  it('renders the audit line when an override is applied', () => {
+    const resolved: GroupStanding[] = [{ categoryId: 'U10', groupLabel: 'Girone A', rows: rows(['Bravo', 'Alfa']), unresolved: [], override: { order: ['Bravo', 'Alfa'], resolvedBy: 'auth0|org1', resolvedAt: '2026-08-19T10:30:00.000Z' } }]
+    const { root } = mountWith(resolved)
+    const body = root.querySelector('#stbody')!.innerHTML
+    expect(body).toContain('Parità risolta manualmente')
+    expect(body).toContain('auth0|org1')
+    expect(body).toContain('2026-08-19 10:30')
+    expect(root.querySelector('.pf-tiepanel')).toBeNull() // no resolve panel once resolved
+  })
+})

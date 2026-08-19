@@ -160,6 +160,14 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-table th { font-size: 12px; color: var(--color-text-muted); font-weight: 700; }
 .pf-table td:nth-child(2), .pf-table th:nth-child(2) { text-align: left; }
 
+/* ---------- Tie-break resolution (S11, E1 only) ---------- */
+.pf-tieaudit { font-size: 13px; margin: 0 0 var(--space-md); }
+.pf-tiepanel { margin-bottom: var(--space-md); }
+.pf-tienote { margin: 0 0 var(--space-sm); font-size: 14px; }
+.pf-tielist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
+.pf-tieitem { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); padding: 6px 10px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); }
+.pf-tieitem__moves { display: inline-flex; gap: var(--space-xs); }
+
 /* ---------- Category/girone tabs (S23) ---------- */
 .pf-tabs { display: flex; gap: var(--space-xs); overflow-x: auto; margin-bottom: var(--space-sm); padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
 .pf-tab { flex: 0 0 auto; padding: 6px 12px; border: 1px solid var(--color-border-default); background: var(--color-surface-default);
