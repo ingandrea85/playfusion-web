@@ -97,11 +97,26 @@ export function wireDirector(root: ParentNode, o7: O7Api, eventId: string, field
       return
     }
     if (st === 'FINISHED') {
+      // Knockout ended level → the director decrees who advances (rules applied offline).
+      const isDrawnFinal = m.phase === 'FINAL' && (m.homeScore ?? 0) === (m.awayScore ?? 0)
+      const decideBlock = isDrawnFinal ? `<div style="margin-top:var(--space-md);text-align:center">
+          <div class="pf-eyebrow" style="justify-content:center">Pareggio — chi passa?</div>
+          <div class="pf-row" style="justify-content:center;gap:var(--space-sm);margin-top:var(--space-xs);flex-wrap:wrap">
+            <button type="button" class="pf-btn${m.decidedWinner === 'HOME' ? ' pf-btn--primary' : ''}" id="dir-pass-home">${esc(dHome(m))}</button>
+            <button type="button" class="pf-btn${m.decidedWinner === 'AWAY' ? ' pf-btn--primary' : ''}" id="dir-pass-away">${esc(dAway(m))}</button>
+          </div></div>` : ''
       const { close } = openSheet(sheet, `${head}
         <div class="pf-row pf-mono" style="justify-content:center;font-size:34px;font-weight:700">${esc(m.homeScore ?? 0)} – ${esc(m.awayScore ?? 0)}</div>
-        <p class="pf-muted" style="text-align:center">Gara terminata. Per correzioni contatta l'organizzazione.</p>
+        <p class="pf-muted" style="text-align:center">Gara terminata. Per correzioni contatta l'organizzazione.</p>${decideBlock}
         <div class="pf-row" style="justify-content:center;margin-top:var(--space-md)"><button type="button" class="pf-btn" id="dir-close">Chiudi</button></div>`)
       sheet.querySelector('#dir-close')!.addEventListener('click', close)
+      const pass = async (winner: 'HOME' | 'AWAY', e: Event) => {
+        const btn = e.currentTarget as HTMLButtonElement; btn.disabled = true
+        try { const u = await o7.decideWinner(eventId, matchId, winner); upsert(u); draw(); openMatch(matchId) }
+        catch { showError(); close() }
+      }
+      sheet.querySelector('#dir-pass-home')?.addEventListener('click', (e) => pass('HOME', e))
+      sheet.querySelector('#dir-pass-away')?.addEventListener('click', (e) => pass('AWAY', e))
       return
     }
     if (st === 'SCHEDULED') {
