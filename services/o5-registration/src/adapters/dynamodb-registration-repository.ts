@@ -1,4 +1,4 @@
-import { PutCommand, GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, GetCommand, QueryCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import type { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { resourceName } from '@playfusion/platform-lib';
 import type { RegistrationRepository } from '../ports/registration-repository.js';
@@ -12,6 +12,9 @@ export class DynamoDbRegistrationRepository implements RegistrationRepository {
   async get(id: string) {
     const res = await this.db.send(new GetCommand({ TableName: this.table, Key: { registrationId: id } }));
     return res.Item as RegistrationRequest | undefined;
+  }
+  async deleteById(id: string) {
+    await this.db.send(new DeleteCommand({ TableName: this.table, Key: { registrationId: id } }));
   }
   async findByParticipantAndEvent(participantRef: string, sportEventId: string) {
     const res = await this.db.send(new QueryCommand({

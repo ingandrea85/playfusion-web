@@ -8,6 +8,8 @@ import {
   auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, requireMagicLink, getIdentity,
 } from '@playfusion/platform-lib';
 import { applyRegistration } from './application/apply-registration.js';
+import { addTeam } from './application/add-team.js';
+import { removeTeam } from './application/remove-team.js';
 import { listRegistrationsByEvent } from './application/list-registrations-by-event.js';
 import { getRegistrationWindow } from './application/get-registration-window.js';
 import type { RegistrationStatus } from './domain/registration.js';
@@ -36,7 +38,7 @@ const app = new Hono();
 // Actual (non-preflight) responses need CORS headers too: API Gateway's
 // defaultCorsPreflightOptions only answers OPTIONS, so browsers block GET/POST replies
 // unless the Lambda sets Access-Control-Allow-Origin itself.
-app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'] }));
+app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 
 const applyBody = z.object({ participantRef: z.string(), sportEventId: z.string(), categoria: z.string() });
 app.post('/registrations', coach, async (c) => {
@@ -60,6 +62,21 @@ app.post('/registrations/:id/reject', organizer, async (c) => {
     registrationId: c.req.param('id'), reason, organizationId: orgOf(c),
   });
   return c.json(reg);
+});
+
+// S14 — PB-2 direct roster: the organizer adds a team by name (born Confirmed) / removes one.
+const addTeamBody = z.object({ categoria: z.string().min(1), teamName: z.string().min(1) });
+app.post('/events/:id/teams', organizer, async (c) => {
+  const body = addTeamBody.parse(await c.req.json());
+  const reg = await addTeam({ repo, publisher })({
+    registrationId: randomUUID(), participantRef: randomUUID(), sportEventId: c.req.param('id'),
+    organizationId: orgOf(c), ...body,
+  });
+  return c.json(reg, 201);
+});
+app.delete('/registrations/:id', organizer, async (c) => {
+  await removeTeam({ repo })({ registrationId: c.req.param('id') });
+  return c.body(null, 204);
 });
 
 // S1.3 read: registrations for an event, optionally filtered by state.

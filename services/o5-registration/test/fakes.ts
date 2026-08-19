@@ -8,6 +8,7 @@ export class InMemoryRegistrationRepository implements RegistrationRepository {
   private byId = new Map<string, RegistrationRequest>();
   async save(r: RegistrationRequest) { this.byId.set(r.registrationId, r); }
   async get(id: string) { return this.byId.get(id); }
+  async deleteById(id: string) { this.byId.delete(id); }
   async findByParticipantAndEvent(p: string, e: string) {
     return [...this.byId.values()].find(r => r.participantRef === p && r.sportEventId === e);
   }

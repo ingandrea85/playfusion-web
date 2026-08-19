@@ -41,8 +41,11 @@ export interface RegistrationView {
   sportEventId: string
   categoria: string
   status: RegistrationStatus
+  /** S14 (PB-2 direct roster): the real team name, when the organizer entered one. */
+  teamName?: string
 }
 export interface ApplyRegistrationInput { participantRef: string; sportEventId: string; categoria: string }
+export interface AddTeamInput { categoria: string; teamName: string }
 export interface CategoryCapacity { categoria: string; cap: number; count: number; remaining: number }
 export interface RegistrationWindowView { sportEventId: string; state: 'Open' | 'Closed'; categories: CategoryCapacity[] }
 

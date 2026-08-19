@@ -4,7 +4,7 @@ import type { RegistrationRequest, RegistrationStatus } from '../domain/registra
 /** Public projection of a registration: internal persistence fields (pe, organizationId)
  *  are not part of the read contract. Feeds the E1 inbox (Applied) and participants
  *  (Confirmed) views. */
-export type RegistrationView = Pick<RegistrationRequest, 'registrationId' | 'participantRef' | 'sportEventId' | 'categoria' | 'status'>;
+export type RegistrationView = Pick<RegistrationRequest, 'registrationId' | 'participantRef' | 'sportEventId' | 'categoria' | 'status' | 'teamName'>;
 
 const view = (r: RegistrationRequest): RegistrationView => ({
   registrationId: r.registrationId,
@@ -12,6 +12,7 @@ const view = (r: RegistrationRequest): RegistrationView => ({
   sportEventId: r.sportEventId,
   categoria: r.categoria,
   status: r.status,
+  ...(r.teamName ? { teamName: r.teamName } : {}),
 });
 
 type Deps = { repo: RegistrationRepository };
