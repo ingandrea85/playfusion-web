@@ -14,6 +14,7 @@ import { standingsScreen } from './views/standings.js'
 import { finalsScreen } from './views/finals.js'
 import { enrollScreen } from './views/enroll.js'
 import { participantsScreen } from './views/participants.js'
+import { resourcesScreen } from './views/resources.js'
 import { createAuth0Adapter, ensureAuthenticated, authProviderFrom } from './auth/auth0.js'
 
 const cfg = readConfig(import.meta.env)
@@ -46,6 +47,7 @@ async function boot() {
       .on('#/events/:id/schedule', (p) => route(scheduleScreen, p))
       .on('#/events/:id/standings', (p) => route(standingsScreen, p))
       .on('#/events/:id/finals', (p) => route(finalsScreen, p))
+      .on('#/events/:id/resources', (p) => route(resourcesScreen, p))
       .on('#/events/:id/enroll', (p) => route(enrollScreen, p))
       .on('#/events/:id/participants', (p) => route(participantsScreen, p))
       .on('#/events/:id', (p) => route(workspaceScreen, p))

@@ -1,5 +1,6 @@
 import type { Schedule, ScheduledMatch, TieOverride } from '../src/domain.js';
-import type { EventSource, EventView, MatchRepository, ScheduleRepository, TeamSource, TieOverrideRepository } from '../src/ports.js';
+import type { ResourceConfig } from '../src/resources.js';
+import type { EventSource, EventView, MatchRepository, ResourceRepository, ScheduleRepository, TeamSource, TieOverrideRepository } from '../src/ports.js';
 
 export class InMemoryScheduleRepository implements ScheduleRepository {
   private byId = new Map<string, Schedule>();
@@ -25,6 +26,12 @@ export class InMemoryTieOverrideRepository implements TieOverrideRepository {
     const rest = (this.byEvent.get(o.sportEventId) ?? []).filter((x) => !(x.categoryId === o.categoryId && x.groupLabel === o.groupLabel));
     this.byEvent.set(o.sportEventId, [...rest, o]);
   }
+}
+
+export class InMemoryResourceRepository implements ResourceRepository {
+  private byId = new Map<string, ResourceConfig>();
+  async get(id: string) { return this.byId.get(id); }
+  async save(id: string, config: ResourceConfig) { this.byId.set(id, config); }
 }
 
 export class FakeTeamSource implements TeamSource {

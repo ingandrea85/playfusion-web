@@ -73,6 +73,7 @@ export class DataStack extends Stack {
     this.tables['o7-schedules'] = table('o7-schedules', 'sportEventId');
     this.tables['o7-matches'] = table('o7-matches', 'sportEventId');
     this.tables['o7-tie-overrides'] = table('o7-tie-overrides', 'sportEventId');
+    this.tables['o7-resources'] = table('o7-resources', 'sportEventId'); // S17
 
     // Shared domain-event bus (source = EVENT_SOURCE, same across envs)
     this.bus = new EventBus(this, 'bus', { eventBusName: busName(env) });
