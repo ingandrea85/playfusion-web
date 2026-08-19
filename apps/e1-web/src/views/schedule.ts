@@ -1,5 +1,12 @@
 import { esc, renderCalendar, renderTabs, categoryKeys, groupKeys, renderStepper, wireSteppers, readStepper, copyToClipboard, displayStatus, matchStatusBadge } from '@playfusion/app-shell'
-import type { CategorySchedule, EventDetail, ScheduleConfig, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
+import type { CategorySchedule, EventDetail, FinalsType, ScheduleConfig, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
+
+const FINALS_TYPE_LABEL: Record<FinalsType, string> = {
+  PLACEMENT: 'Tabellone eliminazione (per fascia)',
+  SINGLE_GROUP_CROSSOVER: 'Girone unico · coppie (1ª-2ª, 3ª-4ª…)',
+  SPLIT_GROUP_FINALS: 'Gironi + girone finale',
+}
+const FINALS_TYPES: FinalsType[] = ['PLACEMENT', 'SINGLE_GROUP_CROSSOVER', 'SPLIT_GROUP_FINALS']
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
 
@@ -16,7 +23,8 @@ const isLocked = (s: ScheduleView['status']): boolean => s === 'APPROVED' || s =
 const catName = (c: string): string => c
 
 const defaultCat = (c: ScheduleConfig): CategorySchedule =>
-  ({ fields: c.fields, periods: c.periods, periodMinutes: c.periodMinutes, breakMinutes: c.breakMinutes, legs: c.legs })
+  ({ fields: c.fields, periods: c.periods, periodMinutes: c.periodMinutes, breakMinutes: c.breakMinutes, legs: c.legs,
+     finalsType: c.finalsType, finalsEnabled: c.finalsEnabled, finalsTeamsToBracket: c.finalsTeamsToBracket })
 const textToFields = (s: string): string[] => s.split(',').map((f) => f.trim()).filter(Boolean)
 
 /** One playing-config card (fields + match params + legs). `cat` present → per-category card
@@ -35,6 +43,13 @@ function playCard(cc: CategorySchedule, locked: boolean, cat?: string): string {
         <option value="SINGLE" ${cc.legs === 'SINGLE' ? 'selected' : ''}>Solo andata</option>
         <option value="HOME_AWAY" ${cc.legs === 'HOME_AWAY' ? 'selected' : ''}>Andata e ritorno</option>
       </select></div>
+    </div>
+    <div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
+      <div class="pf-field" style="margin-bottom:0"><label>Fase finale</label><select class="cfg-finalsType" ${dis}>
+        <option value=""${cc.finalsType ? '' : ' selected'}>Nessuna</option>
+        ${FINALS_TYPES.map((t) => `<option value="${t}" ${cc.finalsType === t ? 'selected' : ''}>${esc(FINALS_TYPE_LABEL[t])}</option>`).join('')}
+      </select></div>
+      <div class="pf-field" style="margin-bottom:0"><label>Squadre al tabellone</label><input class="cfg-finalsTeamsToBracket" type="number" min="2" step="2" value="${cc.finalsTeamsToBracket ?? ''}" placeholder="solo Gironi + girone finale" ${dis} /></div>
     </div>
   </div>`
 }
@@ -142,11 +157,16 @@ export const scheduleScreen: Screen<ScheduleData> = {
     const readCard = (el: Element): CategorySchedule => {
       const val = (s: string) => el.querySelector<HTMLInputElement>(s)?.value ?? ''
       const num = (s: string, fb: number) => { const v = Number(val(s)); return Number.isFinite(v) && v > 0 ? v : fb }
+      const finalsType = (el.querySelector<HTMLSelectElement>('.cfg-finalsType')?.value || undefined) as FinalsType | undefined
+      const bracket = Number(val('.cfg-finalsTeamsToBracket'))
       return {
         fields: textToFields(val('.cfg-fields')),
         periods: num('.cfg-periods', 2), periodMinutes: num('.cfg-periodMinutes', 20),
         breakMinutes: Number(val('.cfg-breakMinutes')) || 0,
         legs: el.querySelector<HTMLSelectElement>('.cfg-legs')?.value === 'HOME_AWAY' ? 'HOME_AWAY' : 'SINGLE',
+        // Finals format per category; only include the fields that are set (avoid undefined noise).
+        ...(finalsType ? { finalsType, finalsEnabled: true } : {}),
+        ...(Number.isFinite(bracket) && bracket >= 2 ? { finalsTeamsToBracket: Math.floor(bracket) } : {}),
       }
     }
     const buildConfig = (): { config?: ScheduleConfig; error?: string } => {

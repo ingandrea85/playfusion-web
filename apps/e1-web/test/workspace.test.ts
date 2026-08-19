@@ -58,12 +58,10 @@ describe('workspace Categorie tab', () => {
 })
 
 describe('competition finals editor (S12)', () => {
-  it('renders the finals-config editor with the current values', () => {
-    const html = renderCompetition({ ...full, finalsType: 'SPLIT_GROUP_FINALS', finalsTeamsToBracket: 4 })
-    expect(html).toContain('Fase finale')
-    expect(html).toContain('SPLIT_GROUP_FINALS')
-    expect(html).toContain('Squadre al tabellone')
-    expect(html).toContain('value="4"')
-    expect(html).toContain('rigenera il calendario')
+  it('points finals config to the Calendario tab (no event-level editor)', () => {
+    const html = renderCompetition(full)
+    expect(html).toContain('fase finale')
+    expect(html).toContain('Calendario')
+    expect(html).not.toContain('id="fc-type"') // the old event-level editor is gone
   })
 })

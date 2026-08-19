@@ -14,12 +14,7 @@ export interface EventDetail {
   location?: string
   startTime?: string
   tieBreak?: TieBreakCriterion[]
-  // S12/S13: finals config. finalsType absent (or finalsEnabled === false) ⇒ no bracket.
-  // finalsTeamsToBracket sizes the SPLIT_GROUP_FINALS bracket (S13). qualifiersPerGroup deprecated.
-  finalsType?: FinalsType
-  finalsEnabled?: boolean
-  finalsTeamsToBracket?: number
-  qualifiersPerGroup?: number
+  // Finals format is per-category on the ScheduleConfig (Calendario tab), not on the event.
 }
 export type EventSummary = EventDetail
 export interface CreateEventInput {
@@ -32,8 +27,6 @@ export interface CreateEventInput {
   tieBreak?: TieBreakCriterion[]
   playbook?: Playbook
 }
-// S12/S13: the finals-config editor payload (Competizione tab).
-export interface FinalsConfigInput { finalsType: FinalsType; qualifiersPerGroup?: number; finalsEnabled?: boolean; finalsTeamsToBracket?: number }
 export interface CreateEventResult { sportEventId: string; status: 'Published' }
 // o6 gironi (composition on the o3 event) — S8
 export interface Group { label: string; teams: string[] }
@@ -77,6 +70,11 @@ export interface CategorySchedule {
   periodMinutes: number
   breakMinutes: number
   legs: Legs
+  // Finals format per category (moved off the event): finalsType absent (or finalsEnabled === false)
+  // ⇒ no bracket; finalsTeamsToBracket sizes the SPLIT_GROUP_FINALS bracket.
+  finalsType?: FinalsType
+  finalsEnabled?: boolean
+  finalsTeamsToBracket?: number
 }
 export interface ScheduleConfig {
   fields: string[]
@@ -87,7 +85,11 @@ export interface ScheduleConfig {
   groupsCount: number
   legs: Legs
   byCategory?: Record<string, CategorySchedule>
-  finalsDate?: string // S12: day the finals bracket is played on (defaults to the event's last day)
+  finalsDate?: string // day the finals bracket is played on (global; defaults to the event's last day)
+  // top-level default finals format (the "same play-config for all categories" mode)
+  finalsType?: FinalsType
+  finalsEnabled?: boolean
+  finalsTeamsToBracket?: number
 }
 export interface ScheduleView {
   sportEventId: string

@@ -74,20 +74,6 @@ describe('o3 gironi (S8)', () => {
   })
 })
 
-describe('o3 finals config (S12)', () => {
-  const r = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } })
-  it('updateFinalsConfig PUTs to /o3/events/:id/finals-config', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(r({ finalsType: 'SPLIT_GROUP_FINALS', qualifiersPerGroup: 2 }))
-    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
-    const out = await c.o3.updateFinalsConfig('e1', { finalsType: 'SPLIT_GROUP_FINALS', qualifiersPerGroup: 2 })
-    const [url, init] = fetchMock.mock.calls[0]
-    expect(url).toBe('https://api/prod/o3/events/e1/finals-config')
-    expect(init.method).toBe('PUT')
-    expect(JSON.parse(init.body)).toEqual({ finalsType: 'SPLIT_GROUP_FINALS', qualifiersPerGroup: 2 })
-    expect(out.finalsType).toBe('SPLIT_GROUP_FINALS')
-  })
-})
-
 describe('o7 getMatches carries finals (S12)', () => {
   const r = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } })
   it('getMatches passes through phase/bracket/resolved fields', async () => {

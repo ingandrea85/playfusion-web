@@ -13,7 +13,6 @@ const j = (r: Response) => r.json() as Promise<any>;
 const req = (method: string, path: string, body?: unknown, headers: Record<string, string> = {}) =>
   fetch(`${API}${path}`, { method, headers: { 'content-type': 'application/json', 'x-organization-id': 'org-pilot', ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
 const post = (p: string, b?: unknown, h: Record<string, string> = {}) => req('POST', p, b, h);
-const put = (p: string, b?: unknown, h: Record<string, string> = {}) => req('PUT', p, b, h);
 const get = (p: string, h: Record<string, string> = {}) => req('GET', p, undefined, h);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function postUntil(path: string, body: unknown, expected: number, headers: Record<string, string> = {}, timeoutMs = 25_000): Promise<Response> {
@@ -33,8 +32,7 @@ const recordAndFinish = async (eventId: string, matchId: string, hs: number, as:
 run('test_e2e_finals_bracketPlaceholdersThenResolveOnGroupComplete', async () => {
   const org = await token(['RegistrationManager']);
   const sportEventId = (await j(await post('/o3/events', { sport: 'Calcio', categorie: ['U10'], dates: { from: '2026-09-01', to: '2026-09-03' } }, { authorization: org }))).sportEventId as string;
-  // Finals config via the O6 editor endpoint.
-  expect((await put(`/o3/events/${sportEventId}/finals-config`, { finalsType: 'SINGLE_GROUP_CROSSOVER', qualifiersPerGroup: 2 }, { authorization: org })).status).toBe(200);
+  // Finals format now lives on the schedule config (Calendario), passed at generate time.
   await post(`/o5/events/${sportEventId}/registration-window:open`, { capacities: { U10: 8 } }, { authorization: org });
   for (let i = 0; i < 3; i++) {
     const coach = await token(['coach'], 'coach-enrollment');
@@ -46,7 +44,7 @@ run('test_e2e_finals_bracketPlaceholdersThenResolveOnGroupComplete', async () =>
   let all: any[] = [];
   const deadline = Date.now() + 25_000;
   do {
-    await j(await post(`/o7/events/${sportEventId}/schedule:generate`, { fields: ['Campo A'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', groupsCount: 1, legs: 'SINGLE', finalsDate: '2026-09-03' }, { authorization: org }));
+    await j(await post(`/o7/events/${sportEventId}/schedule:generate`, { fields: ['Campo A'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', groupsCount: 1, legs: 'SINGLE', finalsDate: '2026-09-03', finalsType: 'SINGLE_GROUP_CROSSOVER' }, { authorization: org }));
     all = await j(await get(`/o7/events/${sportEventId}/matches`));
     if (all.filter((m) => m.phase === 'FINAL').length >= 1) break;
     await sleep(750);

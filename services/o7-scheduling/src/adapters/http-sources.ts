@@ -14,7 +14,7 @@ export class HttpEventSource implements EventSource {
     if (res.status === 404) return undefined;
     if (!res.ok) return undefined;
     const e = (await res.json()) as EventView;
-    return { sportEventId: e.sportEventId, dates: e.dates, categorie: e.categorie ?? [], gironi: e.gironi, sport: e.sport, tieBreak: e.tieBreak, finalsType: e.finalsType, finalsEnabled: e.finalsEnabled, finalsTeamsToBracket: e.finalsTeamsToBracket, qualifiersPerGroup: e.qualifiersPerGroup };
+    return { sportEventId: e.sportEventId, dates: e.dates, categorie: e.categorie ?? [], gironi: e.gironi, sport: e.sport, tieBreak: e.tieBreak };
   }
 }
 

@@ -1,4 +1,4 @@
-import type { FinalsType, ResolvedGroup, Schedule, ScheduledMatch, TieBreakCriterion, TieOverride } from './domain.js';
+import type { ResolvedGroup, Schedule, ScheduledMatch, TieBreakCriterion, TieOverride } from './domain.js';
 
 /** Persistence seam for the Schedule aggregate (one per event). */
 export interface ScheduleRepository {
@@ -23,16 +23,10 @@ export interface EventView {
    *  o3's type, ADR-002). When present for a category, it overrides the auto-split. */
   gironi?: Record<string, { groups: ResolvedGroup[]; locked: boolean }>;
   /** S11: the sport (for `defaultTieBreak`) and the event's configured tie-break policy (S6).
-   *  Both read from the o3 event over HTTP. */
+   *  Both read from the o3 event over HTTP. (Finals format moved to the o7 ScheduleConfig,
+   *  per-category — no longer read from the event.) */
   sport?: string;
   tieBreak?: TieBreakCriterion[];
-  /** S12/S13: finals config (O6, from o3). `finalsType` absent (or `finalsEnabled === false`) ⇒ no
-   *  bracket. `finalsTeamsToBracket` sizes the SPLIT_GROUP_FINALS bracket (S13, v1). `qualifiersPerGroup`
-   *  is deprecated (unused by the v1 formats). */
-  finalsType?: FinalsType;
-  finalsEnabled?: boolean;
-  finalsTeamsToBracket?: number;
-  qualifiersPerGroup?: number;
 }
 export interface EventSource {
   get(sportEventId: string): Promise<EventView | undefined>;

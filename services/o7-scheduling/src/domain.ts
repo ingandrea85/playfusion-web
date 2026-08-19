@@ -19,6 +19,13 @@ export interface CategorySchedule {
   periodMinutes: number;
   breakMinutes: number;
   legs: Legs;
+  // Finals format (moved from the o3 event so categories of one tournament can differ). Resolved
+  // per category from `byCategory` else the top-level default (see categoryConfig). `finalsType`
+  // absent (or `finalsEnabled === false`) ⇒ no bracket for that category. `finalsTeamsToBracket`
+  // sizes the SPLIT_GROUP_FINALS bracket.
+  finalsType?: FinalsType;
+  finalsEnabled?: boolean;
+  finalsTeamsToBracket?: number;
 }
 
 /** Fields + match-format params live on the Schedule (O7), never on the Event/Category.
@@ -35,16 +42,22 @@ export interface ScheduleConfig {
   groupsCount: number;
   legs: Legs;
   byCategory?: Record<string, CategorySchedule>;
-  /** S12: the day the finals bracket is played on. Absent ⇒ defaults to the event's last day. */
+  /** S12: the day the finals bracket is played on (global for the event). Absent ⇒ the event's last day. */
   finalsDate?: string;
+  /** Default finals format applied to every category (the "same for all" mode). A `byCategory`
+   *  entry overrides it per category. */
+  finalsType?: FinalsType;
+  finalsEnabled?: boolean;
+  finalsTeamsToBracket?: number;
 }
 
 /** Resolve a category's playing config: its `byCategory` override if present, else the
- *  top-level defaults. */
+ *  top-level defaults — including the finals format ("same for all" default vs per-category). */
 export function categoryConfig(config: ScheduleConfig, categoria: string): CategorySchedule {
   return config.byCategory?.[categoria] ?? {
     fields: config.fields, periods: config.periods, periodMinutes: config.periodMinutes,
     breakMinutes: config.breakMinutes, legs: config.legs,
+    finalsType: config.finalsType, finalsEnabled: config.finalsEnabled, finalsTeamsToBracket: config.finalsTeamsToBracket,
   };
 }
 
