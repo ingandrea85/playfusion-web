@@ -1,4 +1,4 @@
-import type { FixtureCategory, ScheduleConfig, ScheduledMatch } from './domain.js';
+import type { FixtureCategory, ScheduledMatch } from './domain.js';
 
 /** Every unordered pair (i<j) of a group's teams — a single round-robin. */
 function pairs(teams: string[]): Array<[string, string]> {
@@ -24,35 +24,49 @@ function addMinutes(hhmm: string, mins: number): string {
   return `${String(hh).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
 }
 
-/** Deterministic "plausible" fixture generator: for each category's resolved groups (the
- *  gironi composition — S8), build each group's round-robin (doubled for HOME_AWAY), then
- *  place matches on fields/slots/days by rotating field → slot → day. No conflict avoidance,
- *  no `Math.random`; ids are `sm-${n}`. */
+interface Placement { fields: string[]; slotMinutes: number }
+interface Cursor { field: number; slot: number; day: number }
+
+/** Deterministic "plausible" fixture generator (S22 per-category placement). For each
+ *  category's resolved groups (the gironi composition — S8), build each group's round-robin
+ *  (doubled for HOME_AWAY), tagging every match with that category's own fields + slot length.
+ *
+ *  Placement uses one cursor PER (fields + slot-length) signature: categories sharing the
+ *  same fields+timing lay out sequentially on a single cursor (no collisions — the "same for
+ *  all" case behaves like before); categories with distinct fields lay out in parallel on
+ *  their own fields (no collisions because the fields differ). Two categories sharing only
+ *  some fields can still overlap — accepted, and resolvable via the S9 reschedule editor.
+ *
+ *  Deterministic: no `Math.random`; ids `sm-${n}` in category → group → pair order. */
 export function buildFixtures(
-  eventId: string, startDate: string, endDate: string, config: ScheduleConfig, cats: FixtureCategory[],
+  eventId: string, startDate: string, endDate: string, dailyStart: string, slotsPerDay: number, cats: FixtureCategory[],
 ): ScheduledMatch[] {
-  const raw: Array<{ categoryId: string; groupLabel: string; home: string; away: string }> = [];
+  const raw: Array<{ categoryId: string; groupLabel: string; home: string; away: string; place: Placement }> = [];
   for (const cat of cats) {
+    const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
+    const fields = cat.fields.length ? cat.fields : ['Campo 1'];
+    const place: Placement = { fields, slotMinutes };
     for (const group of cat.groups) {
       for (const [home, away] of pairs(group.teams)) {
-        raw.push({ categoryId: cat.id, groupLabel: group.label, home, away });
-        if (cat.legs === 'HOME_AWAY') raw.push({ categoryId: cat.id, groupLabel: group.label, home: away, away: home });
+        raw.push({ categoryId: cat.id, groupLabel: group.label, home, away, place });
+        if (cat.legs === 'HOME_AWAY') raw.push({ categoryId: cat.id, groupLabel: group.label, home: away, away: home, place });
       }
     }
   }
 
   const days = dateRange(startDate, endDate);
-  const slotMinutes = config.periods * config.periodMinutes + config.breakMinutes;
-  const fields = config.fields.length ? config.fields : ['Campo 1'];
-  let field = 0, slot = 0, day = 0;
+  const cursors = new Map<string, Cursor>();
   return raw.map((r, idx) => {
+    const key = `${r.place.fields.join('|')}@${r.place.slotMinutes}`;
+    const cur = cursors.get(key) ?? { field: 0, slot: 0, day: 0 };
     const match: ScheduledMatch = {
       id: `sm-${idx + 1}`, sportEventId: eventId, categoryId: r.categoryId, groupLabel: r.groupLabel,
-      day: days[day % days.length]!, time: addMinutes(config.dailyStart, slot * slotMinutes),
-      field: fields[field]!, home: r.home, away: r.away,
+      day: days[cur.day % days.length]!, time: addMinutes(dailyStart, cur.slot * r.place.slotMinutes),
+      field: r.place.fields[cur.field]!, home: r.home, away: r.away,
     };
-    field++;
-    if (field >= fields.length) { field = 0; slot++; if (slot >= config.slotsPerDay) { slot = 0; day++; } }
+    cur.field++;
+    if (cur.field >= r.place.fields.length) { cur.field = 0; cur.slot++; if (cur.slot >= slotsPerDay) { cur.slot = 0; cur.day++; } }
+    cursors.set(key, cur);
     return match;
   });
 }

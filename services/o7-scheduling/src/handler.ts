@@ -28,6 +28,13 @@ const orgOf = (c: any) => getIdentity(c)?.organizationId ?? c.req.header('x-orga
 
 // S7.1: match-format params + fields + the (uniform, until S8) group structure are the
 // generate input. All positive; legs defaults SINGLE, groupsCount defaults 1.
+const categorySchedule = z.object({
+  fields: z.array(z.string()),
+  periods: z.number().int().positive(),
+  periodMinutes: z.number().int().positive(),
+  breakMinutes: z.number().int().nonnegative(),
+  legs: z.enum(['SINGLE', 'HOME_AWAY']),
+});
 export const scheduleConfigBody = z.object({
   fields: z.array(z.string()).default(['Campo A', 'Campo B']),
   periods: z.number().int().positive().default(2),
@@ -37,6 +44,8 @@ export const scheduleConfigBody = z.object({
   slotsPerDay: z.number().int().positive().default(8),
   groupsCount: z.number().int().positive().default(1),
   legs: z.enum(['SINGLE', 'HOME_AWAY']).default('SINGLE'),
+  // S22: optional per-category override of fields + match params + legs.
+  byCategory: z.record(categorySchedule).optional(),
 });
 
 // Generate/approve/publish are organizer mutations (S2.4 bridge / Auth0 JWT).
