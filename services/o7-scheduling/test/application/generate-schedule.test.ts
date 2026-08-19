@@ -93,10 +93,10 @@ test('test_generate_appendsFinalsWhenFinalsTypeConfigured', async () => {
   events = new FakeEventSource({ 'evt-f': {
     sportEventId: 'evt-f', dates: { from: '2026-08-29', to: '2026-08-31' }, categorie: ['U10'],
     gironi: { U10: { groups: [{ label: 'Girone A', teams: ['A', 'B', 'C'] }], locked: true } },
-    finalsType: 'SINGLE_GROUP_CROSSOVER', qualifiersPerGroup: 2,
   } });
   teams = new FakeTeamSource({ 'evt-f': { U10: ['A', 'B', 'C'] } });
-  await generateSchedule(deps())({ sportEventId: 'evt-f', organizationId: 'org-1', config: { ...config, finalsDate: '2026-08-31' } });
+  // Finals format now lives on the schedule config (per-category; here the top-level default = all).
+  await generateSchedule(deps())({ sportEventId: 'evt-f', organizationId: 'org-1', config: { ...config, finalsDate: '2026-08-31', finalsType: 'SINGLE_GROUP_CROSSOVER' } });
   const all = await matches.list('evt-f');
   const finals = all.filter((m) => m.phase === 'FINAL');
   expect(finals).toHaveLength(1); // v1 SINGLE_GROUP_CROSSOVER: 3 teams → floor(3/2)=1 placement final
@@ -118,12 +118,36 @@ test('test_generate_finalsMatchesHaveNoUndefinedValues_splitGroup', async () => 
   events = new FakeEventSource({ 'evt-s': {
     sportEventId: 'evt-s', dates: { from: '2026-08-29', to: '2026-08-31' }, categorie: ['U10'],
     gironi: { U10: { groups: [{ label: 'Girone A', teams: ['A', 'B', 'C', 'D'] }], locked: true } },
-    finalsType: 'SPLIT_GROUP_FINALS', finalsTeamsToBracket: 2,
   } });
   teams = new FakeTeamSource({ 'evt-s': { U10: ['A', 'B', 'C', 'D'] } });
-  await generateSchedule(deps())({ sportEventId: 'evt-s', organizationId: 'org-1', config: { ...config, finalsDate: '2026-08-31' } });
+  await generateSchedule(deps())({ sportEventId: 'evt-s', organizationId: 'org-1', config: { ...config, finalsDate: '2026-08-31', finalsType: 'SPLIT_GROUP_FINALS', finalsTeamsToBracket: 2 } });
   const all = await matches.list('evt-s');
   expect(all.some((m) => m.phase === 'FINAL')).toBe(true);
   expect(all.some((m) => m.phase === 'FINAL_GROUP')).toBe(true);
   for (const m of all) for (const [k, v] of Object.entries(m)) expect(v, `${m.id}.${k} is undefined`).not.toBeUndefined();
+})
+
+test('test_generate_perCategoryFinalsFormats', async () => {
+  // Two categories, different finals formulas via byCategory: U10 SINGLE_GROUP_CROSSOVER, U12 none.
+  events = new FakeEventSource({ 'evt-pc': {
+    sportEventId: 'evt-pc', dates: { from: '2026-08-29', to: '2026-08-31' }, categorie: ['U10', 'U12'],
+    gironi: {
+      U10: { groups: [{ label: 'Girone A', teams: ['A', 'B', 'C', 'D'] }], locked: true },
+      U12: { groups: [{ label: 'Girone A', teams: ['X', 'Y', 'Z'] }], locked: true },
+    },
+  } });
+  teams = new FakeTeamSource({ 'evt-pc': { U10: ['A', 'B', 'C', 'D'], U12: ['X', 'Y', 'Z'] } });
+  const cat = (over: any) => ({ fields: ['Campo A'], periods: 2, periodMinutes: 20, breakMinutes: 10, legs: 'SINGLE' as const, ...over })
+  await generateSchedule(deps())({ sportEventId: 'evt-pc', organizationId: 'org-1', config: {
+    ...config, finalsDate: '2026-08-31',
+    byCategory: {
+      U10: cat({ finalsType: 'SINGLE_GROUP_CROSSOVER' }),
+      U12: cat({}), // no finals for U12
+    },
+  } });
+  const all = await matches.list('evt-pc');
+  const u10Finals = all.filter((m) => m.categoryId === 'U10' && m.phase === 'FINAL');
+  const u12Finals = all.filter((m) => m.categoryId === 'U12' && m.phase === 'FINAL');
+  expect(u10Finals.length).toBeGreaterThan(0); // U10 has a bracket
+  expect(u12Finals).toHaveLength(0);           // U12 has none
 })

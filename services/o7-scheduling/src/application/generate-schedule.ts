@@ -1,6 +1,6 @@
 import { buildFixtures } from '../fixtures.js';
 import { buildFinals } from '../finals.js';
-import { autoSplit, canGenerate, categoryConfig, defaultConfig, type FinalsType, type FixtureCategory, type Schedule, type ScheduleConfig, type ScheduledMatch } from '../domain.js';
+import { autoSplit, canGenerate, categoryConfig, defaultConfig, type FixtureCategory, type Schedule, type ScheduleConfig, type ScheduledMatch } from '../domain.js';
 import { EventNotFoundError } from '../errors.js';
 import type { EventSource, MatchRepository, ScheduleRepository, TeamSource } from '../ports.js';
 
@@ -19,12 +19,16 @@ function addMinutes(hhmm: string, mins: number): string {
  *  (`Nª Girone X`, `Vincente …`) resolved to real teams on read. */
 function buildFinalMatches(
   sportEventId: string, finalsDate: string, dailyStart: string,
-  cats: FixtureCategory[], finalsType: FinalsType, finalsTeamsToBracket: number | undefined,
+  cats: FixtureCategory[], config: ScheduleConfig,
 ): ScheduledMatch[] {
   const out: ScheduledMatch[] = [];
   let n = 0;
   for (const cat of cats) {
-    const draws = buildFinals(cat.groups.map((g) => ({ label: g.label, size: g.teams.length })), finalsType, { finalsTeamsToBracket });
+    // Finals format is per category (moved from the o3 event): the byCategory override else the
+    // top-level default ("same play-config for all categories" flag). No format ⇒ skip this category.
+    const cc = categoryConfig(config, cat.id);
+    if (!cc.finalsType || cc.finalsEnabled === false) continue;
+    const draws = buildFinals(cat.groups.map((g) => ({ label: g.label, size: g.teams.length })), cc.finalsType, { finalsTeamsToBracket: cc.finalsTeamsToBracket });
     const fields = cat.fields.length ? cat.fields : ['Campo 1'];
     const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
     draws.forEach((d, i) => {
@@ -84,10 +88,9 @@ export function generateSchedule(deps: GenerateScheduleDeps) {
       return { id: categoria, name: categoria, legs: cc.legs, groups, fields: cc.fields, periods: cc.periods, periodMinutes: cc.periodMinutes, breakMinutes: cc.breakMinutes };
     });
     const fixtures = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config.dailyStart, cats);
-    // S12: append the finals bracket (placeholders on finalsDate) when the event has a finalsType.
-    const finals = event.finalsType && event.finalsEnabled !== false
-      ? buildFinalMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, cats, event.finalsType as FinalsType, event.finalsTeamsToBracket)
-      : [];
+    // S12/S13: append each category's finals bracket (per-category format from the schedule config —
+    // moved off the o3 event; buildFinalMatches skips categories with no format).
+    const finals = buildFinalMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, cats, input.config);
     await matches.replace(input.sportEventId, [...fixtures, ...finals]);
 
     const next: Schedule = { ...current, organizationId: current.organizationId, config: input.config, status: 'GENERATED' };
