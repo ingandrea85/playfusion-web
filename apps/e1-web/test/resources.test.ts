@@ -8,6 +8,7 @@ const plan: ResourcePlan = {
   days: ['2026-09-01'], defaultTeamSize: 14,
   teams: [{ team: 'Aquile', categoryId: 'U10', size: 8 }, { team: 'Volpi', categoryId: 'U10', size: 8 }],
   turns: [{ resourceId: 'r', day: '2026-09-01', slots: [{ time: '10:00', teams: [{ team: 'Aquile', categoryId: 'U10', size: 8 }, { team: 'Volpi', categoryId: 'U10', size: 8 }], persons: 16, capacity: 16, overflow: false }] }],
+  unassignable: [],
   finishesByDay: {},
 }
 const base: ResourcesData = { event, config: { resources: [shower], teamSizes: {} }, plan }
@@ -34,5 +35,11 @@ describe('S17 resources view', () => {
   it('flags an overflow slot', () => {
     const over: ResourcesData = { ...base, plan: { ...plan, turns: [{ resourceId: 'r', day: '2026-09-01', slots: [{ time: '10:00', teams: [{ team: 'X', categoryId: 'U10', size: 20 }], persons: 20, capacity: 16, overflow: true }] }] } }
     expect(renderResources(over)).toContain('pf-res-slot--over')
+  })
+  it('surfaces teams that fit no resource', () => {
+    const d: ResourcesData = { ...base, plan: { ...plan, unassignable: [{ day: '2026-09-01', team: 'Giganti', categoryId: 'U10', size: 25 }] } }
+    const html = renderResources(d)
+    expect(html).toContain('Squadre senza risorsa')
+    expect(html).toContain('Giganti')
   })
 })

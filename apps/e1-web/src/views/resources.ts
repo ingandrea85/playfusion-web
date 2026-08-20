@@ -48,7 +48,23 @@ function sizeEditor(d: ResourcesData): string {
     <p class="pf-muted">Lascia vuoto per usare il default. La capienza è in persone, così le squadre piccole condividono lo slot.</p></div>`
 }
 
-const slotHtml = (s: ResourceSlot, r: Resource, day: string, moveOpts: (team: string) => string): string => {
+/** Move options span EVERY resource for the day (a team lives in exactly one resource now, so moving it
+ *  means choosing another resource+slot). Value = `resourceId|slotTime`, or `AUTO` to drop the pin. */
+function moveOptions(d: ResourcesData, day: string, team: string): string {
+  const cur = (d.config.assignments ?? []).find((a) => a.day === day && a.team === team)
+  const groups = d.config.resources.map((r) => {
+    const slots = d.plan.turns.find((t) => t.resourceId === r.resourceId && t.day === day)?.slots ?? []
+    if (!slots.length) return ''
+    const opts = slots.map((s) => {
+      const sel = cur && cur.resourceId === r.resourceId && cur.slotTime === s.time ? ' selected' : ''
+      return `<option value="${esc(r.resourceId)}|${esc(s.time)}"${sel}>${esc(s.time)}</option>`
+    }).join('')
+    return `<optgroup label="${resName(r)}">${opts}</optgroup>`
+  }).join('')
+  return `<option value="AUTO"${cur ? '' : ' selected'}>Auto</option>${groups}`
+}
+
+const slotHtml = (s: ResourceSlot, d: ResourcesData, day: string): string => {
   const pct = Math.min(100, Math.round((s.persons / Math.max(1, s.capacity)) * 100))
   return `<div class="pf-res-slot${s.overflow ? ' pf-res-slot--over' : ''}">
     <div class="pf-res-slot__head"><span class="pf-mono">${esc(s.time)}</span>
@@ -56,23 +72,24 @@ const slotHtml = (s: ResourceSlot, r: Resource, day: string, moveOpts: (team: st
       <span class="pf-mono">${s.persons}/${s.capacity}${s.overflow ? ' ⚠' : ''}</span></div>
     <ul class="pf-res-slot__teams">${s.teams.map((t) => `<li>
       <span>${esc(t.team)} <span class="pf-muted pf-mono">${esc(t.categoryId)} · ${t.size}p${t.pinned ? ' · fissato' : ''}</span></span>
-      <select class="pf-res-move" data-res="${esc(r.resourceId)}" data-day="${esc(day)}" data-team="${esc(t.team)}">${moveOpts(t.team)}</select>
+      <select class="pf-res-move" data-day="${esc(day)}" data-team="${esc(t.team)}">${moveOptions(d, day, t.team)}</select>
     </li>`).join('')}</ul>
   </div>`
 }
 
 function renderTurns(d: ResourcesData, resourceId: string, day: string): string {
-  const r = d.config.resources.find((x) => x.resourceId === resourceId)
-  if (!r) return `<p class="pf-muted">Seleziona una risorsa.</p>`
   const slots = d.plan.turns.find((t) => t.resourceId === resourceId && t.day === day)?.slots ?? []
   if (!slots.length) return `<p class="pf-muted">Nessun turno per questa risorsa in questa giornata.</p>`
-  const times = slots.map((s) => s.time)
-  const moveOpts = (team: string): string => {
-    const cur = (d.config.assignments ?? []).find((a) => a.resourceId === resourceId && a.day === day && a.team === team)?.slotTime
-    return `<option value="AUTO"${cur ? '' : ' selected'}>Auto</option>` +
-      times.map((t) => `<option value="${esc(t)}"${cur === t ? ' selected' : ''}>${esc(t)}</option>`).join('')
-  }
-  return slots.map((s) => slotHtml(s, r, day, moveOpts)).join('')
+  return slots.map((s) => slotHtml(s, d, day)).join('')
+}
+
+function unassignableCard(d: ResourcesData): string {
+  if (!d.plan.unassignable.length) return ''
+  const items = d.plan.unassignable.map((u) => `<li>${esc(u.team)} <span class="pf-muted pf-mono">${esc(u.categoryId)} · ${u.size}p · ${esc(u.day)}</span></li>`).join('')
+  return `<div class="pf-card" style="border-color:var(--color-feedback-danger)">
+    <h2 class="pf-h3">⚠ Squadre senza risorsa</h2>
+    <p class="pf-muted">Nessuna risorsa ha capienza sufficiente per queste squadre. Aumenta la capienza di una risorsa o riduci la dimensione della squadra.</p>
+    <ul class="pf-stack" style="list-style:none;padding:0">${items}</ul></div>`
 }
 
 function turnsSection(d: ResourcesData): string {
@@ -82,13 +99,14 @@ function turnsSection(d: ResourcesData): string {
   const dayOpts = d.plan.days.map((x) => `<option value="${esc(x)}">${esc(x)}</option>`).join('')
   const resOpts = d.config.resources.map((r) => `<option value="${esc(r.resourceId)}">${resName(r)}</option>`).join('')
   return `<div class="pf-card"><h2 class="pf-h3">Turni proposti</h2>
+    <p class="pf-muted">Ogni squadra è assegnata a una sola risorsa; usa "sposta" per spostarla su un'altra risorsa/orario.</p>
     <div class="pf-row"><label>Giornata</label><select id="r-day">${dayOpts}</select>
       <label>Risorsa</label><select id="r-res">${resOpts}</select></div>
     <div id="res-turns" style="margin-top:var(--space-sm)">${renderTurns(d, res0, day0)}</div></div>`
 }
 
 export function renderResources(d: ResourcesData): string {
-  return workspaceShell(d.event, 'resources', `<div id="err"></div>${resourceTable(d.config)}${sizeEditor(d)}${turnsSection(d)}`)
+  return workspaceShell(d.event, 'resources', `<div id="err"></div>${resourceTable(d.config)}${sizeEditor(d)}${unassignableCard(d)}${turnsSection(d)}`)
 }
 
 function num(root: ParentNode, sel: string): number | undefined { const v = root.querySelector<HTMLInputElement>(sel)?.value ?? ''; const n = Number(v); return v !== '' && n > 0 ? Math.floor(n) : undefined }
@@ -140,9 +158,14 @@ export const resourcesScreen: Screen<ResourcesData> = {
       wireMoves()
     }
     const wireMoves = () => root.querySelectorAll<HTMLSelectElement>('.pf-res-move').forEach((sel) => sel.addEventListener('change', () => {
-      const { res, day, team } = sel.dataset as { res: string; day: string; team: string }
-      const rest = (d.config.assignments ?? []).filter((a) => !(a.resourceId === res && a.day === day && a.team === team))
-      const assignments = sel.value === 'AUTO' ? rest : [...rest, { resourceId: res, day, team, slotTime: sel.value }]
+      const { day, team } = sel.dataset as { day: string; team: string }
+      // A team has at most one assignment per day — drop any existing (on any resource), then re-pin.
+      const rest = (d.config.assignments ?? []).filter((a) => !(a.day === day && a.team === team))
+      let assignments = rest
+      if (sel.value !== 'AUTO') {
+        const [resourceId, slotTime] = sel.value.split('|')
+        assignments = [...rest, { resourceId: resourceId!, day, team, slotTime: slotTime! }]
+      }
       void save({ ...d.config, assignments })
     }))
     daySel?.addEventListener('change', drawTurns)
