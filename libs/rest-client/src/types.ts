@@ -152,11 +152,13 @@ export interface ResourceConfig { resources: Resource[]; defaultTeamSize?: numbe
 export interface TurnTeam { team: string; categoryId: string; size: number; pinned?: boolean }
 export interface ResourceSlot { time: string; teams: TurnTeam[]; persons: number; capacity: number; overflow: boolean }
 export interface ResourceDayTurns { resourceId: string; day: string; slots: ResourceSlot[] }
+export interface UnassignableTeam { day: string; team: string; categoryId: string; size: number }
 export interface ResourcePlan {
   days: string[]
   defaultTeamSize: number
   teams: { team: string; categoryId: string; size: number }[]
   turns: ResourceDayTurns[]
+  unassignable: UnassignableTeam[]
   finishesByDay: Record<string, { team: string; categoryId: string; finish: string }[]>
 }
 export interface GroupStanding {

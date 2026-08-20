@@ -29,11 +29,15 @@ export interface TeamFinish { team: string; categoryId: string; finish: string }
 export interface TurnTeam { team: string; categoryId: string; size: number; pinned?: boolean }
 export interface ResourceSlot { time: string; teams: TurnTeam[]; persons: number; capacity: number; overflow: boolean }
 export interface ResourceDayTurns { resourceId: string; day: string; slots: ResourceSlot[] }
+export interface UnassignableTeam { day: string; team: string; categoryId: string; size: number }
 export interface ResourcePlan {
   days: string[];
   defaultTeamSize: number;
   teams: { team: string; categoryId: string; size: number }[];
   turns: ResourceDayTurns[];
+  /** Teams that fit no resource (bigger than every capacity) on a given day — surfaced, never
+   *  silently packed into a too-small room. */
+  unassignable: UnassignableTeam[];
   finishesByDay: Record<string, TeamFinish[]>;
 }
 
@@ -74,36 +78,64 @@ export function teamFinishes(matches: ScheduledMatch[], config: ScheduleConfig, 
   return out;
 }
 
-/** Pack the day's finishes into `resource`'s slots. Greedy by ready-time (finish + offset), respecting
- *  person-capacity, mixing categories. A lone team larger than capacity gets its own overflow slot.
- *  Manual `assignments` pin their teams into a slot at the chosen time (re-grouped, overflow recomputed). */
-export function resourceTurns(finishes: TeamFinish[], resource: Resource, sizeOf: (team: string) => number, assignments: ResourceAssignment[] = []): ResourceSlot[] {
-  const readyOf = (f: TeamFinish): string => addMinutes(f.finish, resource.offsetMinutes);
-  const pinned = new Map(assignments.map((a) => [a.team, a.slotTime]));
-  const slots: ResourceSlot[] = [];
-  const newSlot = (time: string): ResourceSlot => { const s: ResourceSlot = { time, teams: [], persons: 0, capacity: resource.capacityPersons, overflow: false }; slots.push(s); return s; };
+const maxTime = (a: string, b: string): string => (a.localeCompare(b) >= 0 ? a : b);
 
-  // Auto-pack the un-pinned teams, in ready-time order.
-  const auto = finishes.filter((f) => !pinned.has(f.team));
-  for (const f of auto) {
-    const ready = readyOf(f), size = sizeOf(f.team);
-    const open = size > resource.capacityPersons ? undefined
-      : slots.find((s) => s.persons + size <= resource.capacityPersons && ready <= addMinutes(s.time, resource.occupancyMinutes));
-    const slot = open ?? newSlot(ready);
-    slot.teams.push({ team: f.team, categoryId: f.categoryId, size }); slot.persons += size;
+/** Assign each of a day's team-finishes to EXACTLY ONE resource+slot, distributing the load across the
+ *  resources (they are alternatives, not parallel copies). A team only enters a resource that can hold
+ *  it (`size <= capacity`); teams sharing a slot must fit together and be ready within its occupancy
+ *  window. Greedy by finish order, picking the resource+slot that lets the team start earliest — so a
+ *  free room wins over a busy one. Manual `assignments` pin a team to a resource+slotTime. Teams that
+ *  fit no resource are returned as `unassignable` (never packed into a too-small room). Pure. */
+function assignDay(day: string, finishes: TeamFinish[], resources: Resource[], sizeOf: (team: string) => number, assignments: ResourceAssignment[]): { slotsByRes: Map<string, ResourceSlot[]>; unassignable: UnassignableTeam[] } {
+  const slotsByRes = new Map<string, ResourceSlot[]>(resources.map((r) => [r.resourceId, []]));
+  const byId = new Map(resources.map((r) => [r.resourceId, r]));
+  const unassignable: UnassignableTeam[] = [];
+  const pinned = new Map(assignments.filter((a) => a.day === day).map((a) => [a.team, a]));
+
+  const addTo = (r: Resource, time: string, f: TeamFinish, isPinned: boolean): void => {
+    const ss = slotsByRes.get(r.resourceId)!;
+    let s = ss.find((x) => x.time === time);
+    if (!s) { s = { time, teams: [], persons: 0, capacity: r.capacityPersons, overflow: false }; ss.push(s); }
+    s.teams.push({ team: f.team, categoryId: f.categoryId, size: sizeOf(f.team), ...(isPinned ? { pinned: true } : {}) });
+    s.persons += sizeOf(f.team);
+  };
+  const freeAt = (r: Resource): string | undefined => {
+    const ss = slotsByRes.get(r.resourceId)!;
+    return ss.length ? ss.map((s) => addMinutes(s.time, r.occupancyMinutes)).reduce(maxTime) : undefined;
+  };
+
+  // Pinned teams first (manual overrides win; a stale resource id ⇒ unassignable).
+  for (const f of finishes) {
+    const a = pinned.get(f.team); if (!a) continue;
+    const r = byId.get(a.resourceId);
+    if (r) addTo(r, a.slotTime, f, true);
+    else unassignable.push({ day, team: f.team, categoryId: f.categoryId, size: sizeOf(f.team) });
   }
-  // Pinned teams: drop into (or create) the slot at their chosen time.
-  for (const f of finishes.filter((x) => pinned.has(x.team))) {
-    const time = pinned.get(f.team)!, size = sizeOf(f.team);
-    const slot = slots.find((s) => s.time === time) ?? newSlot(time);
-    slot.teams.push({ team: f.team, categoryId: f.categoryId, size, pinned: true }); slot.persons += size;
+  // Auto-assign the rest, earliest-start-wins across the resources that fit.
+  for (const f of finishes) {
+    if (pinned.has(f.team)) continue;
+    const size = sizeOf(f.team);
+    const cands = resources.filter((r) => size <= r.capacityPersons);
+    if (!cands.length) { unassignable.push({ day, team: f.team, categoryId: f.categoryId, size }); continue; }
+    let best: { r: Resource; time: string } | undefined;
+    for (const r of cands) {
+      const ready = addMinutes(f.finish, r.offsetMinutes);
+      const ss = slotsByRes.get(r.resourceId)!;
+      const last = ss[ss.length - 1];
+      const canJoin = last && last.persons + size <= r.capacityPersons && ready.localeCompare(addMinutes(last.time, r.occupancyMinutes)) <= 0;
+      const time = canJoin ? last!.time : maxTime(ready, freeAt(r) ?? ready);
+      if (!best || time.localeCompare(best.time) < 0) best = { r, time };
+    }
+    addTo(best!.r, best!.time, f, false);
   }
-  for (const s of slots) s.overflow = s.persons > resource.capacityPersons;
-  return slots.sort((a, b) => a.time.localeCompare(b.time));
+
+  for (const [, ss] of slotsByRes) { for (const s of ss) s.overflow = s.persons > s.capacity; ss.sort((a, b) => a.time.localeCompare(b.time)); }
+  return { slotsByRes, unassignable };
 }
 
-/** The full plan for one event: known teams (with sizes), scheduled days, and every resource's turns
- *  per day. `teamsByCat` are the confirmed teams from o5 (label → category). Pure. */
+/** The full plan for one event: known teams (with sizes), scheduled days, every resource's turns per
+ *  day (each team appears once, in one resource), and any teams that fit no resource. `teamsByCat` are
+ *  the confirmed teams from o5 (label → category). Pure. */
 export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleConfig, rc: ResourceConfig, teamsByCat: Map<string, string[]>): ResourcePlan {
   const catOf = new Map<string, string>();
   for (const [cat, list] of teamsByCat) for (const t of list) catOf.set(t, cat);
@@ -113,9 +145,11 @@ export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleC
   const teams = [...catOf].map(([team, categoryId]) => ({ team, categoryId, size: sizeOf(team) }))
     .sort((a, b) => a.categoryId.localeCompare(b.categoryId) || a.team.localeCompare(b.team));
   const turns: ResourceDayTurns[] = [];
-  for (const r of rc.resources) for (const day of days) {
-    const asg = (rc.assignments ?? []).filter((a) => a.resourceId === r.resourceId && a.day === day);
-    turns.push({ resourceId: r.resourceId, day, slots: resourceTurns(finishesByDay[day] ?? [], r, sizeOf, asg) });
+  const unassignable: UnassignableTeam[] = [];
+  for (const day of days) {
+    const res = assignDay(day, finishesByDay[day] ?? [], rc.resources, sizeOf, rc.assignments ?? []);
+    unassignable.push(...res.unassignable);
+    for (const r of rc.resources) turns.push({ resourceId: r.resourceId, day, slots: res.slotsByRes.get(r.resourceId) ?? [] });
   }
-  return { days, defaultTeamSize: rc.defaultTeamSize ?? DEFAULT_TEAM_SIZE, teams, turns, finishesByDay };
+  return { days, defaultTeamSize: rc.defaultTeamSize ?? DEFAULT_TEAM_SIZE, teams, turns, unassignable, finishesByDay };
 }
