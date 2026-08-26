@@ -147,6 +147,15 @@ await ddb.send(new CreateTableCommand({
 
 console.log('provision: O1 table (o1-organizations) ensured on', endpoint);
 
+// O11 subscriptions (S20): one subscription per org.
+await ddb.send(new CreateTableCommand({
+  TableName: resourceName('o11-subscriptions'), BillingMode: 'PAY_PER_REQUEST',
+  AttributeDefinitions: [{ AttributeName: 'organizationId', AttributeType: 'S' }],
+  KeySchema: [{ AttributeName: 'organizationId', KeyType: 'HASH' }],
+})).catch(ignoreExists);
+
+console.log('provision: O11 table (o11-subscriptions) ensured on', endpoint);
+
 // NOTE on EventBridge rules (decision-4 pragmatic path): the plan calls for rules
 // routing `detail-type` (ParticipationFeePaid/ParticipantCreated/EventPublished → O5
 // consumer; RegistrationApplied → O12 consumer) with Lambda targets. No Lambdas are
