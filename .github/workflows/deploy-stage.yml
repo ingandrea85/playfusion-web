@@ -59,7 +59,7 @@ jobs:
       # HostingStack's BucketDeployment (infra/cdk/lib/hosting-stack.ts) reads each app's
       # built dist/ via Source.asset at synth time — it must exist before synth/deploy.
       - name: Build frontend apps (E1/E3, needed by HostingStack at synth time)
-        run: npm run build -w @playfusion/e1-web -w @playfusion/e3-web
+        run: npm run build -w @playfusion/e1-web -w @playfusion/e3-web -w @playfusion/site
         working-directory: .
 
       - name: Configure AWS credentials (OIDC)
