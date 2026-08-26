@@ -3,11 +3,19 @@ import { cors } from 'hono/cors';
 import { handle } from 'hono/aws-lambda';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken } from '@playfusion/platform-lib';
+import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken, auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer } from '@playfusion/platform-lib';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { signToken, verifyToken } from './token.js';
+import { DynamoDbMemberRepository, DynamoDbInvitationRepository } from './adapters/dynamodb-membership.js';
+import { listMembers, listInvitations, invite, acceptInvitation, revokeInvitation, changeMemberRole, removeMember } from './application/membership.js';
 
 const db = makeDocClient();
+const members = new DynamoDbMemberRepository(db);
+const invitations = new DynamoDbInvitationRepository(db);
+const deps = { members, invitations };
+const auth0cfg = auth0ConfigFromEnv();
+const organizer = requireOrganizer({ auth0: auth0cfg ? createAuth0Verifier(auth0cfg) : undefined });
+
 const app = new Hono();
 // Actual (non-preflight) responses need CORS headers too: API Gateway's
 // defaultCorsPreflightOptions only answers OPTIONS, so browsers block GET/POST replies
@@ -33,6 +41,24 @@ app.get('/identities/verify', (c) => {
   const claims = verifyToken(bearerToken(c));
   return claims ? c.json(claims) : c.json({ code: 'INVALID_TOKEN' }, 401);
 });
+// S19 — per-tenant membership & roles. All mutations organizer-guarded (Auth0 / bridge).
+const invitationBody = z.object({ name: z.string().min(1), email: z.string().min(1), role: z.string() });
+app.get('/organizations/:orgId/members', organizer, async (c) => c.json(await listMembers(deps)(c.req.param('orgId'))));
+app.get('/organizations/:orgId/invitations', organizer, async (c) => c.json(await listInvitations(deps)(c.req.param('orgId'))));
+app.post('/organizations/:orgId/invitations', organizer, async (c) => {
+  const b = invitationBody.parse(await c.req.json());
+  const inv = await invite(deps)({ invitationId: randomUUID(), organizationId: c.req.param('orgId'), ...b });
+  return c.json(inv, 201);
+});
+app.post('/invitations/:id/accept', organizer, async (c) =>
+  c.json(await acceptInvitation(deps)({ invitationId: c.req.param('id'), memberId: randomUUID() }), 201));
+app.delete('/invitations/:id', organizer, async (c) => { await revokeInvitation(deps)(c.req.param('id')); return c.body(null, 204); });
+app.put('/members/:id/role', organizer, async (c) => {
+  const { role } = z.object({ role: z.string() }).parse(await c.req.json());
+  return c.json(await changeMemberRole(deps)({ memberId: c.req.param('id'), role }));
+});
+app.delete('/members/:id', organizer, async (c) => { await removeMember(deps)(c.req.param('id')); return c.body(null, 204); });
+
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
 
 export { app };

@@ -74,6 +74,23 @@ await ddb.send(new CreateTableCommand({
 
 console.log('provision: O2 table (o2-identities) ensured on', endpoint);
 
+// O2 membership (S19): members + invitations, each with an org-index GSI.
+for (const [base, pk] of [['o2-members', 'memberId'], ['o2-invitations', 'invitationId']] as const) {
+  await ddb.send(new CreateTableCommand({
+    TableName: resourceName(base), BillingMode: 'PAY_PER_REQUEST',
+    AttributeDefinitions: [
+      { AttributeName: pk, AttributeType: 'S' },
+      { AttributeName: 'organizationId', AttributeType: 'S' },
+    ],
+    KeySchema: [{ AttributeName: pk, KeyType: 'HASH' }],
+    GlobalSecondaryIndexes: [
+      { IndexName: 'org-index', KeySchema: [{ AttributeName: 'organizationId', KeyType: 'HASH' }], Projection: { ProjectionType: 'ALL' } },
+    ],
+  })).catch(ignoreExists);
+}
+
+console.log('provision: O2 membership tables (o2-members, o2-invitations) ensured on', endpoint);
+
 // O12 fees: + event-index GSI so S4 can list fee status per event.
 await ddb.send(new CreateTableCommand({
   TableName: resourceName('o12-fees'), BillingMode: 'PAY_PER_REQUEST',

@@ -38,7 +38,7 @@ interface BcSpec {
 }
 
 const BCS: BcSpec[] = [
-  { key: 'o2-identity-access', route: 'o2', tables: ['o2-identities'] },
+  { key: 'o2-identity-access', route: 'o2', tables: ['o2-identities', 'o2-members', 'o2-invitations'] },
   { key: 'o3-sport-events', route: 'o3', tables: ['o3-events'] },
   { key: 'o4-participant-management', route: 'o4', tables: ['o4-participants'] },
   {
@@ -113,7 +113,9 @@ export class ApiStack extends Stack {
       // not known at synth time, so allow any origin; tighten to the exact domain in pr.
       defaultCorsPreflightOptions: {
         allowOrigins: Cors.ALL_ORIGINS,
-        allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
+        // DELETE is used by o5 removeTeam (S14), o9 delete (S15), o1 reset (S18), o2 member/invite (S19);
+        // without it the browser preflight blocks those calls (e2e raw-fetch never exercises preflight).
+        allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'],
       },
     });
