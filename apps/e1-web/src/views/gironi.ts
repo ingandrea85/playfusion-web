@@ -1,4 +1,4 @@
-import { esc } from '@playfusion/app-shell'
+import { esc, renderTabs } from '@playfusion/app-shell'
 import type { CategoryGironi, EventDetail, GironiMap, Group } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
@@ -19,10 +19,10 @@ export function moveTeamAcrossGroups(groups: Group[], team: string, toLabel: str
 
 const hasTeams = (cg?: CategoryGironi): boolean => !!cg?.groups.some((g) => g.teams.length)
 
+/** Category tabs — the shared `pf-tabs` sub-tabs used across the app (Calendario, Classifiche…),
+ *  not the hero-nav `pf-wtab`. Wrapped in `#cattabs` so the mount can re-render on selection. */
 function catTabs(categorie: string[], sel: string): string {
-  const tabs = categorie.map((c) =>
-    `<button class="pf-wtab${c === sel ? ' pf-wtab--active' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')
-  return `<nav class="pf-wtabs" id="cattabs">${tabs}</nav>`
+  return `<div id="cattabs">${renderTabs(categorie.map((c) => ({ key: c, label: c })), sel)}</div>`
 }
 
 /** Content for the selected category: toolbar (groups count + draw + lock) and either the
@@ -77,8 +77,8 @@ export const gironiScreen: Screen<GironiData> = {
     const content = root.querySelector('#content')!
     const fail = (msg: string) => { err.innerHTML = inlineError(msg) }
 
-    const wireTabs = () => root.querySelectorAll<HTMLButtonElement>('#cattabs [data-cat]').forEach((b) =>
-      b.addEventListener('click', () => { sel = b.dataset.cat!; root.querySelector('#cattabs')!.outerHTML = catTabs(data.event.categorie, sel); wireTabs(); draw() }))
+    const wireTabs = () => root.querySelectorAll<HTMLButtonElement>('#cattabs [data-key]').forEach((b) =>
+      b.addEventListener('click', () => { sel = b.dataset.key!; root.querySelector('#cattabs')!.innerHTML = renderTabs(data.event.categorie.map((c) => ({ key: c, label: c })), sel); wireTabs(); draw() }))
 
     function draw() {
       content.innerHTML = renderGironiContent(gironi[sel])
