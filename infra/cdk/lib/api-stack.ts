@@ -60,6 +60,8 @@ const BCS: BcSpec[] = [
   { key: 'o7-scheduling', route: 'o7', tables: ['o7-schedules', 'o7-matches', 'o7-tie-overrides', 'o7-resources'] },
   // O9 communications (S15): organizer announcements, public read. No consumer (SYSTEM/auto deferred).
   { key: 'o9-communications', route: 'o9', tables: ['o9-announcements'] },
+  // O1 organization (S18): per-tenant brand identity, public read + organizer write. No consumer.
+  { key: 'o1-organization', route: 'o1', tables: ['o1-organizations'] },
 ];
 
 /**
