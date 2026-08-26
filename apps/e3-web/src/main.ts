@@ -1,7 +1,7 @@
 import '@playfusion/tokens/tokens.css'
 import '@playfusion/app-shell/chrome.css'
 import '@playfusion/ui'
-import { HashRouter } from '@playfusion/app-shell'
+import { HashRouter, applyBrand } from '@playfusion/app-shell'
 import { createClient } from '@playfusion/rest-client'
 import { readConfig } from './config.js'
 import { renderLanding, renderParticipants, wireParticipants } from './views/landing.js'
@@ -19,6 +19,12 @@ const app = document.getElementById('app')!
 /** Renders a small error card into #app so a rejected call never leaves a blank page. */
 function errorCard(msg: string): string {
   return `<main class="pf-container"><div class="pf-card">${msg}</div></main>`
+}
+
+/** S18: apply the event's tenant brand (colours + public wordmark) before rendering. Best-effort. */
+async function applyEventBrand(ev: { organizationId?: string }): Promise<void> {
+  if (!ev.organizationId) return
+  try { applyBrand(await client.o1.getBrand(ev.organizationId)) } catch { /* leave the current theme */ }
 }
 
 // Capture ?token but KEEP it in the URL: these links (coach enrollment, field director) are the
@@ -43,6 +49,7 @@ if (storedToken(sessionStorage)) {
 async function applyRoute(id: string) {
   try {
     const [ev, win] = await Promise.all([client.o3.getEvent(id), client.o5.getRegistrationWindow(id)])
+    await applyEventBrand(ev)
     app.innerHTML = renderApply(ev, win, !!storedToken(sessionStorage))
     const form = app.querySelector<HTMLFormElement>('#apply')
     if (!form) return
@@ -63,7 +70,7 @@ async function applyRoute(id: string) {
 
 new HashRouter()
   .on('#/events/:id/participants', async ({ id }) => {
-    try { const rows = await client.o5.listRegistrations(id, 'Confirmed'); app.innerHTML = renderParticipants(rows); wireParticipants(app, rows) }
+    try { const [ev, rows] = await Promise.all([client.o3.getEvent(id), client.o5.listRegistrations(id, 'Confirmed')]); await applyEventBrand(ev); app.innerHTML = renderParticipants(rows); wireParticipants(app, rows) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/apply', ({ id }) => applyRoute(id))
@@ -73,33 +80,35 @@ new HashRouter()
       if (!scope) { app.innerHTML = errorCard('Apri il link direttore ricevuto dall\'organizzatore.'); return }
       if (scope.eventId !== id) { app.innerHTML = errorCard('Questo link direttore non vale per questo evento.'); return }
       const [ev, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getMatches(id)])
+      await applyEventBrand(ev)
       app.innerHTML = renderDirector(ev, scope.field, matches); wireDirector(app, client.o7, id, scope.field, matches)
     } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/standings', async ({ id }) => {
-    try { const [ev, standings] = await Promise.all([client.o3.getEvent(id), client.o7.getStandings(id)]); app.innerHTML = renderPublicStandings(ev, standings); wirePublicStandings(app, standings) }
+    try { const [ev, standings] = await Promise.all([client.o3.getEvent(id), client.o7.getStandings(id)]); await applyEventBrand(ev); app.innerHTML = renderPublicStandings(ev, standings); wirePublicStandings(app, standings) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/calendar', async ({ id }) => {
-    try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); app.innerHTML = renderPublicCalendar(ev, sched, matches); wirePublicCalendar(app, matches) }
+    try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); await applyEventBrand(ev); app.innerHTML = renderPublicCalendar(ev, sched, matches); wirePublicCalendar(app, matches) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   // Deep-link from a landing category chip: the calendar preselected to that category.
   .on('#/events/:id/calendar/:cat', async ({ id, cat }) => {
-    try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); app.innerHTML = renderPublicCalendar(ev, sched, matches, cat); wirePublicCalendar(app, matches, cat) }
+    try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); await applyEventBrand(ev); app.innerHTML = renderPublicCalendar(ev, sched, matches, cat); wirePublicCalendar(app, matches, cat) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/avvisi', async ({ id }) => {
-    try { const [ev, anns] = await Promise.all([client.o3.getEvent(id), client.o9.listAnnouncements(id)]); app.innerHTML = renderPublicAvvisi(ev, anns); wirePublicAvvisi(app, ev, anns) }
+    try { const [ev, anns] = await Promise.all([client.o3.getEvent(id), client.o9.listAnnouncements(id)]); await applyEventBrand(ev); app.innerHTML = renderPublicAvvisi(ev, anns); wirePublicAvvisi(app, ev, anns) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/bracket', async ({ id }) => {
-    try { const [ev, sched, matches, ranking] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id), client.o7.getFinalStandings(id)]); app.innerHTML = renderPublicBracket(ev, sched, matches, ranking); wirePublicBracket(app, matches, ranking) }
+    try { const [ev, sched, matches, ranking] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id), client.o7.getFinalStandings(id)]); await applyEventBrand(ev); app.innerHTML = renderPublicBracket(ev, sched, matches, ranking); wirePublicBracket(app, matches, ranking) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id', async ({ id }) => {
     try {
       const [ev, win, sched] = await Promise.all([client.o3.getEvent(id), client.o5.getRegistrationWindow(id), client.o7.getSchedule(id)])
+      await applyEventBrand(ev)
       app.innerHTML = renderLanding(ev, win, sched.status === 'PUBLISHED')
     } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })

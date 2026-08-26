@@ -16,6 +16,8 @@ import { enrollScreen } from './views/enroll.js'
 import { participantsScreen } from './views/participants.js'
 import { resourcesScreen } from './views/resources.js'
 import { announcementsScreen } from './views/announcements.js'
+import { brandScreen } from './views/brand.js'
+import { applyBrand } from '@playfusion/app-shell'
 import { createAuth0Adapter, ensureAuthenticated, authProviderFrom } from './auth/auth0.js'
 
 const cfg = readConfig(import.meta.env)
@@ -28,6 +30,9 @@ async function boot() {
     if (!(await ensureAuthenticated(port))) return // redirecting to Auth0
     const orgId = (await port.getOrgId()) ?? cfg.orgId
     const client = createClient({ baseUrl: cfg.apiBaseUrl, orgId, auth: authProviderFrom(port) })
+
+    // S18: apply the tenant brand (colours + wordmark) once, before routing. Best-effort.
+    applyBrand(await client.o1.getBrand(orgId).catch(() => null))
 
     let current: () => Promise<void> = async () => {}
     const ctx: ViewCtx = {
@@ -50,6 +55,7 @@ async function boot() {
       .on('#/events/:id/finals', (p) => route(finalsScreen, p))
       .on('#/events/:id/resources', (p) => route(resourcesScreen, p))
       .on('#/events/:id/announcements', (p) => route(announcementsScreen, p))
+      .on('#/events/:id/brand', (p) => route(brandScreen, p))
       .on('#/events/:id/enroll', (p) => route(enrollScreen, p))
       .on('#/events/:id/participants', (p) => route(participantsScreen, p))
       .on('#/events/:id', (p) => route(workspaceScreen, p))

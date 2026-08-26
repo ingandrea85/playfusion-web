@@ -17,11 +17,11 @@ test('test_listEvents_returnsOnlyEventsForThatOrg', async () => {
   expect(res.map(e => e.sportEventId).sort()).toEqual(['evt-1', 'evt-2']);
 });
 
-test('test_listEvents_dropsInternalOrgId', async () => {
+test('test_listEvents_exposesOrgIdForBrandResolution', async () => {
   const store = new InMemoryEventStore();
   await store.add(ev('evt-1', 'org-1'));
   const [row] = await listEvents(store)('org-1');
-  expect(row).not.toHaveProperty('organizationId');
+  expect(row).toHaveProperty('organizationId', 'org-1'); // S18: portal resolves the tenant brand from it
   expect(row).toMatchObject({ sportEventId: 'evt-1', categorie: ['U15'] });
 });
 
@@ -36,7 +36,7 @@ test('test_getEvent_returnsDetailWithCategories', async () => {
   await store.add(ev('evt-1', 'org-1'));
   const res = await getEvent(store)('evt-1');
   expect(res).toMatchObject({ sportEventId: 'evt-1', sport: 'calcio', categorie: ['U15'], status: 'Published' });
-  expect(res).not.toHaveProperty('organizationId');
+  expect(res).toHaveProperty('organizationId', 'org-1');
 });
 
 test('test_getEvent_undefinedWhenMissing', async () => {
@@ -57,5 +57,5 @@ test('test_getEvent_returnsCompetitionConfig', async () => {
     name: 'Torneo Estivo', location: 'Centro Sportivo', startTime: '09:00',
     tieBreak: ['HEAD_TO_HEAD', 'GOAL_DIFFERENCE'], playbook: 'PB-2',
   });
-  expect(res).not.toHaveProperty('organizationId');
+  expect(res).toHaveProperty('organizationId', 'org-1');
 });

@@ -75,6 +75,9 @@ export class DataStack extends Stack {
     this.tables['o7-tie-overrides'] = table('o7-tie-overrides', 'sportEventId');
     this.tables['o7-resources'] = table('o7-resources', 'sportEventId'); // S17
 
+    // O1 organization (S18): per-tenant brand identity (presentation metadata), keyed by org.
+    this.tables['o1-organizations'] = table('o1-organizations', 'organizationId');
+
     // O9 communications (S15): announcements per event; event-index GSI to list per event.
     const announcements = table('o9-announcements', 'announcementId');
     announcements.addGlobalSecondaryIndex({

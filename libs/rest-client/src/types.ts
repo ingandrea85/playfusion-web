@@ -5,6 +5,9 @@ export type TieBreakCriterion = 'HEAD_TO_HEAD' | 'GOAL_DIFFERENCE' | 'GOALS_FOR'
 export type FinalsType = 'SINGLE_GROUP_CROSSOVER' | 'SPLIT_GROUP_FINALS' | 'PLACEMENT'
 export interface EventDetail {
   sportEventId: string
+  // S18: the read model always populates this (the public portal resolves the tenant brand from
+  // it); optional on the DTO so the many existing event fixtures/consumers need no org id.
+  organizationId?: string
   sport: string
   categorie: string[]
   dates: { from: string; to: string }
@@ -185,3 +188,6 @@ export interface AnnouncementView {
   createdAt: string
 }
 export interface PublishAnnouncementInput { categoryId: string | null; title: string; body: string; pinned?: boolean }
+
+// S18 (O1 organization) — per-tenant brand identity. A null brand from the API = default theme.
+export interface Brand { logoText: string; primaryColor: string; accentColor: string }
