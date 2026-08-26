@@ -35,6 +35,7 @@ export function renderLanding(event: EventDetail, window: RegistrationWindowView
         ${calendarCta}
         <a class="pf-btn pf-btn--ghost" href="#/events/${id}/standings">Classifiche →</a>
         ${bracketCta}
+        <a class="pf-btn pf-btn--ghost" href="#/events/${id}/avvisi">Avvisi →</a>
         <a class="pf-btn pf-btn--ghost" href="#/events/${id}/participants">Squadre iscritte →</a>
       </div>
       ${enrollHint}

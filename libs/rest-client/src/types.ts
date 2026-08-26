@@ -171,3 +171,17 @@ export interface GroupStanding {
   // S11: audit of the manual override applied to this group, if one currently resolves a tie.
   override?: { order: string[]; resolvedBy: string; resolvedAt: string }
 }
+
+// S15 (O9 communications) — organizer announcements. categoryId null = whole event.
+export type AnnouncementSource = 'ORGANIZER'
+export interface AnnouncementView {
+  announcementId: string
+  sportEventId: string
+  categoryId: string | null
+  title: string
+  body: string
+  pinned: boolean
+  source: AnnouncementSource
+  createdAt: string
+}
+export interface PublishAnnouncementInput { categoryId: string | null; title: string; body: string; pinned?: boolean }

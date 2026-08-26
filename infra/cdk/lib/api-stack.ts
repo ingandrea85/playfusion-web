@@ -58,6 +58,8 @@ const BCS: BcSpec[] = [
   },
   // O7 scheduling (S7): reads o3/o5 over HTTP (PF_API_BASE_URL), no consumer.
   { key: 'o7-scheduling', route: 'o7', tables: ['o7-schedules', 'o7-matches', 'o7-tie-overrides', 'o7-resources'] },
+  // O9 communications (S15): organizer announcements, public read. No consumer (SYSTEM/auto deferred).
+  { key: 'o9-communications', route: 'o9', tables: ['o9-announcements'] },
 ];
 
 /**
