@@ -284,6 +284,11 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 @keyframes pf-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @media (min-width: 560px) { .pf-sheet-overlay { align-items: center; } .pf-sheet { border-radius: var(--radius-lg); } }
 
+/* brand — S18 (O1). Live preview of the tenant wordmark + accent colours. */
+.pf-brandprev { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; margin-top: var(--space-sm);
+  padding: var(--space-md); border: 1px solid var(--color-border-default); border-radius: var(--radius-md); background: var(--color-surface-sunken); }
+.pf-brandprev__mark { font-weight: 800; font-size: 20px; }
+
 /* announcements — S15 (O9). "In evidenza" chip + auto marker. */
 .pf-annchip { display: inline-block; padding: 2px 8px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 700;
   background: color-mix(in srgb, var(--color-action-accent) 16%, transparent); color: var(--color-action-accent); }

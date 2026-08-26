@@ -1,10 +1,11 @@
 import { esc } from './html.js'
+import { brandWordmark } from './brand.js'
 
 export function renderOrganizerTopbar(active: string): string {
   const link = (href: string, label: string, key: string) =>
     `<a href="${href}"${active === key ? ' aria-current="page"' : ''}>${label}</a>`
   return `<header class="pf-topbar">
-    <a class="pf-brand" href="#/">play<b>fusion</b><small>Organizer</small></a>
+    <a class="pf-brand" href="#/">${brandWordmark()}<small>Organizer</small></a>
     <nav>${link('#/', 'Eventi', 'dashboard')}</nav>
   </header>`
 }
@@ -22,7 +23,7 @@ export function renderOrganizerWorkspace(h: WorkspaceHeader, tabs: WorkspaceTab[
 }
 
 export function renderPublicTopbar(brandHtml?: string): string {
-  return `<header class="pf-publicbar"><a class="pf-brand" href="#/">${brandHtml ?? 'play<b>fusion</b>'}</a></header>`
+  return `<header class="pf-publicbar"><a class="pf-brand" href="#/">${brandHtml ?? brandWordmark()}</a></header>`
 }
 
 /** S26 match lifecycle (mirrors rest-client/o7 MatchStatus). */

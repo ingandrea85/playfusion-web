@@ -26,6 +26,7 @@ export const workspaceTabs = (id: string): WorkspaceTab[] => {
     { key: 'finals', label: 'Finali', href: `#/events/${e}/finals` },
     { key: 'resources', label: 'Risorse', href: `#/events/${e}/resources` },
     { key: 'announcements', label: 'Avvisi', href: `#/events/${e}/announcements` },
+    { key: 'brand', label: 'Brand', href: `#/events/${e}/brand` },
     { key: 'enroll', label: 'Iscrizioni', href: `#/events/${e}/enroll` },
     { key: 'participants', label: 'Partecipanti', href: `#/events/${e}/participants` },
   ]
