@@ -1,7 +1,9 @@
-import type { EventDetail, Playbook, FinalsType, GironiMap, RegistrationView, ScheduleView } from '@playfusion/rest-client'
+import type { CategoryFinalStanding, EventDetail, Playbook, FinalsType, GironiMap, RegistrationView, RegistrationWindowView, ScheduledMatchView, ScheduleView } from '@playfusion/rest-client'
 import { renderOrganizerWorkspace, esc, type WorkspaceTab } from '@playfusion/app-shell'
 import type { Screen } from '../view.js'
 import { criterionLabel } from './tiebreak.js'
+import { derivePhase, enrollmentByCategory, eventSummary, matchProgress, progressByDay, progressByField, type EventPhase } from './dashboard-data.js'
+import { capacityBars, dayColumns, donut, statTiles } from './dashboard-charts.js'
 
 const FINALS_LABEL: Record<FinalsType, string> = {
   PLACEMENT: 'Tabellone eliminazione',
@@ -43,9 +45,12 @@ const heroMeta = (e: EventDetail): string => {
   return `${e.sport} · ${start} → ${e.dates.to}`
 }
 
-export function workspaceShell(event: EventDetail, activeTab: string, body: string): string {
+const PHASE_LABEL: Record<EventPhase, string> = { PREP: 'In preparazione', LIVE: 'In corso', DONE: 'Concluso' }
+const PHASE_MOD: Record<EventPhase, 'prep' | 'live' | 'done'> = { PREP: 'prep', LIVE: 'live', DONE: 'done' }
+
+export function workspaceShell(event: EventDetail, activeTab: string, body: string, phase?: EventPhase): string {
   const hero = renderOrganizerWorkspace(
-    { name: esc(eventTitle(event)), meta: esc(heroMeta(event)) },
+    { name: esc(eventTitle(event)), meta: esc(heroMeta(event)), phaseLabel: phase ? PHASE_LABEL[phase] : undefined, phaseMod: phase ? PHASE_MOD[phase] : undefined },
     workspaceTabs(event.sportEventId), activeTab,
   )
   return `${hero}<main class="pf-container">${body}</main>`
@@ -74,12 +79,58 @@ function configCard(event: EventDetail): string {
   </div>`
 }
 
-export function renderWorkspace(event: EventDetail, activeTab: string): string {
-  return shell(event, activeTab, `${configCard(event)}
+/** S16: data the phase-aware Panoramica dashboard band needs, gathered by the overview screen. */
+export interface OverviewData {
+  matches: ScheduledMatchView[]
+  window: RegistrationWindowView | null
+  finalStandings: CategoryFinalStanding[]
+}
+
+const dashCard = (title: string, body: string, wide = false): string =>
+  `<div class="pf-card pf-dashcard${wide ? ' pf-dashcard--wide' : ''}"><h2 class="pf-h3">${esc(title)}</h2>${body}</div>`
+
+/** Phase-aware chart band prepended to the Panoramica — only the current phase's charts. */
+export function dashboardBand(data: OverviewData): { phase: EventPhase; html: string } {
+  const phase = derivePhase(data.matches)
+  let cards: string
+  if (phase === 'PREP') {
+    const rows = enrollmentByCategory(data.window).map((r) => ({
+      label: r.categoria, value: r.count, max: r.cap,
+      state: r.cap > 0 && r.count >= r.cap ? ('full' as const) : undefined,
+    }))
+    cards = dashCard('Iscrizioni per categoria', rows.length ? capacityBars(rows) : '<p class="pf-muted">Nessuna iscrizione ancora.</p>', true)
+  } else if (phase === 'LIVE') {
+    const mp = matchProgress(data.matches)
+    const fields = progressByField(data.matches).map((f) => ({
+      label: f.field, value: f.played, max: f.total,
+      note: f.behind ? `${f.played}/${f.total} · indietro` : `${f.played}/${f.total}`,
+      state: f.behind ? ('behind' as const) : undefined,
+    }))
+    cards = dashCard('Avanzamento partite', donut(mp.pct, `${mp.pct}%`, `${mp.played}/${mp.total} partite`))
+      + dashCard('Partite per giornata', dayColumns(progressByDay(data.matches)))
+      + dashCard('Avanzamento per campo', fields.length ? capacityBars(fields) : '<p class="pf-muted">Nessun campo assegnato.</p>')
+  } else {
+    const s = eventSummary(data.matches, data.finalStandings)
+    const tiles = statTiles([
+      { big: String(s.matches), label: 'Partite giocate' },
+      { big: String(s.goals), label: 'Gol totali' },
+      { big: String(s.champions.length), label: s.champions.length === 1 ? 'Campione' : 'Campioni' },
+    ])
+    const champs = s.champions.length
+      ? `<p class="pf-dashchamp">🏆 ${s.champions.map((c) => `${esc(c.team)} <span class="pf-muted">(${esc(c.categoryId)})</span>`).join(' · ')}</p>`
+      : ''
+    cards = dashCard('Riepilogo', tiles + champs, true)
+  }
+  return { phase, html: `<section class="pf-dashband">${cards}</section>` }
+}
+
+export function renderWorkspace(event: EventDetail, activeTab: string, overview?: OverviewData): string {
+  const band = overview ? dashboardBand(overview) : null
+  return shell(event, activeTab, `${band?.html ?? ''}${configCard(event)}
     <div class="pf-card">
       <h2 class="pf-h3">Criteri di spareggio</h2>
       ${tieBreakList(event)}
-    </div>`)
+    </div>`, band?.phase)
 }
 
 export function renderCompetition(event: EventDetail, activeTab = 'competition'): string {
@@ -116,9 +167,19 @@ export function renderCategorie(data: CategorieData, activeTab = 'categorie'): s
   return shell(event, activeTab, `<div class="pf-card"><h2 class="pf-h3">Categorie</h2>${body}</div>`)
 }
 
-export const workspaceScreen: Screen<EventDetail> = {
-  load: (ctx, p) => ctx.client.o3.getEvent(p.id),
-  render: (e) => renderWorkspace(e, 'overview'),
+/** Overview screen: the event is mandatory (its failure surfaces the error card); the dashboard
+ *  inputs are best-effort — a schedule/window/finals that isn't ready yet must not blank the page. */
+export const workspaceScreen: Screen<{ event: EventDetail; overview: OverviewData }> = {
+  load: async (ctx, p) => {
+    const event = await ctx.client.o3.getEvent(p.id)
+    const [matches, window, finalStandings] = await Promise.all([
+      ctx.client.o7.getMatches(p.id).catch(() => [] as ScheduledMatchView[]),
+      ctx.client.o5.getRegistrationWindow(p.id).catch(() => null as RegistrationWindowView | null),
+      ctx.client.o7.getFinalStandings(p.id).catch(() => [] as CategoryFinalStanding[]),
+    ])
+    return { event, overview: { matches, window, finalStandings } }
+  },
+  render: ({ event, overview }) => renderWorkspace(event, 'overview', overview),
 }
 
 export const competitionScreen: Screen<EventDetail> = {
