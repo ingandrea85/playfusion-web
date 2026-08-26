@@ -1,0 +1,10 @@
+{
+  "name": "@playfusion/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "serve": "vite", "build": "vite build", "lint": "eslint ." },
+  "dependencies": { "@playfusion/tokens": "*" },
+  "devDependencies": { "vite": "^7.0.0" },
+  "nx": { "tags": ["scope:app", "type:app"] }
+}

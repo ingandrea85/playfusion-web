@@ -10,6 +10,9 @@ import {
 } from 'aws-cdk-lib/aws-cloudfront';
 import { S3BucketOrigin } from 'aws-cdk-lib/aws-cloudfront-origins';
 import { BucketDeployment, Source } from 'aws-cdk-lib/aws-s3-deployment';
+import { Certificate } from 'aws-cdk-lib/aws-certificatemanager';
+import { HostedZone, ARecord, AaaaRecord, RecordTarget } from 'aws-cdk-lib/aws-route53';
+import { CloudFrontTarget } from 'aws-cdk-lib/aws-route53-targets';
 import { resourceName } from './naming.js';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +22,10 @@ const REPO = resolve(__dirname, '..', '..', '..');
 
 export interface HostingStackProps extends StackProps {
   readonly appEnv: string;
+  /** Prod only: the apex domain + a us-east-1 ACM certificate ARN. When set (and env=pr), the
+   *  distribution serves the custom domain and Route 53 apex A/AAAA aliases point at CloudFront.
+   *  Staging leaves this empty and keeps the default *.cloudfront.net domain. */
+  readonly domain?: { name: string; certificateArn: string };
 }
 
 // Path-based hosting per Experience (R7): each app is served from its own key prefix
@@ -64,6 +71,9 @@ export class HostingStack extends Stack {
   var request = event.request;
   var uri = request.uri;
   if (uri === '/') { return request; } // defaultRootObject handles the root
+  // /app is a marketing-friendly alias of the E1 organizer app. E1 is built with base /e1/
+  // (assets resolve to /e1/*), so any /app document just needs the E1 shell; the URL stays /app.
+  if (uri === '/app' || uri.indexOf('/app/') === 0) { request.uri = '/e1/index.html'; return request; }
   if (uri.endsWith('/')) {
     request.uri = uri + 'index.html';
   } else {
@@ -80,9 +90,16 @@ export class HostingStack extends Stack {
       functionAssociations: [{ function: indexRewrite, eventType: FunctionEventType.VIEWER_REQUEST }],
     };
 
+    // Prod only: attach the custom apex domain + its us-east-1 ACM certificate. Staging keeps
+    // the default *.cloudfront.net domain (domain left empty), so it stays fully functional.
+    const useDomain = isProd && !!props.domain?.name && !!props.domain?.certificateArn;
+    const certificate = useDomain ? Certificate.fromCertificateArn(this, 'cert', props.domain!.certificateArn) : undefined;
+
     const distribution = new Distribution(this, 'cdn', {
       comment: resourceName('web', env),
-      defaultRootObject: 'e3/index.html',
+      // Root serves the marketing site; /app and /e3 resolve via the index-rewrite function.
+      defaultRootObject: 'index.html',
+      ...(useDomain ? { domainNames: [props.domain!.name], certificate } : {}),
       defaultBehavior: behaviour,
       additionalBehaviors: Object.fromEntries(APPS.map((a) => [`${a.prefix}/*`, behaviour])),
       // Last-resort fallback for genuinely missing objects. The index-rewrite function
@@ -91,10 +108,18 @@ export class HostingStack extends Stack {
       // hash-routed, so no server-side deep paths exist). Kept global — CloudFront error
       // responses are distribution-level, not per-behaviour.
       errorResponses: [
-        { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/e3/index.html' },
-        { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/e3/index.html' },
+        { httpStatus: 403, responseHttpStatus: 200, responsePagePath: '/index.html' },
+        { httpStatus: 404, responseHttpStatus: 200, responsePagePath: '/index.html' },
       ],
     });
+
+    // Prod only: Route 53 apex A/AAAA aliases → CloudFront. Needs the hosted zone in this account.
+    if (useDomain) {
+      const zone = HostedZone.fromLookup(this, 'zone', { domainName: props.domain!.name });
+      const target = RecordTarget.fromAlias(new CloudFrontTarget(distribution));
+      new ARecord(this, 'apex-a', { zone, recordName: props.domain!.name, target });
+      new AaaaRecord(this, 'apex-aaaa', { zone, recordName: props.domain!.name, target });
+    }
 
     // Real built app bundles, one BucketDeployment per app, each under its own prefix.
     // Prerequisite: `apps/{e1,e3}-web/dist` must already exist at synth time — run
@@ -119,7 +144,18 @@ export class HostingStack extends Stack {
       destinationKeyPrefix: 'e3',
       sources: [Source.asset(resolve(REPO, 'apps/e3-web/dist'))],
       distribution,
-      distributionPaths: ['/e3/*', '/'],
+      distributionPaths: ['/e3/*'],
+    });
+
+    // Marketing site at the bucket ROOT. prune:false is critical — a root deploy with the default
+    // prune would delete the e1/ and e3/ prefixes. Its assets live under /assets/* (no collision
+    // with e1/e3, whose assets are under their own prefixes).
+    new BucketDeployment(this, 'site', {
+      destinationBucket: bucket,
+      sources: [Source.asset(resolve(REPO, 'apps/site/dist'))],
+      prune: false,
+      distribution,
+      distributionPaths: ['/', '/index.html', '/assets/*'],
     });
   }
 }

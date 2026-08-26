@@ -7,5 +7,9 @@
     "audience": "",
     "rolesClaim": "https://playfusion/roles",
     "orgClaim": "org_id"
+  },
+  "domain": {
+    "name": "",
+    "certificateArn": ""
   }
 }

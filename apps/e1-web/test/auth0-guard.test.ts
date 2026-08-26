@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import { ensureAuthenticated, authProviderFrom, type Auth0Port } from '../src/auth/auth0'
+import { ensureAuthenticated, authProviderFrom, appBaseFromPath, type Auth0Port } from '../src/auth/auth0'
 
 const port = (over: Partial<Auth0Port>): Auth0Port => ({
   isAuthenticated: vi.fn().mockResolvedValue(false),
@@ -37,5 +37,24 @@ describe('E1 auth guard', () => {
     const p = port({})
     const header = await authProviderFrom(p)()
     expect(header).toEqual({ name: 'authorization', value: 'Bearer access-token' })
+  })
+  it('opens Auth0 on the sign-up screen when ?signup is present', async () => {
+    const p = port({ isAuthenticated: vi.fn().mockResolvedValue(false) })
+    await ensureAuthenticated(p, '?signup=1')
+    expect(p.loginWithRedirect).toHaveBeenCalledWith({ signup: true })
+  })
+  it('opens a normal login when ?signup is absent', async () => {
+    const p = port({ isAuthenticated: vi.fn().mockResolvedValue(false) })
+    await ensureAuthenticated(p, '')
+    expect(p.loginWithRedirect).toHaveBeenCalledWith({ signup: false })
+  })
+})
+
+describe('appBaseFromPath', () => {
+  it('maps /app paths to the /app/ base and everything else to /e1/', () => {
+    expect(appBaseFromPath('/app/')).toBe('/app/')
+    expect(appBaseFromPath('/app')).toBe('/app/')
+    expect(appBaseFromPath('/e1/')).toBe('/e1/')
+    expect(appBaseFromPath('/')).toBe('/e1/')
   })
 })
