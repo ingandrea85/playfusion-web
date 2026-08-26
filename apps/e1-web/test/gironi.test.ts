@@ -26,8 +26,9 @@ describe('gironi render', () => {
   it('shows the Gironi tab, category tabs, and a draw prompt when empty', () => {
     const html = renderGironi(data())
     expect(html).toContain('/gironi') // Gironi workspace tab href
-    expect(html).toContain('data-cat="U10"')
-    expect(html).toContain('data-cat="U12"')
+    expect(html).toContain('data-key="U10"')
+    expect(html).toContain('data-key="U12"')
+    expect(html).toContain('pf-tabs') // shared sub-tabs, aligned with the rest of the app
     expect(html).toContain('Sorteggia gironi')
     expect(html).toContain('Nessun girone')
   })
