@@ -18,6 +18,7 @@ import { resourcesScreen } from './views/resources.js'
 import { announcementsScreen } from './views/announcements.js'
 import { brandScreen } from './views/brand.js'
 import { membersScreen } from './views/members.js'
+import { subscriptionScreen } from './views/subscription.js'
 import { applyBrand } from '@playfusion/app-shell'
 import { createAuth0Adapter, ensureAuthenticated, authProviderFrom } from './auth/auth0.js'
 
@@ -47,6 +48,7 @@ async function boot() {
     }
     new HashRouter()
       .on('#/', () => route(dashboardScreen, {}))
+      .on('#/account/subscription', () => route(subscriptionScreen, {}))
       .on('#/events/new', () => route(createEventScreen, {}))
       .on('#/events/:id/competition', (p) => route(competitionScreen, p))
       .on('#/events/:id/categorie', (p) => route(categorieScreen, p))

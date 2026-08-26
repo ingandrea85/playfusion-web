@@ -192,6 +192,11 @@ export interface PublishAnnouncementInput { categoryId: string | null; title: st
 // S18 (O1 organization) — per-tenant brand identity. A null brand from the API = default theme.
 export interface Brand { logoText: string; primaryColor: string; accentColor: string }
 
+// S20 (O11) — per-tenant subscription (trial-first billing). trialDaysLeft is server-computed.
+export type PlanKey = 'FREE' | 'PRO' | 'BUSINESS'
+export type SubStatus = 'TRIAL' | 'ACTIVE'
+export interface Subscription { organizationId: string; plan: PlanKey; status: SubStatus; renewsOn: string; trialDaysLeft: number }
+
 // S19 (O2) — per-tenant membership & roles.
 export type OrgRole = 'OWNER' | 'ORGANIZER' | 'DIRECTOR'
 export interface Member { memberId: string; organizationId: string; name: string; email: string; role: OrgRole; createdAt: string }

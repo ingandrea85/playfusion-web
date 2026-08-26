@@ -61,12 +61,40 @@ export function renderCreateEvent(categorie: string[] = []): string {
     </main>`
 }
 
+/** S20 Free plan cap: a FREE org may keep only 1 event. When the cap is hit, create-event shows a
+ *  block with an upgrade link instead of the form. NOTE: the spec counts only ACTIVE (non-DONE)
+ *  events; computing per-event phase needs match data, so this slice caps on total events for FREE
+ *  and leaves the active-only refinement as a follow-up. */
+export function renderCapBlocked(): string {
+  return `${renderOrganizerTopbar('dashboard')}
+    <main class="pf-container pf-container--narrow">
+      <div class="pf-pagehead"><div class="pf-eyebrow">Nuovo</div><h1>Crea evento</h1></div>
+      <div class="pf-card">
+        <h2 class="pf-h3">Hai raggiunto il limite del piano Free</h2>
+        <p class="pf-muted">Il piano Free include <b>1 evento</b>. Passa a Pro per crearne quanti vuoi.</p>
+        <div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">
+          <a class="pf-btn pf-btn--primary" href="#/account/subscription">Passa a Pro</a>
+          <a class="pf-btn" href="#/">← Torna ai tornei</a>
+        </div>
+      </div>
+    </main>`
+}
+
+export interface CreateEventGate { capReached: boolean }
+
 /** Create-event is stateful (category list + tie-break policy), so mount keeps local state
  *  and re-renders in place; submit builds CreateEventInput and calls o3.createEvent. */
-export const createEventScreen: Screen<null> = {
-  load: async () => null,
-  render: () => renderCreateEvent([]),
-  mount(root, ctx: ViewCtx) {
+export const createEventScreen: Screen<CreateEventGate> = {
+  load: async (ctx) => {
+    const [sub, events] = await Promise.all([
+      ctx.client.o11.getSubscription(ctx.orgId).catch(() => null),
+      ctx.client.o3.listEvents().catch(() => [] as unknown[]),
+    ])
+    return { capReached: sub?.plan === 'FREE' && events.length >= 1 }
+  },
+  render: (data) => (data.capReached ? renderCapBlocked() : renderCreateEvent([])),
+  mount(root, ctx: ViewCtx, data) {
+    if (data.capReached) return
     const categorie: string[] = []
     const cats = root.querySelector('#cats')!
     const catInput = root.querySelector<HTMLInputElement>('#cat')!
