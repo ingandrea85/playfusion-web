@@ -10,6 +10,7 @@ import { renderPublicStandings, wirePublicStandings } from './views/standings.js
 import { renderPublicBracket, wirePublicBracket } from './views/bracket.js'
 import { renderDirector, wireDirector, directorScopeFromToken } from './views/director.js'
 import { renderApply, buildApplyInput } from './views/apply.js'
+import { renderPublicAvvisi, wirePublicAvvisi } from './views/avvisi.js'
 import { captureMagicLink, magicLinkAuthProvider, storedToken, clearToken } from './auth/magic-link.js'
 
 const cfg = readConfig(import.meta.env)
@@ -86,6 +87,10 @@ new HashRouter()
   // Deep-link from a landing category chip: the calendar preselected to that category.
   .on('#/events/:id/calendar/:cat', async ({ id, cat }) => {
     try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); app.innerHTML = renderPublicCalendar(ev, sched, matches, cat); wirePublicCalendar(app, matches, cat) }
+    catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
+  })
+  .on('#/events/:id/avvisi', async ({ id }) => {
+    try { const [ev, anns] = await Promise.all([client.o3.getEvent(id), client.o9.listAnnouncements(id)]); app.innerHTML = renderPublicAvvisi(ev, anns); wirePublicAvvisi(app, ev, anns) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/bracket', async ({ id }) => {
