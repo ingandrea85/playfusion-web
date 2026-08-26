@@ -60,6 +60,13 @@ export class DataStack extends Stack {
     this.tables['o3-events'] = events;
     this.tables['o4-participants'] = table('o4-participants', 'participantId');
     this.tables['o2-identities'] = table('o2-identities', 'subject');
+    // O2 membership (S19): members + invitations per org; org-index GSI to list per tenant.
+    for (const base of ['o2-members', 'o2-invitations'] as const) {
+      const pk = base === 'o2-members' ? 'memberId' : 'invitationId';
+      const t = table(base, pk);
+      t.addGlobalSecondaryIndex({ indexName: 'org-index', partitionKey: { name: 'organizationId', type: AttributeType.STRING } });
+      this.tables[base] = t;
+    }
     // O12 fees: + event-index GSI so S4 can list fee status per event.
     const fees = table('o12-fees', 'registrationId');
     fees.addGlobalSecondaryIndex({

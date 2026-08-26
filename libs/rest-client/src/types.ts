@@ -191,3 +191,9 @@ export interface PublishAnnouncementInput { categoryId: string | null; title: st
 
 // S18 (O1 organization) — per-tenant brand identity. A null brand from the API = default theme.
 export interface Brand { logoText: string; primaryColor: string; accentColor: string }
+
+// S19 (O2) — per-tenant membership & roles.
+export type OrgRole = 'OWNER' | 'ORGANIZER' | 'DIRECTOR'
+export interface Member { memberId: string; organizationId: string; name: string; email: string; role: OrgRole; createdAt: string }
+export interface Invitation { invitationId: string; organizationId: string; name: string; email: string; role: OrgRole; status: 'PENDING' | 'ACCEPTED'; createdAt: string }
+export interface InviteMemberInput { name: string; email: string; role: OrgRole }
