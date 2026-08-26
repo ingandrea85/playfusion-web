@@ -14,7 +14,10 @@ export function renderDashboard(events: EventSummary[]): string {
     <main class="pf-container">
       <div class="pf-row" style="margin-bottom:var(--space-lg)">
         <div class="pf-pagehead" style="margin-bottom:0"><div class="pf-eyebrow">Stagione 2026</div><h1>I tuoi tornei</h1></div>
-        <a class="pf-btn pf-btn--primary" href="#/events/new">＋ Crea evento</a>
+        <div class="pf-row" style="gap:var(--space-sm)">
+          <a class="pf-btn" href="#/account/subscription">Abbonamento</a>
+          <a class="pf-btn pf-btn--primary" href="#/events/new">＋ Crea evento</a>
+        </div>
       </div>
       <div class="pf-stack">${cards}</div>
     </main>`

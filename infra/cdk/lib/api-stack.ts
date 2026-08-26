@@ -62,6 +62,8 @@ const BCS: BcSpec[] = [
   { key: 'o9-communications', route: 'o9', tables: ['o9-announcements'] },
   // O1 organization (S18): per-tenant brand identity, public read + organizer write. No consumer.
   { key: 'o1-organization', route: 'o1', tables: ['o1-organizations'] },
+  // O11 subscriptions (S20): per-tenant trial-first billing. Organizer-only. No consumer.
+  { key: 'o11-subscriptions', route: 'o11', tables: ['o11-subscriptions'] },
 ];
 
 /**

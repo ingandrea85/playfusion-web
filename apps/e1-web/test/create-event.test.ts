@@ -32,7 +32,7 @@ describe('create-event mount', () => {
     const navigate = vi.fn()
     const ctx = { client: { o3: { createEvent } } as any, orgId: 'o', e3BaseUrl: '', navigate, refresh: () => {} }
     const root = document.createElement('div'); root.innerHTML = renderCreateEvent()
-    createEventScreen.mount!(root, ctx as any, null)
+    createEventScreen.mount!(root, ctx as any, { capReached: false })
     return { root, createEvent, navigate }
   }
 

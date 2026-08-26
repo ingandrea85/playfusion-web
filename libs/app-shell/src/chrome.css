@@ -284,6 +284,17 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 @keyframes pf-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @media (min-width: 560px) { .pf-sheet-overlay { align-items: center; } .pf-sheet { border-radius: var(--radius-lg); } }
 
+/* subscription plans — S20 (O11). Free/Pro/Business comparison cards. */
+.pf-plangrid { display: grid; gap: var(--space-md); grid-template-columns: 1fr; }
+@media (min-width: 720px) { .pf-plangrid { grid-template-columns: repeat(3, 1fr); } }
+.pf-plan { margin-bottom: 0; }
+.pf-plan--current { border-color: var(--color-action-primary); box-shadow: 0 0 0 1px var(--color-action-primary) inset; }
+.pf-plan__price { font-size: 26px; font-weight: 800; margin: 8px 0 12px; }
+.pf-plan__price .pf-muted { font-size: 13px; font-weight: 500; }
+.pf-plan__feats { list-style: none; padding: 0; margin: 0 0 var(--space-md); display: grid; gap: 6px; }
+.pf-plan__feats li { font-size: 14px; padding-left: 20px; position: relative; }
+.pf-plan__feats li::before { content: "✓"; position: absolute; left: 0; color: var(--color-feedback-success); font-weight: 800; }
+
 /* membership roles — S19 (O2). Per-tenant role badges: owner=blue, organizer=slate, director=orange. */
 .pf-role { display: inline-block; padding: 2px 8px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 700; vertical-align: middle; }
 .pf-role--owner { background: color-mix(in srgb, var(--color-action-primary) 14%, transparent); color: var(--color-action-primary); }
