@@ -2,6 +2,8 @@ import { createAuth0Client, type Auth0Client } from '@auth0/auth0-spa-js'
 import type { AuthProvider } from '@playfusion/rest-client'
 import type { AppConfig } from '../config.js'
 
+export interface Auth0User { name?: string; email?: string; picture?: string; roles: string[] }
+
 export interface Auth0Port {
   isAuthenticated(): Promise<boolean>
   handleRedirectCallback(): Promise<void>
@@ -9,6 +11,10 @@ export interface Auth0Port {
   logout(): Promise<void>
   getToken(): Promise<string>
   getOrgId(): Promise<string | undefined>
+  /** The current user's profile + roles (from the namespaced ID-token claim). */
+  getUser(): Promise<Auth0User | undefined>
+  /** Trigger an Auth0 password-reset email for the current user (self-service account management). */
+  changePassword(): Promise<void>
 }
 
 const ORG_CLAIM = 'org_id'
@@ -33,6 +39,25 @@ export function createAuth0Adapter(cfg: NonNullable<AppConfig['auth0']>): Auth0P
     logout: async () => (await client()).logout({ logoutParams: { returnTo: redirectUri } }),
     getToken: async () => (await client()).getTokenSilently(),
     getOrgId: async () => { const u = await (await client()).getUser(); return (u as Record<string, unknown> | undefined)?.[ORG_CLAIM] as string | undefined },
+    getUser: async () => {
+      const u = (await (await client()).getUser()) as Record<string, unknown> | undefined
+      if (!u) return undefined
+      // Auth0 custom claims are namespaced by the API audience (set by a tenant Action/Rule).
+      const rolesRaw = u[`${cfg.audience}/roles`]
+      const roles = Array.isArray(rolesRaw) ? rolesRaw.map(String) : []
+      return { name: u.name as string | undefined, email: u.email as string | undefined, picture: u.picture as string | undefined, roles }
+    },
+    changePassword: async () => {
+      const u = (await (await client()).getUser()) as Record<string, unknown> | undefined
+      const email = u?.email as string | undefined
+      if (!email) throw new Error('missing email — cannot reset password')
+      // Auth0 Authentication API: emails the user a password-reset link (no auth required).
+      const res = await fetch(`https://${cfg.domain}/dbconnections/change_password`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ client_id: cfg.clientId, email, connection: cfg.connection }),
+      })
+      if (!res.ok) throw new Error(`change_password failed: ${res.status}`)
+    },
   }
 }
 

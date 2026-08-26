@@ -19,6 +19,7 @@ import { announcementsScreen } from './views/announcements.js'
 import { brandScreen } from './views/brand.js'
 import { membersScreen } from './views/members.js'
 import { subscriptionScreen } from './views/subscription.js'
+import { renderUserBadge, mountUserBadge } from './views/user-badge.js'
 import { applyBrand } from '@playfusion/app-shell'
 import { createAuth0Adapter, ensureAuthenticated, authProviderFrom } from './auth/auth0.js'
 
@@ -35,6 +36,16 @@ async function boot() {
 
     // S18: apply the tenant brand (colours + wordmark) once, before routing. Best-effort.
     applyBrand(await client.o1.getBrand(orgId).catch(() => null))
+
+    // Account badge (role + change-password + logout): rendered once into a fixed container so it
+    // persists across every route without threading user data through each screen.
+    const user = await port.getUser().catch(() => undefined)
+    if (user) {
+      const host = document.createElement('div')
+      host.innerHTML = renderUserBadge(user)
+      document.body.appendChild(host)
+      mountUserBadge(host, port)
+    }
 
     let current: () => Promise<void> = async () => {}
     const ctx: ViewCtx = {

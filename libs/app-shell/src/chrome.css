@@ -284,6 +284,26 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 @keyframes pf-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @media (min-width: 560px) { .pf-sheet-overlay { align-items: center; } .pf-sheet { border-radius: var(--radius-lg); } }
 
+/* user account badge — floating top-right, opens change-password / logout menu. */
+.pf-userbadge { position: fixed; top: 12px; right: 16px; z-index: 60; }
+.pf-userbadge__btn { display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 4px; border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-pill); background: var(--color-surface-default); cursor: pointer; box-shadow: var(--shadow-sm); font: inherit; }
+.pf-userbadge__btn:hover { border-color: var(--color-border-strong); }
+.pf-userbadge__avatar { width: 30px; height: 30px; border-radius: var(--radius-round); object-fit: cover; flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800;
+  background: var(--color-action-primary); color: #fff; }
+.pf-userbadge__meta { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; padding-right: 6px; max-width: 180px; }
+.pf-userbadge__meta b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+.pf-userbadge__role { font-size: 11px; color: var(--color-text-muted); font-weight: 700; }
+.pf-userbadge__menu { position: absolute; top: calc(100% + 6px); right: 0; min-width: 220px; background: var(--color-surface-default);
+  border: 1px solid var(--color-border-default); border-radius: var(--radius-md); box-shadow: 0 8px 24px rgba(0,0,0,0.14); padding: 6px; }
+.pf-userbadge__email { font-size: 12px; color: var(--color-text-muted); padding: 6px 10px; border-bottom: 1px solid var(--color-border-default); margin-bottom: 4px; word-break: break-all; }
+.pf-menuitem { display: block; width: 100%; text-align: left; padding: 9px 10px; border: none; background: transparent; border-radius: var(--radius-sm); font: inherit; font-size: 14px; cursor: pointer; color: var(--color-text-default); }
+.pf-menuitem:hover { background: var(--color-surface-sunken); }
+.pf-userbadge__status { font-size: 12px; color: var(--color-feedback-success); padding: 8px 10px; }
+.pf-userbadge__status--err { color: var(--color-feedback-danger); }
+@media (max-width: 560px) { .pf-userbadge__meta { display: none; } }
+
 /* subscription plans — S20 (O11). Free/Pro/Business comparison cards. */
 .pf-plangrid { display: grid; gap: var(--space-md); grid-template-columns: 1fr; }
 @media (min-width: 720px) { .pf-plangrid { grid-template-columns: repeat(3, 1fr); } }
