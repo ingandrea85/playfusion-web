@@ -9,6 +9,8 @@ const port = (over: Partial<Auth0Port>): Auth0Port => ({
   logout: vi.fn().mockResolvedValue(undefined),
   getToken: vi.fn().mockResolvedValue('access-token'),
   getOrgId: vi.fn().mockResolvedValue('org-9'),
+  getUser: vi.fn().mockResolvedValue({ name: 'Test', email: 't@x.io', roles: ['organizer'] }),
+  changePassword: vi.fn().mockResolvedValue(undefined),
   ...over,
 })
 
