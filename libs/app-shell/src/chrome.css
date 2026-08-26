@@ -284,6 +284,12 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 @keyframes pf-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @media (min-width: 560px) { .pf-sheet-overlay { align-items: center; } .pf-sheet { border-radius: var(--radius-lg); } }
 
+/* membership roles — S19 (O2). Per-tenant role badges: owner=blue, organizer=slate, director=orange. */
+.pf-role { display: inline-block; padding: 2px 8px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 700; vertical-align: middle; }
+.pf-role--owner { background: color-mix(in srgb, var(--color-action-primary) 14%, transparent); color: var(--color-action-primary); }
+.pf-role--organizer { background: var(--color-surface-sunken); color: var(--color-text-soft); }
+.pf-role--director { background: color-mix(in srgb, var(--color-action-accent) 16%, transparent); color: var(--color-action-accent); }
+
 /* brand — S18 (O1). Live preview of the tenant wordmark + accent colours. */
 .pf-brandprev { display: flex; align-items: center; gap: var(--space-md); flex-wrap: wrap; margin-top: var(--space-sm);
   padding: var(--space-md); border: 1px solid var(--color-border-default); border-radius: var(--radius-md); background: var(--color-surface-sunken); }

@@ -17,6 +17,7 @@ import { participantsScreen } from './views/participants.js'
 import { resourcesScreen } from './views/resources.js'
 import { announcementsScreen } from './views/announcements.js'
 import { brandScreen } from './views/brand.js'
+import { membersScreen } from './views/members.js'
 import { applyBrand } from '@playfusion/app-shell'
 import { createAuth0Adapter, ensureAuthenticated, authProviderFrom } from './auth/auth0.js'
 
@@ -56,6 +57,7 @@ async function boot() {
       .on('#/events/:id/resources', (p) => route(resourcesScreen, p))
       .on('#/events/:id/announcements', (p) => route(announcementsScreen, p))
       .on('#/events/:id/brand', (p) => route(brandScreen, p))
+      .on('#/events/:id/members', (p) => route(membersScreen, p))
       .on('#/events/:id/enroll', (p) => route(enrollScreen, p))
       .on('#/events/:id/participants', (p) => route(participantsScreen, p))
       .on('#/events/:id', (p) => route(workspaceScreen, p))
