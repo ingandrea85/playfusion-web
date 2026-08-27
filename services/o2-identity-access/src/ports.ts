@@ -1,15 +1,15 @@
-import type { Member, Invitation } from './membership.js';
+import type { Member, Invitation, OrgRole } from './membership.js';
 
-export interface MemberRepository {
-  listByOrg(organizationId: string): Promise<Member[]>;
-  get(memberId: string): Promise<Member | undefined>;
-  save(member: Member): Promise<void>;
-  delete(memberId: string): Promise<void>;
-}
-
-export interface InvitationRepository {
-  listByOrg(organizationId: string): Promise<Invitation[]>;
-  get(invitationId: string): Promise<Invitation | undefined>;
-  save(invitation: Invitation): Promise<void>;
-  delete(invitationId: string): Promise<void>;
+/**
+ * The membership directory: the org's members + invitations, backed by Auth0 Organizations.
+ * The application layer enforces the last-owner invariant on top of these primitives, so the
+ * adapter stays a thin proxy over the Management API (and a fake in tests).
+ */
+export interface MembershipDirectory {
+  listMembers(organizationId: string): Promise<Member[]>;
+  listInvitations(organizationId: string): Promise<Invitation[]>;
+  createInvitation(input: { organizationId: string; name: string; email: string; role: OrgRole }): Promise<Invitation>;
+  revokeInvitation(organizationId: string, invitationId: string): Promise<void>;
+  setMemberRole(organizationId: string, memberId: string, role: OrgRole): Promise<Member>;
+  removeMember(organizationId: string, memberId: string): Promise<void>;
 }

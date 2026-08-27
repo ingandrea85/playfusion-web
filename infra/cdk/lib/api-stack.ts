@@ -22,10 +22,22 @@ export interface Auth0EnvConfig {
   readonly orgClaim?: string;
 }
 
+/** Non-secret Auth0 Management API config (T3 o2 membership). The client secret is NOT here —
+ *  it is injected at deploy time via the AUTH0_MGMT_CLIENT_SECRET env (like PF_TOKEN_SECRET). */
+export interface Auth0MgmtEnvConfig {
+  readonly domain: string;
+  readonly clientId: string;
+  readonly ownerRoleId: string;
+  readonly organizerRoleId: string;
+  readonly connectionId: string;
+  readonly inviteClientId: string;
+}
+
 export interface ApiStackProps extends StackProps {
   readonly appEnv: string;
   readonly data: DataStack;
   readonly auth0?: Auth0EnvConfig;
+  readonly auth0mgmt?: Auth0MgmtEnvConfig;
 }
 
 // One Bounded Context = one mono-Lambda (ADR-002). `tables` are the primary stores the
@@ -38,7 +50,8 @@ interface BcSpec {
 }
 
 const BCS: BcSpec[] = [
-  { key: 'o2-identity-access', route: 'o2', tables: ['o2-identities', 'o2-members', 'o2-invitations'] },
+  // T3: membership lives in Auth0 Organizations; o2 keeps only the magic-link identities table.
+  { key: 'o2-identity-access', route: 'o2', tables: ['o2-identities'] },
   { key: 'o3-sport-events', route: 'o3', tables: ['o3-events'] },
   { key: 'o4-participant-management', route: 'o4', tables: ['o4-participants'] },
   {
@@ -135,6 +148,20 @@ export class ApiStack extends Stack {
       const handler = lambda(`${bc.route}-handler`, resolve(SERVICES, bc.key, 'src/handler.ts'));
       handler.addEnvironment('O2_BASE_URL', o2BaseUrl);
       handler.addEnvironment('PF_API_BASE_URL', apiBaseUrl);
+
+      // T3: the o2 handler backs membership on Auth0 Organizations via the Management API.
+      // Non-secret config from env json; the client secret is injected by the deployer via env
+      // (AUTH0_MGMT_CLIENT_SECRET, never committed) — absent → membership endpoints return 503.
+      if (bc.route === 'o2' && props.auth0mgmt && process.env.AUTH0_MGMT_CLIENT_SECRET) {
+        const m = props.auth0mgmt;
+        handler.addEnvironment('AUTH0_MGMT_DOMAIN', m.domain);
+        handler.addEnvironment('AUTH0_MGMT_CLIENT_ID', m.clientId);
+        handler.addEnvironment('AUTH0_MGMT_CLIENT_SECRET', process.env.AUTH0_MGMT_CLIENT_SECRET);
+        handler.addEnvironment('AUTH0_ROLE_OWNER', m.ownerRoleId);
+        handler.addEnvironment('AUTH0_ROLE_ORGANIZER', m.organizerRoleId);
+        handler.addEnvironment('AUTH0_ORG_CONNECTION_ID', m.connectionId);
+        handler.addEnvironment('AUTH0_INVITE_CLIENT_ID', m.inviteClientId);
+      }
       for (const t of bc.tables) props.data.tables[t]!.grantReadWriteData(handler);
       props.data.bus.grantPutEventsTo(handler);
 

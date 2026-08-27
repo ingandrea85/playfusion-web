@@ -21,6 +21,7 @@ const cfg = JSON.parse(
 ) as {
   env: string; region?: string; environmentName?: string;
   auth0?: { issuer?: string; audience?: string; jwksUri?: string; rolesClaim?: string; orgClaim?: string };
+  auth0mgmt?: { domain: string; clientId: string; ownerRoleId: string; organizerRoleId: string; connectionId: string; inviteClientId: string };
   domain?: { name: string; certificateArn: string };
 };
 
@@ -30,6 +31,6 @@ const stackEnv = {
 };
 
 const data = new DataStack(app, `playfusion2-data-${envToken}`, { env: stackEnv, appEnv: envToken });
-new ApiStack(app, `playfusion2-api-${envToken}`, { env: stackEnv, appEnv: envToken, data, auth0: cfg.auth0 });
+new ApiStack(app, `playfusion2-api-${envToken}`, { env: stackEnv, appEnv: envToken, data, auth0: cfg.auth0, auth0mgmt: cfg.auth0mgmt });
 new WorkflowStack(app, `playfusion2-workflow-${envToken}`, { env: stackEnv, appEnv: envToken });
 new HostingStack(app, `playfusion2-hosting-${envToken}`, { env: stackEnv, appEnv: envToken, domain: cfg.domain });

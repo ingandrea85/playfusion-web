@@ -208,7 +208,8 @@ export type SubStatus = 'TRIAL' | 'ACTIVE'
 export interface Subscription { organizationId: string; plan: PlanKey; status: SubStatus; renewsOn: string; trialDaysLeft: number }
 
 // S19 (O2) — per-tenant membership & roles.
-export type OrgRole = 'OWNER' | 'ORGANIZER' | 'DIRECTOR'
+// T3: membership on Auth0 Organizations. Two roles only — directors enter via magic link, not membership.
+export type OrgRole = 'OWNER' | 'ORGANIZER'
 export interface Member { memberId: string; organizationId: string; name: string; email: string; role: OrgRole; createdAt: string }
-export interface Invitation { invitationId: string; organizationId: string; name: string; email: string; role: OrgRole; status: 'PENDING' | 'ACCEPTED'; createdAt: string }
+export interface Invitation { invitationId: string; organizationId: string; name: string; email: string; role: OrgRole; status: 'PENDING'; createdAt: string }
 export interface InviteMemberInput { name: string; email: string; role: OrgRole }

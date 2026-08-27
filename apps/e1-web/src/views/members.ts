@@ -5,8 +5,9 @@ import { renderOrgShell } from './org.js'
 
 export interface MembersData { members: Member[]; invitations: Invitation[]; locked?: boolean }
 
-const ROLES: OrgRole[] = ['OWNER', 'ORGANIZER', 'DIRECTOR']
-const ROLE_LABEL: Record<OrgRole, string> = { OWNER: 'Owner', ORGANIZER: 'Organizer', DIRECTOR: 'Director' }
+// Two membership roles: directors enter via magic link, not org membership (T3).
+const ROLES: OrgRole[] = ['OWNER', 'ORGANIZER']
+const ROLE_LABEL: Record<OrgRole, string> = { OWNER: 'Owner', ORGANIZER: 'Organizer' }
 const roleBadge = (role: OrgRole): string => `<span class="pf-role pf-role--${role.toLowerCase()}">${ROLE_LABEL[role]}</span>`
 const roleOptions = (sel: OrgRole): string => ROLES.map((r) => `<option value="${r}"${r === sel ? ' selected' : ''}>${ROLE_LABEL[r]}</option>`).join('')
 
@@ -38,11 +39,10 @@ function invitationsCard(invitations: Invitation[]): string {
   const rows = pending.map((i) => `<li class="pf-row" style="justify-content:space-between;gap:var(--space-md);align-items:center">
     <span><b>${esc(i.name)}</b> ${roleBadge(i.role)}<br><span class="pf-muted">${esc(i.email)}</span></span>
     <span class="pf-row" style="gap:var(--space-sm);flex:0 0 auto">
-      <button class="pf-btn pf-btn--primary" data-accept="${esc(i.invitationId)}">▶ Simula accettazione</button>
       <button class="pf-btn pf-btn--ghost" data-revoke="${esc(i.invitationId)}">Revoca</button>
     </span>
   </li>`).join('')
-  return `<div class="pf-card"><h2 class="pf-h3">Inviti in sospeso</h2><ul class="pf-stack" style="list-style:none;padding:0;margin:0">${rows}</ul></div>`
+  return `<div class="pf-card"><h2 class="pf-h3">Inviti in sospeso</h2><p class="pf-muted" style="margin:0 0 var(--space-sm)">L'invitato riceve un'email da Auth0 e diventa membro accettando.</p><ul class="pf-stack" style="list-style:none;padding:0;margin:0">${rows}</ul></div>`
 }
 
 export function renderMembers(data: MembersData): string {
@@ -58,7 +58,7 @@ export function renderMembers(data: MembersData): string {
         <div class="pf-field" style="margin-bottom:0;min-width:180px"><label>Ruolo</label><select id="i-role">${roleOptions('ORGANIZER')}</select></div>
         <button class="pf-btn pf-btn--primary" id="i-invite">Invita</button>
       </div>
-      <p class="pf-muted" style="margin-top:var(--space-sm)">L'accettazione reale via email/Auth0 arriverà con la gestione account; per ora usa «Simula accettazione».</p>
+      <p class="pf-muted" style="margin-top:var(--space-sm)">L'invito parte via email (Auth0): il membro entra nell'organizzazione accettando. I direttori invece accedono col link magico, non da qui.</p>
     </div>`
   return renderOrgShell('members', body)
 }
@@ -87,21 +87,17 @@ export const membersScreen: Screen<MembersData> = {
     })
 
     root.querySelectorAll<HTMLSelectElement>('.js-role').forEach((sel) => sel.addEventListener('change', async () => {
-      try { await ctx.client.o2.changeMemberRole(sel.dataset.id!, sel.value as OrgRole); ctx.refresh() }
+      try { await ctx.client.o2.changeMemberRole(ctx.orgId, sel.dataset.id!, sel.value as OrgRole); ctx.refresh() }
       catch (e: any) { fail(e?.status === 409 ? 'Un\'organizzazione deve mantenere almeno un owner.' : 'Cambio ruolo non riuscito.'); ctx.refresh() }
     }))
     root.querySelectorAll<HTMLButtonElement>('[data-remove]').forEach((b) => b.addEventListener('click', async () => {
       if (!confirm('Rimuovere il membro?')) return
-      try { await ctx.client.o2.removeMember(b.dataset.remove!); ctx.refresh() }
+      try { await ctx.client.o2.removeMember(ctx.orgId, b.dataset.remove!); ctx.refresh() }
       catch (e: any) { fail(e?.status === 409 ? 'Un\'organizzazione deve mantenere almeno un owner.' : 'Rimozione non riuscita.') }
-    }))
-    root.querySelectorAll<HTMLButtonElement>('[data-accept]').forEach((b) => b.addEventListener('click', async () => {
-      try { await ctx.client.o2.acceptInvitation(b.dataset.accept!); ctx.refresh() }
-      catch { fail('Accettazione non riuscita. Riprova.') }
     }))
     root.querySelectorAll<HTMLButtonElement>('[data-revoke]').forEach((b) => b.addEventListener('click', async () => {
       if (!confirm('Revocare l\'invito?')) return
-      try { await ctx.client.o2.revokeInvitation(b.dataset.revoke!); ctx.refresh() }
+      try { await ctx.client.o2.revokeInvitation(ctx.orgId, b.dataset.revoke!); ctx.refresh() }
       catch { fail('Revoca non riuscita. Riprova.') }
     }))
   },
