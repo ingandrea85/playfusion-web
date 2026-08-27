@@ -24,7 +24,15 @@ export interface Auth0Port {
   changePassword(): Promise<void>
 }
 
-const ORG_CLAIM = 'org_id'
+/** Read the tenant org id from the ID-token claims. The post-login Action stamps it namespaced
+ *  (`<audience>/org_id`) because Auth0 drops non-namespaced custom claims from the ID token; the
+ *  native `org_id` claim (present only on an org-scoped login) is a fallback. */
+export function orgIdFromClaims(claims: Record<string, unknown> | undefined, audience: string): string | undefined {
+  if (!claims) return undefined
+  const ns = claims[`${audience}/org_id`]
+  if (typeof ns === 'string') return ns
+  return typeof claims['org_id'] === 'string' ? (claims['org_id'] as string) : undefined
+}
 
 /** Wraps @auth0/auth0-spa-js behind Auth0Port so the guard is unit-testable with a fake. */
 export function createAuth0Adapter(cfg: NonNullable<AppConfig['auth0']>): Auth0Port {
@@ -47,7 +55,7 @@ export function createAuth0Adapter(cfg: NonNullable<AppConfig['auth0']>): Auth0P
       opts?.signup ? { authorizationParams: { screen_hint: 'signup' } } : undefined),
     logout: async () => (await client()).logout({ logoutParams: { returnTo: redirectUri } }),
     getToken: async () => (await client()).getTokenSilently(),
-    getOrgId: async () => { const u = await (await client()).getUser(); return (u as Record<string, unknown> | undefined)?.[ORG_CLAIM] as string | undefined },
+    getOrgId: async () => orgIdFromClaims((await (await client()).getUser()) as Record<string, unknown> | undefined, cfg.audience),
     getUser: async () => {
       const u = (await (await client()).getUser()) as Record<string, unknown> | undefined
       if (!u) return undefined

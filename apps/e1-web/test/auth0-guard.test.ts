@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import { ensureAuthenticated, authProviderFrom, appBaseFromPath, type Auth0Port } from '../src/auth/auth0'
+import { ensureAuthenticated, authProviderFrom, appBaseFromPath, orgIdFromClaims, type Auth0Port } from '../src/auth/auth0'
 
 const port = (over: Partial<Auth0Port>): Auth0Port => ({
   isAuthenticated: vi.fn().mockResolvedValue(false),
@@ -47,6 +47,20 @@ describe('E1 auth guard', () => {
     const p = port({ isAuthenticated: vi.fn().mockResolvedValue(false) })
     await ensureAuthenticated(p, '')
     expect(p.loginWithRedirect).toHaveBeenCalledWith({ signup: false })
+  })
+})
+
+describe('orgIdFromClaims', () => {
+  const AUD = 'https://plafusionapi.it'
+  it('reads the namespaced org_id claim (post-login Action stamps it there)', () => {
+    expect(orgIdFromClaims({ [`${AUD}/org_id`]: 'org_abc' }, AUD)).toBe('org_abc')
+  })
+  it('falls back to the native org_id claim (org-scoped login)', () => {
+    expect(orgIdFromClaims({ org_id: 'org_native' }, AUD)).toBe('org_native')
+  })
+  it('is undefined when neither claim is present', () => {
+    expect(orgIdFromClaims({ sub: 'u1' }, AUD)).toBeUndefined()
+    expect(orgIdFromClaims(undefined, AUD)).toBeUndefined()
   })
 })
 

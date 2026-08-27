@@ -58,13 +58,19 @@ exports.onExecutePostLogin = async (event, api) => {
 
   // 2. Put org_id + roles into BOTH tokens:
   //    - access token: the backend reads org_id (isolation) + the organizer role (requireOrganizer);
-  //    - id token: the SPA reads org_id (getOrgId → the real org, not org-pilot) + role (badge).
+  //    - id token: the SPA reads org_id + role. IMPORTANT: Auth0 SILENTLY DROPS non-namespaced
+  //      custom claims from the ID token, so org_id on the id token MUST be namespaced; the SPA
+  //      (getOrgId → orgIdFromClaims) reads `${NAMESPACE}/org_id`.
   api.accessToken.setCustomClaim('org_id', orgId);
-  api.idToken.setCustomClaim('org_id', orgId);
+  api.idToken.setCustomClaim(`${s.NAMESPACE}/org_id`, orgId);
   api.accessToken.setCustomClaim(`${s.NAMESPACE}/roles`, ['organizer']);
   api.idToken.setCustomClaim(`${s.NAMESPACE}/roles`, ['organizer']);
 };
 ```
+
+**Resolved values for this tenant** (`dev-c6din8ya`): `ORGANIZER_ROLE_ID` = `rol_NTnVlXjIr0R9eC8k`;
+use the broad admin M2M already authorized on the Management API as `CLIENT_ID`/`CLIENT_SECRET`
+(a least-privilege M2M with only the org/user scopes is preferable long-term).
 
 Then **Deploy** the Action and add it to the **Login** flow (Actions → Flows → Login → drag it in).
 
