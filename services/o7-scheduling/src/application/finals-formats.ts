@@ -17,7 +17,8 @@ export const saveFinalsFormat = (d: Deps) => async (input: { id: string; name: s
   checkpoint('saveFinalsFormat', 'START', { formatId: input.id });
   const createdAt = (d.now ?? (() => new Date().toISOString()))();
   const format: CustomFinalsFormat = { id: input.id, name: input.name, seeds: input.seeds, rounds: input.rounds, createdAt };
-  validateFormat(format); // throws INVALID_FORMAT (422) on a bad bracket
+  const errors = validateFormat(format);
+  if (errors.length) throw new DomainError('INVALID_FORMAT', errors.join(' '), 422);
   await d.repo.save(format);
   checkpoint('saveFinalsFormat', 'STOP', { formatId: format.id });
   return format;

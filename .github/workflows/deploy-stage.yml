@@ -53,7 +53,7 @@ jobs:
         working-directory: .
 
       - name: Build backend (platform-lib for Lambda bundling)
-        run: npm run build -w @playfusion/platform-lib
+        run: npm run build -w @playfusion/platform-lib -w @playfusion/finals-format
         working-directory: .
 
       # HostingStack's BucketDeployment (infra/cdk/lib/hosting-stack.ts) reads each app's
