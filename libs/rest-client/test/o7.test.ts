@@ -193,4 +193,13 @@ describe('o7 finals formats (SP1)', () => {
     await c.o7.deleteFinalsFormat('f1')
     expect(fetchMock.mock.calls[1][1].method).toBe('DELETE')
   })
+
+  it('getFinalsFormat GETs /o7/finals-formats/:id', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(r(fmt))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o7.getFinalsFormat('f1')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api/prod/o7/finals-formats/f1')
+    expect(out.id).toBe('f1')
+  })
+
 })

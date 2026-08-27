@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { errorCard, inlineError, runScreen, type Screen, type ViewCtx } from '../src/view'
 
-const ctx = { client: {} as any, orgId: 'o', e3BaseUrl: 'https://x', navigate: () => {}, refresh: () => {} } satisfies ViewCtx
+const ctx = { client: {} as any, orgId: 'o', e3BaseUrl: 'https://x', navigate: () => {}, refresh: () => {}, isPlatformAdmin: false } satisfies ViewCtx
 
 describe('view infra', () => {
   it('runScreen loads, renders, then mounts', async () => {

@@ -6,6 +6,8 @@ export interface ViewCtx {
   e3BaseUrl: string
   navigate: (hash: string) => void
   refresh: () => void
+  /** SP2: the logged-in user has the global `platform_admin` role (gates the finals-format editor). */
+  isPlatformAdmin: boolean
 }
 
 /** A screen = pure render(data) + optional mount(root,ctx,data) that wires DOM events and

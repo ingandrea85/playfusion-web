@@ -304,6 +304,10 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-userbadge__status--err { color: var(--color-feedback-danger); }
 @media (max-width: 560px) { .pf-userbadge__meta { display: none; } }
 
+/* finals-format editor — SP2. Two columns: builder form + live bracket preview. */
+.pf-ff-grid { display: grid; gap: var(--space-lg); grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 900px) { .pf-ff-grid { grid-template-columns: 1.2fr 1fr; } }
+
 /* subscription plans — S20 (O11). Free/Pro/Business comparison cards. */
 .pf-plangrid { display: grid; gap: var(--space-md); grid-template-columns: 1fr; }
 @media (min-width: 720px) { .pf-plangrid { grid-template-columns: repeat(3, 1fr); } }

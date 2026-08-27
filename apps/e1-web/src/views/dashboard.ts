@@ -14,7 +14,7 @@ export function renderDashboard(events: EventSummary[]): string {
     <main class="pf-container">
       <div class="pf-row" style="margin-bottom:var(--space-lg)">
         <div class="pf-pagehead" style="margin-bottom:0"><div class="pf-eyebrow">Stagione 2026</div><h1>I tuoi tornei</h1></div>
-        <div class="pf-row" style="gap:var(--space-sm)">
+        <div class="pf-row" style="gap:var(--space-sm)" id="dash-actions">
           <a class="pf-btn" href="#/account/subscription">Abbonamento</a>
           <a class="pf-btn pf-btn--primary" href="#/events/new">＋ Crea evento</a>
         </div>
@@ -26,4 +26,11 @@ export function renderDashboard(events: EventSummary[]): string {
 export const dashboardScreen: Screen<EventSummary[]> = {
   load: (ctx) => ctx.client.o3.listEvents(),
   render: renderDashboard,
+  mount(root, ctx) {
+    // Platform admins get a link to the global finals-format catalog (SP2).
+    if (ctx.isPlatformAdmin) {
+      root.querySelector('#dash-actions')?.insertAdjacentHTML('afterbegin',
+        '<a class="pf-btn" href="#/admin/finals-formats">Formati finali</a>')
+    }
+  },
 }

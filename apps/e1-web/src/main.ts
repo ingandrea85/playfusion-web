@@ -19,6 +19,7 @@ import { announcementsScreen } from './views/announcements.js'
 import { brandScreen } from './views/brand.js'
 import { membersScreen } from './views/members.js'
 import { subscriptionScreen } from './views/subscription.js'
+import { finalsFormatsScreen, finalsFormatEditorScreen } from './views/finals-formats.js'
 import { renderUserBadge, mountUserBadge } from './views/user-badge.js'
 import { applyBrand } from '@playfusion/app-shell'
 import { createAuth0Adapter, ensureAuthenticated, authProviderFrom } from './auth/auth0.js'
@@ -46,10 +47,11 @@ async function boot() {
       document.body.appendChild(host)
       mountUserBadge(host, port)
     }
+    const isPlatformAdmin = !!user?.roles.includes('platform_admin')
 
     let current: () => Promise<void> = async () => {}
     const ctx: ViewCtx = {
-      client, orgId, e3BaseUrl: cfg.e3BaseUrl,
+      client, orgId, e3BaseUrl: cfg.e3BaseUrl, isPlatformAdmin,
       navigate: (hash) => { window.location.hash = hash },
       refresh: () => { void current() },
     }
@@ -60,6 +62,9 @@ async function boot() {
     new HashRouter()
       .on('#/', () => route(dashboardScreen, {}))
       .on('#/account/subscription', () => route(subscriptionScreen, {}))
+      .on('#/admin/finals-formats/new', () => route(finalsFormatEditorScreen, {}))
+      .on('#/admin/finals-formats/:id', (p) => route(finalsFormatEditorScreen, p))
+      .on('#/admin/finals-formats', () => route(finalsFormatsScreen, {}))
       .on('#/events/new', () => route(createEventScreen, {}))
       .on('#/events/:id/competition', (p) => route(competitionScreen, p))
       .on('#/events/:id/categorie', (p) => route(categorieScreen, p))
