@@ -1,5 +1,5 @@
 import { request, type HttpConfig } from './http.js'
-import type { CategoryFinalStanding, GroupStanding, ResourceConfig, ResourcePlan, ScheduleConfig, ScheduleView, ScheduledMatchView } from './types.js'
+import type { CategoryFinalStanding, CustomFinalsFormat, FinalsFormatInput, GroupStanding, ResourceConfig, ResourcePlan, ScheduleConfig, ScheduleView, ScheduledMatchView } from './types.js'
 
 export interface O7Api {
   getSchedule(eventId: string): Promise<ScheduleView>
@@ -25,6 +25,11 @@ export interface O7Api {
   getResources(eventId: string): Promise<ResourceConfig>
   saveResources(eventId: string, config: ResourceConfig): Promise<ResourceConfig>
   getResourcePlan(eventId: string): Promise<ResourcePlan>
+  // SP1: global custom finals-format catalog (list = organizer; writes = platform admin).
+  listFinalsFormats(): Promise<CustomFinalsFormat[]>
+  saveFinalsFormat(input: FinalsFormatInput): Promise<CustomFinalsFormat>
+  updateFinalsFormat(id: string, input: FinalsFormatInput): Promise<CustomFinalsFormat>
+  deleteFinalsFormat(id: string): Promise<void>
 }
 export const o7 = (cfg: HttpConfig): O7Api => ({
   getSchedule: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/schedule`),
@@ -45,4 +50,8 @@ export const o7 = (cfg: HttpConfig): O7Api => ({
   getResources: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/resources`),
   saveResources: (id, config) => request(cfg, 'PUT', `/o7/events/${encodeURIComponent(id)}/resources`, config),
   getResourcePlan: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/resource-plan`),
+  listFinalsFormats: () => request(cfg, 'GET', '/o7/finals-formats'),
+  saveFinalsFormat: (input) => request(cfg, 'POST', '/o7/finals-formats', input),
+  updateFinalsFormat: (id, input) => request(cfg, 'PUT', `/o7/finals-formats/${encodeURIComponent(id)}`, input),
+  deleteFinalsFormat: (id) => request(cfg, 'DELETE', `/o7/finals-formats/${encodeURIComponent(id)}`),
 })

@@ -81,6 +81,7 @@ export interface CategorySchedule {
   finalsType?: FinalsType
   finalsEnabled?: boolean
   finalsTeamsToBracket?: number
+  finalsFormatId?: string
 }
 export interface ScheduleConfig {
   fields: string[]
@@ -96,6 +97,7 @@ export interface ScheduleConfig {
   finalsType?: FinalsType
   finalsEnabled?: boolean
   finalsTeamsToBracket?: number
+  finalsFormatId?: string
 }
 export interface ScheduleView {
   sportEventId: string
@@ -147,6 +149,14 @@ export interface StandingRow {
 // S13 final ranking (podium/placements) per category — progressive; pending where undecided.
 export interface FinalStandingRow { position: number; team?: string; pending?: 'result' | 'tie' }
 export interface CategoryFinalStanding { categoryId: string; rows: FinalStandingRow[] }
+
+// SP1 — custom finals formats (admin-authored global catalog). A match references qualifiers by
+// cross-group seed, or by winner/loser of an earlier slot.
+export type FinalsMatchRef = { seed: number } | { winnerOf: string } | { loserOf: string }
+export interface FinalsFormatMatch { slot: string; home: FinalsMatchRef; away: FinalsMatchRef; placementFrom?: number; placementTo?: number }
+export interface FinalsFormatRound { name: string; matches: FinalsFormatMatch[] }
+export interface CustomFinalsFormat { id: string; name: string; seeds: number; rounds: FinalsFormatRound[]; createdAt: string }
+export interface FinalsFormatInput { name: string; seeds: number; rounds: FinalsFormatRound[] }
 
 // S17 — event resources & post-match logistics.
 export interface Resource { resourceId: string; name: string; icon?: string; occupancyMinutes: number; capacityPersons: number; offsetMinutes: number }

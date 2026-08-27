@@ -1,4 +1,5 @@
 import { countsForStandings, type GroupStanding, type ScheduledMatch } from './domain.js';
+import { seedRanking } from './finals-format.js';
 
 /** S12/S13: resolve finals placeholders to real teams, on read.
  *
@@ -12,6 +13,7 @@ import { countsForStandings, type GroupStanding, type ScheduledMatch } from './d
  *  idempotent: correcting a result that "uncompletes" a group or unfinishes a match reverts the slots.
  *  `standings` are the GROUP standings (ranked, with `unresolved`). */
 const SEED_RE = /^(\d+)ª (Girone .+)$/;
+const SEED_GLOBAL_RE = /^Seed (\d+)$/; // custom-format cross-group seed (Approach A)
 const WIN_RE = /^Vincente (.+)$/;
 const LOSE_RE = /^Perdente (.+)$/;
 
@@ -65,12 +67,22 @@ export function resolvePlaceholders(matches: ScheduledMatch[], standings: GroupS
     if (!winner) return undefined;
     return nameOf(m, want === 'WIN' ? winner : winner === 'home' ? 'away' : 'home');
   };
+  // Cross-group seed `Seed k` (custom formats): resolves only when EVERY group of the category is
+  // complete and unambiguous (no residual S11 tie), since cross-position ranking needs all groups.
+  const resolveGlobalSeed = (label: string, categoryId: string): string | undefined => {
+    const m = SEED_GLOBAL_RE.exec(label);
+    if (!m) return undefined;
+    const groups = standings.filter((g) => g.categoryId === categoryId);
+    if (!groups.length) return undefined;
+    for (const g of groups) if (!isComplete(`${categoryId}||${g.groupLabel}`) || g.unresolved.length) return undefined;
+    return seedRanking(groups)[Number(m[1]) - 1];
+  };
   const resolveOne = (label: string, categoryId: string): string | undefined => {
     const w = WIN_RE.exec(label);
     if (w) { const t = bySlot.get(`${categoryId}||${w[1]}`); return t ? sideOf(t, 'WIN') : undefined; }
     const l = LOSE_RE.exec(label);
     if (l) { const t = bySlot.get(`${categoryId}||${l[1]}`); return t ? sideOf(t, 'LOSE') : undefined; }
-    return resolveSeed(label, categoryId);
+    return resolveGlobalSeed(label, categoryId) ?? resolveSeed(label, categoryId);
   };
 
   for (let pass = 0; pass < finals.length + 1; pass++) {

@@ -165,3 +165,32 @@ describe('o7 final standings (S13)', () => {
     expect(out[0].rows[0]).toEqual({ position: 1, team: 'A' })
   })
 })
+
+describe('o7 finals formats (SP1)', () => {
+  const r = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'content-type': 'application/json' } })
+  const fmt = { id: 'f1', name: 'Secca', seeds: 2, rounds: [{ name: 'Finale', matches: [{ slot: 'F', home: { seed: 1 }, away: { seed: 2 } }] }], createdAt: 't' }
+  const input = { name: 'Secca', seeds: 2, rounds: fmt.rounds }
+  it('listFinalsFormats GETs /o7/finals-formats', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(r([fmt]))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    expect((await c.o7.listFinalsFormats())[0].id).toBe('f1')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api/prod/o7/finals-formats')
+  })
+  it('saveFinalsFormat POSTs the input', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(r(fmt, 201))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    await c.o7.saveFinalsFormat(input as any)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://api/prod/o7/finals-formats'); expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual(input)
+  })
+  it('updateFinalsFormat PUTs /o7/finals-formats/:id and delete DELETEs', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(r(fmt)).mockResolvedValueOnce(new Response(null, { status: 204 }))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    await c.o7.updateFinalsFormat('f1', input as any)
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api/prod/o7/finals-formats/f1')
+    expect(fetchMock.mock.calls[0][1].method).toBe('PUT')
+    await c.o7.deleteFinalsFormat('f1')
+    expect(fetchMock.mock.calls[1][1].method).toBe('DELETE')
+  })
+})
