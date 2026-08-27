@@ -10,7 +10,7 @@ const event: EventDetail = {
 const cfg: ScheduleView['config'] = { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', groupsCount: 1, legs: 'SINGLE' }
 const match: ScheduledMatchView = { id: 'sm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Girone A', day: '2026-08-29', time: '09:00', field: 'Campo A', home: 'A', away: 'B' }
 const data = (status: ScheduleView['status'], matches: ScheduledMatchView[] = [], config = cfg): ScheduleData =>
-  ({ event, schedule: { sportEventId: 'e1', organizationId: 'org', status, config }, matches })
+  ({ event, schedule: { sportEventId: 'e1', organizationId: 'org', status, config }, matches, finalsFormats: [] })
 
 describe('schedule render', () => {
   it('shows the facility + play config and the Calendario tab, no calendar/actions when NONE', () => {

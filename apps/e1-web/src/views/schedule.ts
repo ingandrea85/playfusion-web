@@ -1,5 +1,5 @@
 import { esc, renderCalendar, renderTabs, categoryKeys, renderStepper, wireSteppers, readStepper, copyToClipboard, displayStatus, matchStatusBadge, calendarGironeTabs, filterCalendarMatches, finalsPhaseTabs, FINALS_TAB } from '@playfusion/app-shell'
-import type { CategorySchedule, EventDetail, FinalsType, ScheduleConfig, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
+import type { CategorySchedule, CustomFinalsFormat, EventDetail, FinalsType, ScheduleConfig, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
 
 const FINALS_TYPE_LABEL: Record<FinalsType, string> = {
   PLACEMENT: 'Tabellone eliminazione (per fascia)',
@@ -14,6 +14,7 @@ export interface ScheduleData {
   event: EventDetail
   schedule: ScheduleView
   matches: ScheduledMatchView[]
+  finalsFormats: CustomFinalsFormat[] // SP1: custom formats offered alongside the built-ins
 }
 
 const STATUS_LABEL: Record<ScheduleView['status'], string> = {
@@ -24,12 +25,12 @@ const catName = (c: string): string => c
 
 const defaultCat = (c: ScheduleConfig): CategorySchedule =>
   ({ fields: c.fields, periods: c.periods, periodMinutes: c.periodMinutes, breakMinutes: c.breakMinutes, legs: c.legs,
-     finalsType: c.finalsType, finalsEnabled: c.finalsEnabled, finalsTeamsToBracket: c.finalsTeamsToBracket })
+     finalsType: c.finalsType, finalsEnabled: c.finalsEnabled, finalsTeamsToBracket: c.finalsTeamsToBracket, finalsFormatId: c.finalsFormatId })
 const textToFields = (s: string): string[] => s.split(',').map((f) => f.trim()).filter(Boolean)
 
 /** One playing-config card (fields + match params + legs). `cat` present → per-category card
  *  tagged with data-cat; absent → the shared "same for all" card. */
-function playCard(cc: CategorySchedule, locked: boolean, cat?: string): string {
+function playCard(cc: CategorySchedule, locked: boolean, formats: CustomFinalsFormat[], cat?: string): string {
   const dis = locked ? 'disabled' : ''
   return `<div class="pf-card js-playcard"${cat ? ` data-cat="${esc(cat)}"` : ''} style="background:var(--color-surface-sunken)">
     ${cat ? `<h3 class="pf-h4" style="margin-top:0">${esc(cat)}</h3>` : ''}
@@ -46,17 +47,18 @@ function playCard(cc: CategorySchedule, locked: boolean, cat?: string): string {
     </div>
     <div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
       <div class="pf-field" style="margin-bottom:0"><label>Fase finale</label><select class="cfg-finalsType" ${dis}>
-        <option value=""${cc.finalsType ? '' : ' selected'}>Nessuna</option>
-        ${FINALS_TYPES.map((t) => `<option value="${t}" ${cc.finalsType === t ? 'selected' : ''}>${esc(FINALS_TYPE_LABEL[t])}</option>`).join('')}
+        <option value=""${!cc.finalsType && !cc.finalsFormatId ? ' selected' : ''}>Nessuna</option>
+        ${FINALS_TYPES.map((t) => `<option value="${t}" ${cc.finalsType === t && !cc.finalsFormatId ? 'selected' : ''}>${esc(FINALS_TYPE_LABEL[t])}</option>`).join('')}
+        ${formats.length ? `<optgroup label="Personalizzati">${formats.map((f) => `<option value="format:${esc(f.id)}" ${cc.finalsFormatId === f.id ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</optgroup>` : ''}
       </select></div>
       <div class="pf-field" style="margin-bottom:0"><label>Squadre al tabellone</label><input class="cfg-finalsTeamsToBracket" type="number" min="2" step="2" value="${cc.finalsTeamsToBracket ?? ''}" placeholder="solo Gironi + girone finale" ${dis} /></div>
     </div>
   </div>`
 }
 
-function renderConfigBody(mode: 'all' | 'per', config: ScheduleConfig, categorie: string[], locked: boolean): string {
-  if (mode === 'all') return playCard(defaultCat(config), locked)
-  return categorie.map((c) => playCard(config.byCategory?.[c] ?? defaultCat(config), locked, c)).join('')
+function renderConfigBody(mode: 'all' | 'per', config: ScheduleConfig, categorie: string[], locked: boolean, formats: CustomFinalsFormat[]): string {
+  if (mode === 'all') return playCard(defaultCat(config), locked, formats)
+  return categorie.map((c) => playCard(config.byCategory?.[c] ?? defaultCat(config), locked, formats, c)).join('')
 }
 
 function globalCard(config: ScheduleConfig, locked: boolean): string {
@@ -69,14 +71,14 @@ function globalCard(config: ScheduleConfig, locked: boolean): string {
     <p class="pf-muted" style="margin:var(--space-sm) 0 0">Gli slot per giornata sono calcolati automaticamente per far stare tutte le partite nei giorni dell'evento. I gironi si compongono nel tab <b>Gironi</b>.</p></div>`
 }
 
-function configSection(config: ScheduleConfig, categorie: string[], status: ScheduleView['status']): string {
+function configSection(config: ScheduleConfig, categorie: string[], status: ScheduleView['status'], formats: CustomFinalsFormat[]): string {
   const locked = isLocked(status)
   const mode = config.byCategory ? 'per' : 'all'
   return `${globalCard(config, locked)}
     <div class="pf-card">
       <h2 class="pf-h3">Config di gioco</h2>
       <label class="pf-switch"><input type="checkbox" id="sameForAll" ${mode === 'all' ? 'checked' : ''} ${locked ? 'disabled' : ''} /> Stessa config di gioco per tutte le categorie</label>
-      <div id="cfgbody" style="margin-top:var(--space-md)">${renderConfigBody(mode, config, categorie, locked)}</div>
+      <div id="cfgbody" style="margin-top:var(--space-md)">${renderConfigBody(mode, config, categorie, locked, formats)}</div>
       ${locked
         ? '<p class="pf-muted" style="margin-top:var(--space-md)">Calendario approvato: configurazione bloccata.</p>'
         : '<button class="pf-btn pf-btn--primary" id="generate" style="margin-top:var(--space-md)">Genera calendario</button>'}
@@ -128,15 +130,16 @@ export function renderSchedule(data: ScheduleData): string {
   const calendar = schedule.status === 'NONE' ? '' : calendarCard(matches, categoryKeys(matches)[0] ?? '', 'ALL')
   const directors = schedule.status === 'NONE' ? '' : directorCard(matches)
   return workspaceShell(event, 'schedule',
-    `<div id="err"></div>${configSection(schedule.config, event.categorie, schedule.status)}${actionsCard(schedule.status)}${calendar}${directors}`)
+    `<div id="err"></div>${configSection(schedule.config, event.categorie, schedule.status, data.finalsFormats)}${actionsCard(schedule.status)}${calendar}${directors}`)
 }
 
 export const scheduleScreen: Screen<ScheduleData> = {
   load: async (ctx, p) => {
-    const [event, schedule, matches] = await Promise.all([
+    const [event, schedule, matches, finalsFormats] = await Promise.all([
       ctx.client.o3.getEvent(p.id), ctx.client.o7.getSchedule(p.id), ctx.client.o7.getMatches(p.id),
+      ctx.client.o7.listFinalsFormats().catch(() => [] as CustomFinalsFormat[]),
     ])
-    return { event, schedule, matches }
+    return { event, schedule, matches, finalsFormats }
   },
   render: renderSchedule,
   mount(root, ctx: ViewCtx, data) {
@@ -153,12 +156,16 @@ export const scheduleScreen: Screen<ScheduleData> = {
     const cfgbody = root.querySelector('#cfgbody')!
     const sameForAll = root.querySelector<HTMLInputElement>('#sameForAll')
     const mode = (): 'all' | 'per' => (sameForAll?.checked ? 'all' : 'per')
-    sameForAll?.addEventListener('change', () => { cfgbody.innerHTML = renderConfigBody(mode(), data.schedule.config, categorie, false) })
+    sameForAll?.addEventListener('change', () => { cfgbody.innerHTML = renderConfigBody(mode(), data.schedule.config, categorie, false, data.finalsFormats) })
 
     const readCard = (el: Element): CategorySchedule => {
       const val = (s: string) => el.querySelector<HTMLInputElement>(s)?.value ?? ''
       const num = (s: string, fb: number) => { const v = Number(val(s)); return Number.isFinite(v) && v > 0 ? v : fb }
-      const finalsType = (el.querySelector<HTMLSelectElement>('.cfg-finalsType')?.value || undefined) as FinalsType | undefined
+      // The "Fase finale" select mixes built-ins (value = FinalsType) and custom formats (value =
+      // `format:<id>`). A custom format sets finalsFormatId and overrides finalsType.
+      const finalsSel = el.querySelector<HTMLSelectElement>('.cfg-finalsType')?.value || ''
+      const finalsFormatId = finalsSel.startsWith('format:') ? finalsSel.slice('format:'.length) : undefined
+      const finalsType = (!finalsFormatId && finalsSel ? finalsSel : undefined) as FinalsType | undefined
       const bracket = Number(val('.cfg-finalsTeamsToBracket'))
       return {
         fields: textToFields(val('.cfg-fields')),
@@ -166,6 +173,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
         breakMinutes: Number(val('.cfg-breakMinutes')) || 0,
         legs: el.querySelector<HTMLSelectElement>('.cfg-legs')?.value === 'HOME_AWAY' ? 'HOME_AWAY' : 'SINGLE',
         // Finals format per category; only include the fields that are set (avoid undefined noise).
+        ...(finalsFormatId ? { finalsFormatId } : {}),
         ...(finalsType ? { finalsType, finalsEnabled: true } : {}),
         ...(Number.isFinite(bracket) && bracket >= 2 ? { finalsTeamsToBracket: Math.floor(bracket) } : {}),
       }
