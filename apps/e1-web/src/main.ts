@@ -6,6 +6,7 @@ import { createClient } from '@playfusion/rest-client'
 import { readConfig } from './config.js'
 import { runScreen, errorCard, type ViewCtx, type Screen } from './view.js'
 import { dashboardScreen } from './views/dashboard.js'
+import { setOrgNavOwner } from './views/org.js'
 import { createEventScreen } from './views/create-event.js'
 import { workspaceScreen, competitionScreen, categorieScreen } from './views/workspace.js'
 import { gironiScreen } from './views/gironi.js'
@@ -49,6 +50,9 @@ async function boot() {
       mountUserBadge(host, port)
     }
     const isPlatformAdmin = !!user?.roles.includes('platform_admin')
+    // T4: org role from Auth0 claims — `tenant_admin` = OWNER (billing/brand/members), else ORGANIZER.
+    const orgRole = user?.roles.includes('tenant_admin') ? 'OWNER' : 'ORGANIZER'
+    setOrgNavOwner(orgRole === 'OWNER')
 
     // T1: the org's plan drives what's unlocked. Read the subscription once at boot (best-effort;
     // a not-yet-provisioned/errored subscription → most restrictive FREE entitlements).
@@ -57,7 +61,7 @@ async function boot() {
 
     let current: () => Promise<void> = async () => {}
     const ctx: ViewCtx = {
-      client, orgId, e3BaseUrl: cfg.e3BaseUrl, isPlatformAdmin, entitlements: ent,
+      client, orgId, e3BaseUrl: cfg.e3BaseUrl, isPlatformAdmin, orgRole, entitlements: ent,
       navigate: (hash) => { window.location.hash = hash },
       refresh: () => { void current() },
     }

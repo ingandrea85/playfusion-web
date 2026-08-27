@@ -1,7 +1,9 @@
 import { esc } from '@playfusion/app-shell'
 import type { PlanKey, Subscription } from '@playfusion/rest-client'
-import { inlineError, type Screen, type ViewCtx } from '../view.js'
+import { inlineError, notAuthorizedCard, type Screen, type ViewCtx } from '../view.js'
 import { renderOrgShell } from './org.js'
+
+export interface SubscriptionData { sub?: Subscription; forbidden?: boolean }
 
 const PLANS: Array<{ key: PlanKey; label: string; price: number; features: string[] }> = [
   { key: 'FREE', label: 'Free', price: 0, features: ['1 evento attivo', 'Gironi, calendario, classifiche', 'Tabellone pubblico'] },
@@ -44,10 +46,14 @@ export function renderSubscription(sub: Subscription): string {
       <div class="pf-plangrid">${PLANS.map((p) => planCard(p, sub)).join('')}</div>`)
 }
 
-export const subscriptionScreen: Screen<Subscription> = {
-  load: (ctx) => ctx.client.o11.getSubscription(ctx.orgId),
-  render: (sub) => renderSubscription(sub),
-  mount(root, ctx: ViewCtx) {
+export const subscriptionScreen: Screen<SubscriptionData> = {
+  load: async (ctx) => {
+    if (ctx.orgRole !== 'OWNER') return { forbidden: true }
+    return { sub: await ctx.client.o11.getSubscription(ctx.orgId) }
+  },
+  render: (data) => data.forbidden ? renderOrgShell('subscription', notAuthorizedCard('Abbonamento')) : renderSubscription(data.sub!),
+  mount(root, ctx: ViewCtx, data) {
+    if (data.forbidden) return // owner-only
     const fail = (msg: string) => { root.querySelector('#err')!.innerHTML = inlineError(msg) }
     root.querySelector<HTMLButtonElement>('#activate-pro')?.addEventListener('click', async () => {
       try { await ctx.client.o11.activatePro(ctx.orgId); ctx.refresh() }

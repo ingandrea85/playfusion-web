@@ -35,7 +35,7 @@ describe('subscription mount', () => {
     const refresh = vi.fn()
     const ctx = { client: { o11 } as any, orgId: 'org-1', e3BaseUrl: '', navigate: () => {}, refresh }
     const root = document.createElement('div'); root.innerHTML = renderSubscription(sub())
-    subscriptionScreen.mount!(root, ctx as any, sub())
+    subscriptionScreen.mount!(root, ctx as any, { sub: sub() })
     root.querySelector<HTMLButtonElement>('#activate-pro')!.click()
     await vi.waitFor(() => expect(o11.activatePro).toHaveBeenCalledWith('org-1'))
     await vi.waitFor(() => expect(refresh).toHaveBeenCalled())
