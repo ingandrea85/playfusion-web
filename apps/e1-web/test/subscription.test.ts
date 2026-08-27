@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
+import { entitlements } from '@playfusion/entitlements'
 import type { Subscription } from '@playfusion/rest-client'
 import { renderSubscription, subscriptionScreen } from '../src/views/subscription'
 import { renderCapBlocked, createEventScreen } from '../src/views/create-event'
@@ -41,30 +42,19 @@ describe('subscription mount', () => {
   })
 })
 
-describe('create-event Free cap', () => {
-  it('load flags capReached for a FREE org that already has an event', async () => {
-    const ctx = { client: {
-      o11: { getSubscription: vi.fn().mockResolvedValue({ plan: 'FREE' }) },
-      o3: { listEvents: vi.fn().mockResolvedValue([{ sportEventId: 'e1' }]) },
-    }, orgId: 'org-1' } as any
-    const data = await createEventScreen.load(ctx, {})
+describe('create-event Free cap (from entitlements)', () => {
+  const capCtx = (plan: 'FREE' | 'PRO', events: unknown[]) =>
+    ({ client: { o3: { listEvents: vi.fn().mockResolvedValue(events) } }, orgId: 'org-1', entitlements: entitlements(plan) }) as any
+  it('caps a FREE org that already has an event', async () => {
+    const data = await createEventScreen.load(capCtx('FREE', [{ sportEventId: 'e1' }]), {})
     expect(data.capReached).toBe(true)
     expect(createEventScreen.render(data)).toContain('Hai raggiunto il limite del piano Free')
   })
-  it('does not cap a PRO org', async () => {
-    const ctx = { client: {
-      o11: { getSubscription: vi.fn().mockResolvedValue({ plan: 'PRO' }) },
-      o3: { listEvents: vi.fn().mockResolvedValue([{ sportEventId: 'e1' }, { sportEventId: 'e2' }]) },
-    }, orgId: 'org-1' } as any
-    const data = await createEventScreen.load(ctx, {})
-    expect(data.capReached).toBe(false)
+  it('does not cap a PRO org (unlimited events)', async () => {
+    expect((await createEventScreen.load(capCtx('PRO', [{ sportEventId: 'e1' }, { sportEventId: 'e2' }]), {})).capReached).toBe(false)
   })
   it('does not cap a FREE org with no events yet', async () => {
-    const ctx = { client: {
-      o11: { getSubscription: vi.fn().mockResolvedValue({ plan: 'FREE' }) },
-      o3: { listEvents: vi.fn().mockResolvedValue([]) },
-    }, orgId: 'org-1' } as any
-    expect((await createEventScreen.load(ctx, {})).capReached).toBe(false)
+    expect((await createEventScreen.load(capCtx('FREE', []), {})).capReached).toBe(false)
   })
 })
 

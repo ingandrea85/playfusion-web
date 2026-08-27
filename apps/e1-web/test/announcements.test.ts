@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
+import { entitlements } from '@playfusion/entitlements'
 import type { AnnouncementView, EventDetail, RegistrationView } from '@playfusion/rest-client'
 import { renderAnnouncements, reachOf, announcementsScreen, type AnnouncementsData } from '../src/views/announcements'
 
@@ -91,7 +92,7 @@ describe('announcementsScreen.load', () => {
       o3: { getEvent: vi.fn().mockResolvedValue(event) },
       o9: { listAnnouncements: vi.fn().mockRejectedValue(new Error('down')) },
       o5: { listRegistrations: vi.fn().mockRejectedValue(new Error('down')) },
-    } } as any
+    } , entitlements: entitlements('PRO') } as any
     const d = await announcementsScreen.load(ctx, { id: 'e1' })
     expect(d.event.sportEventId).toBe('e1')
     expect(d.announcements).toEqual([])

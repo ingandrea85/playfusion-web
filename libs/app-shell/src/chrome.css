@@ -304,6 +304,10 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-userbadge__status--err { color: var(--color-feedback-danger); }
 @media (max-width: 560px) { .pf-userbadge__meta { display: none; } }
 
+/* plan lock — T1. Shown in place of a plan-gated feature (Brand / Avvisi / Membri). */
+.pf-lock { text-align: center; padding: clamp(24px, 5vw, 44px); }
+.pf-lock__ic { font-size: 34px; line-height: 1; margin-bottom: 10px; }
+
 /* finals-format editor — SP2. Two columns: builder form + live bracket preview. */
 .pf-ff-grid { display: grid; gap: var(--space-lg); grid-template-columns: 1fr; align-items: start; }
 @media (min-width: 900px) { .pf-ff-grid { grid-template-columns: 1.2fr 1fr; } }

@@ -1,4 +1,5 @@
 import type { Client } from '@playfusion/rest-client'
+import type { Entitlements } from '@playfusion/entitlements'
 
 export interface ViewCtx {
   client: Client
@@ -8,7 +9,18 @@ export interface ViewCtx {
   refresh: () => void
   /** SP2: the logged-in user has the global `platform_admin` role (gates the finals-format editor). */
   isPlatformAdmin: boolean
+  /** T1: what the org's plan unlocks (computed once at boot from the subscription). */
+  entitlements: Entitlements
 }
+
+/** T1: a "requires Pro" lock shown in place of a plan-gated feature, with an upgrade link. */
+export const lockCard = (feature: string): string =>
+  `<div class="pf-card pf-lock">
+    <div class="pf-lock__ic">🔒</div>
+    <h2 class="pf-h3" style="margin:0">${feature} — richiede Pro</h2>
+    <p class="pf-muted" style="margin:6px 0 14px">Con il piano Free questa funzione è disattivata. Passa a Pro per sbloccarla.</p>
+    <a class="pf-btn pf-btn--primary" href="#/account/subscription">Passa a Pro</a>
+  </div>`
 
 /** A screen = pure render(data) + optional mount(root,ctx,data) that wires DOM events and
  *  calls the rest-client. load() fetches the data render() needs. Keeps render testable. */

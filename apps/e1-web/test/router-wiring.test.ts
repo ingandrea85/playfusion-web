@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
 import { errorCard, inlineError, runScreen, type Screen, type ViewCtx } from '../src/view'
+import { entitlements } from '@playfusion/entitlements'
 
-const ctx = { client: {} as any, orgId: 'o', e3BaseUrl: 'https://x', navigate: () => {}, refresh: () => {}, isPlatformAdmin: false } satisfies ViewCtx
+const ctx = { client: {} as any, orgId: 'o', e3BaseUrl: 'https://x', navigate: () => {}, refresh: () => {}, isPlatformAdmin: false, entitlements: entitlements('PRO') } satisfies ViewCtx
 
 describe('view infra', () => {
   it('runScreen loads, renders, then mounts', async () => {
