@@ -22,6 +22,7 @@ import { subscriptionScreen } from './views/subscription.js'
 import { finalsFormatsScreen, finalsFormatEditorScreen } from './views/finals-formats.js'
 import { renderUserBadge, mountUserBadge } from './views/user-badge.js'
 import { applyBrand } from '@playfusion/app-shell'
+import { entitlements } from '@playfusion/entitlements'
 import { createAuth0Adapter, ensureAuthenticated, authProviderFrom } from './auth/auth0.js'
 
 const cfg = readConfig(import.meta.env)
@@ -49,9 +50,14 @@ async function boot() {
     }
     const isPlatformAdmin = !!user?.roles.includes('platform_admin')
 
+    // T1: the org's plan drives what's unlocked. Read the subscription once at boot (best-effort;
+    // a not-yet-provisioned/errored subscription → most restrictive FREE entitlements).
+    const sub = await client.o11.getSubscription(orgId).catch(() => null)
+    const ent = entitlements(sub?.plan)
+
     let current: () => Promise<void> = async () => {}
     const ctx: ViewCtx = {
-      client, orgId, e3BaseUrl: cfg.e3BaseUrl, isPlatformAdmin,
+      client, orgId, e3BaseUrl: cfg.e3BaseUrl, isPlatformAdmin, entitlements: ent,
       navigate: (hash) => { window.location.hash = hash },
       refresh: () => { void current() },
     }

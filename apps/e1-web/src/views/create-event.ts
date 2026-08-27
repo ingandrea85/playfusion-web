@@ -86,11 +86,10 @@ export interface CreateEventGate { capReached: boolean }
  *  and re-renders in place; submit builds CreateEventInput and calls o3.createEvent. */
 export const createEventScreen: Screen<CreateEventGate> = {
   load: async (ctx) => {
-    const [sub, events] = await Promise.all([
-      ctx.client.o11.getSubscription(ctx.orgId).catch(() => null),
-      ctx.client.o3.listEvents().catch(() => [] as unknown[]),
-    ])
-    return { capReached: sub?.plan === 'FREE' && events.length >= 1 }
+    // T1: the active-event cap comes from the org's entitlements (computed once at boot).
+    const events = await ctx.client.o3.listEvents().catch(() => [] as unknown[])
+    const max = ctx.entitlements.maxActiveEvents
+    return { capReached: max !== null && events.length >= max }
   },
   render: (data) => (data.capReached ? renderCapBlocked() : renderCreateEvent([])),
   mount(root, ctx: ViewCtx, data) {

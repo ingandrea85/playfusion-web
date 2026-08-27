@@ -1,9 +1,9 @@
 import { esc } from '@playfusion/app-shell'
 import type { AnnouncementView, EventDetail, RegistrationView } from '@playfusion/rest-client'
-import { inlineError, type Screen, type ViewCtx } from '../view.js'
+import { inlineError, lockCard, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
 
-export interface AnnouncementsData { event: EventDetail; announcements: AnnouncementView[]; confirmed: RegistrationView[] }
+export interface AnnouncementsData { event: EventDetail; announcements: AnnouncementView[]; confirmed: RegistrationView[]; locked?: boolean }
 
 const scopeLabel = (categoryId: string | null): string => categoryId ?? 'Tutte le categorie'
 
@@ -29,6 +29,7 @@ function renderList(list: AnnouncementView[]): string {
 }
 
 export function renderAnnouncements(data: AnnouncementsData, activeTab = 'announcements'): string {
+  if (data.locked) return workspaceShell(data.event, activeTab, lockCard('Avvisi al pubblico'))
   const opts = `<option value="">Tutte le categorie</option>` + data.event.categorie.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('')
   const body = `<div id="err"></div>
     <div class="pf-card">
@@ -53,10 +54,11 @@ export const announcementsScreen: Screen<AnnouncementsData> = {
       ctx.client.o9.listAnnouncements(p.id).catch(() => [] as AnnouncementView[]),
       ctx.client.o5.listRegistrations(p.id, 'Confirmed').catch(() => [] as RegistrationView[]),
     ])
-    return { event, announcements, confirmed }
+    return { event, announcements, confirmed, locked: !ctx.entitlements.hasAnnouncements }
   },
   render: (data) => renderAnnouncements(data),
   mount(root, ctx: ViewCtx, data) {
+    if (data.locked) return // plan-gated
     const id = data.event.sportEventId
     const err = root.querySelector('#err')!
     const fail = (msg: string) => { err.innerHTML = inlineError(msg) }

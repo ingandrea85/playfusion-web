@@ -1,9 +1,9 @@
 import { esc, applyBrand } from '@playfusion/app-shell'
 import type { Brand, EventDetail } from '@playfusion/rest-client'
-import { inlineError, type Screen, type ViewCtx } from '../view.js'
+import { inlineError, lockCard, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
 
-export interface BrandData { event: EventDetail; brand: Brand | null }
+export interface BrandData { event: EventDetail; brand: Brand | null; locked?: boolean }
 
 // Token defaults (tokens.css) — the starting point when the tenant has no brand yet.
 const DEFAULT_PRIMARY = '#0b5fff'
@@ -20,6 +20,7 @@ function preview(logoText: string, primary: string, accent: string): string {
 }
 
 export function renderBrand(data: BrandData, activeTab = 'brand'): string {
+  if (data.locked) return workspaceShell(data.event, activeTab, lockCard('Brand personalizzato'))
   const b = data.brand
   const logoText = b?.logoText ?? ''
   const primary = b?.primaryColor ?? DEFAULT_PRIMARY
@@ -49,10 +50,11 @@ export const brandScreen: Screen<BrandData> = {
       ctx.client.o3.getEvent(p.id),
       ctx.client.o1.getBrand(ctx.orgId).catch(() => null as Brand | null),
     ])
-    return { event, brand }
+    return { event, brand, locked: !ctx.entitlements.hasBrand }
   },
   render: (data) => renderBrand(data),
-  mount(root, ctx: ViewCtx, _data) {
+  mount(root, ctx: ViewCtx, data) {
+    if (data.locked) return // plan-gated: only the lock card is shown
     const err = root.querySelector('#err')!
     const fail = (msg: string) => { err.innerHTML = inlineError(msg) }
     const q = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!
