@@ -1,7 +1,7 @@
 # Entitlements-driven tenancy — one org model, plan unlocks the team (DRAFT)
 
 **Date:** 2026-08-27
-**Status:** DRAFT for review (strategic design; no code yet)
+**Status:** APPROVED (4 open decisions resolved 2026-08-27); ready to decompose into slices
 **Scope:** reshapes tenancy across O2 (membership/identity), O11 (subscription), O1 (brand) and E1
 **Supersedes/aligns:** the "personal org per user" Auth0 onboarding; Blueprint D-O2-1 (membership),
 D-O11-2 (trial-first)
@@ -37,13 +37,13 @@ Proposed default matrix (⚠️ numbers to confirm):
 | Custom finals formats | (platform_admin, orthogonal to plan)              |
 | Killer B2B feature    | —               | —               | sub-teams / multi-venue (TBD) |
 
-Open decisions:
-- **Seats**: fixed per plan (above) vs **per-seat billing** (pay per member). Default here = fixed;
-  per-seat is a later pricing lever.
-- **Business** differentiator: a real feature (sub-teams / multi-venue / SSO) vs just "more seats".
-- **Trial**: a new tenant is born in a **14-day PRO trial** (S20 already) → they get full team
-  features during the trial; at expiry → **Free**, team features **lock** (existing members kept but
-  read-only; no new invites) with an upgrade CTA. (Confirm the "keep members read-only" behaviour.)
+Decisions (locked 2026-08-27):
+- **Seats = fixed per plan** (Free 1 · Pro 5 · Business 20). Per-seat billing is out of scope (a
+  possible future pricing lever, not now).
+- **Business differentiator = a real B2B feature** (sub-teams / multi-venue / SSO), not just "more
+  seats". Which one is scoped as its own later slice; the entitlements core just carries a flag.
+- **Trial → Free** (a new tenant starts in a 14-day PRO trial, S20): at expiry → Free, and any
+  members beyond the Free seat cap stay **read-only** (not blocked at login), with an upgrade CTA.
 
 Implementation shape: a pure `entitlements(plan): Entitlements` in a **shared lib**
 (`@playfusion/entitlements`), consumed by o11/o2 (backend enforcement) and E1 (UI gating) — same
@@ -65,10 +65,11 @@ Today the post-login Action creates a **personal org** for any user without one.
 So the Action becomes: *if the login is org-scoped (member) → use that org; else if the user has no
 org → create a personal one (owner)*. Roles always read from the real Auth0 assignments (already fixed).
 
-**Membership source of truth**: move to **Auth0 Organizations** (members + roles + invitations). The
-S19 `o2-members`/`o2-invitations` registry becomes either a thin read-model synced from Auth0, or is
-retired in favour of reading Auth0 org members directly. (Decision to confirm — leaning: Auth0 as SoT,
-drop the standalone registry.)
+**Membership source of truth (decided)**: **Auth0 Organizations** is the single source of truth for
+members + roles + invitations. The S19 `o2-members`/`o2-invitations` registry + its endpoints + the
+current E1 Membri UI are **retired**: the org console reads/writes members via Auth0 (a thin backend
+proxying the Management API for list/invite/role-change/remove, or the FE through a new o2 endpoint).
+The last-OWNER invariant and role semantics move onto the Auth0 org membership.
 
 ## Organization console (above events)
 
@@ -117,8 +118,8 @@ Each slice ships independently; 1–2 give visible value fast without touching A
 Per-seat billing, SSO/enterprise connections, sub-teams/multi-venue, usage analytics, and the
 platform-admin E4 monitoring surface (S21) — all later.
 
-## Open decisions to confirm
-1. Seats: fixed-per-plan (proposed) vs per-seat billing.
-2. Business plan differentiator (feature vs more seats).
-3. Trial→Free downgrade: keep existing members read-only vs block login for extra members.
-4. Membership source of truth: Auth0 Organizations (proposed) vs keep the o2 registry.
+## Decisions (all resolved 2026-08-27)
+1. Seats: **fixed per plan** (1 / 5 / 20).
+2. Business: **a real B2B feature** (sub-teams / multi-venue / SSO — which one scoped later).
+3. Trial→Free: extra members **read-only**, not blocked.
+4. Membership source of truth: **Auth0 Organizations**; the o2 registry (S19) is retired.
