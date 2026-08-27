@@ -8,5 +8,13 @@
     "clientId": "65atFepkIh2jiMeaDqZlqgD63ccd2Gw1",
     "rolesClaim": "https://plafusionapi.it/roles",
     "orgClaim": "org_id"
+  },
+  "auth0mgmt": {
+    "domain": "dev-c6din8ya.eu.auth0.com",
+    "clientId": "EPH3rSqwff0xZqAwW27nl3UhdunyezO1",
+    "ownerRoleId": "rol_xdGUCYHML2UISpkB",
+    "organizerRoleId": "rol_NTnVlXjIr0R9eC8k",
+    "connectionId": "con_LmuclRYAX5VuUMow",
+    "inviteClientId": "65atFepkIh2jiMeaDqZlqgD63ccd2Gw1"
   }
 }

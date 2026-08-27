@@ -16,10 +16,10 @@ describe('lastOwnerId', () => {
 
 describe('renderMembers', () => {
   it('lists members with role badges and controls; empty invite section when none pending', () => {
-    const html = renderMembers(data({ members: [member('a', 'OWNER'), member('b', 'DIRECTOR')] }))
+    const html = renderMembers(data({ members: [member('a', 'OWNER'), member('b', 'ORGANIZER')] }))
     expect(html).toContain('Membri attivi')
     expect(html).toContain('pf-role--owner')
-    expect(html).toContain('pf-role--director')
+    expect(html).toContain('pf-role--organizer')
     expect(html).toContain('data-remove="b"')
     expect(html).not.toContain('Inviti in sospeso')
   })
@@ -29,10 +29,10 @@ describe('renderMembers', () => {
     expect(html).toMatch(/data-id="a"[^>]*disabled/)
     expect(html).toMatch(/data-remove="a"[^>]*disabled/)
   })
-  it('shows pending invitations with accept + revoke', () => {
+  it('shows pending invitations with revoke (no simulate-accept; Auth0 hosts acceptance)', () => {
     const html = renderMembers(data({ members: [member('a', 'OWNER')], invitations: [inv] }))
     expect(html).toContain('Inviti in sospeso')
-    expect(html).toContain('data-accept="i1"')
+    expect(html).not.toContain('data-accept')
     expect(html).toContain('data-revoke="i1"')
   })
 })
@@ -41,7 +41,6 @@ describe('members mount', () => {
   const mountWith = (over: Partial<MembersData> = {}) => {
     const o2 = {
       inviteMember: vi.fn().mockResolvedValue({}),
-      acceptInvitation: vi.fn().mockResolvedValue({}),
       revokeInvitation: vi.fn().mockResolvedValue(undefined),
       changeMemberRole: vi.fn().mockResolvedValue({}),
       removeMember: vi.fn().mockResolvedValue(undefined),
@@ -58,22 +57,16 @@ describe('members mount', () => {
     const { root, o2 } = mountWith()
     ;(root.querySelector('#i-name') as HTMLInputElement).value = 'Marco'
     ;(root.querySelector('#i-email') as HTMLInputElement).value = 'm@x.io'
-    ;(root.querySelector('#i-role') as HTMLSelectElement).value = 'DIRECTOR'
+    ;(root.querySelector('#i-role') as HTMLSelectElement).value = 'ORGANIZER'
     root.querySelector<HTMLButtonElement>('#i-invite')!.click()
-    await vi.waitFor(() => expect(o2.inviteMember).toHaveBeenCalledWith('org-1', { name: 'Marco', email: 'm@x.io', role: 'DIRECTOR' }))
+    await vi.waitFor(() => expect(o2.inviteMember).toHaveBeenCalledWith('org-1', { name: 'Marco', email: 'm@x.io', role: 'ORGANIZER' }))
   })
 
-  it('changing a member role calls the API', async () => {
+  it('changing a member role calls the org-scoped API', async () => {
     const { root, o2 } = mountWith({ members: [member('a', 'OWNER'), member('b', 'ORGANIZER')] })
     const sel = root.querySelector<HTMLSelectElement>('.js-role[data-id="b"]')!
-    sel.value = 'DIRECTOR'; sel.dispatchEvent(new Event('change'))
-    await vi.waitFor(() => expect(o2.changeMemberRole).toHaveBeenCalledWith('b', 'DIRECTOR'))
-  })
-
-  it('accepting an invitation calls the API', async () => {
-    const { root, o2 } = mountWith({ members: [member('a', 'OWNER')], invitations: [inv] })
-    root.querySelector<HTMLButtonElement>('[data-accept="i1"]')!.click()
-    await vi.waitFor(() => expect(o2.acceptInvitation).toHaveBeenCalledWith('i1'))
+    sel.value = 'OWNER'; sel.dispatchEvent(new Event('change'))
+    await vi.waitFor(() => expect(o2.changeMemberRole).toHaveBeenCalledWith('org-1', 'b', 'OWNER'))
   })
 
   it('invite is blocked with empty fields', () => {

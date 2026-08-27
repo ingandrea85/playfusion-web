@@ -3,16 +3,21 @@ import { cors } from 'hono/cors';
 import { handle } from 'hono/aws-lambda';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken, auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer } from '@playfusion/platform-lib';
+import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken, auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, DomainError } from '@playfusion/platform-lib';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { signToken, verifyToken } from './token.js';
-import { DynamoDbMemberRepository, DynamoDbInvitationRepository } from './adapters/dynamodb-membership.js';
-import { listMembers, listInvitations, invite, acceptInvitation, revokeInvitation, changeMemberRole, removeMember } from './application/membership.js';
+import { Auth0MembershipDirectory, auth0MgmtConfigFromEnv } from './adapters/auth0-membership.js';
+import { listMembers, listInvitations, invite, revokeInvitation, changeMemberRole, removeMember } from './application/membership.js';
 
 const db = makeDocClient();
-const members = new DynamoDbMemberRepository(db);
-const invitations = new DynamoDbInvitationRepository(db);
-const deps = { members, invitations };
+// T3: membership is backed by Auth0 Organizations. Absent config → the membership endpoints
+// return 503 (the magic-link identity endpoints below stay available regardless).
+const mgmtCfg = auth0MgmtConfigFromEnv();
+const deps = mgmtCfg ? { directory: new Auth0MembershipDirectory(mgmtCfg) } : undefined;
+const requireDirectory = () => {
+  if (!deps) throw new DomainError('MEMBERSHIP_UNAVAILABLE', 'Auth0 Organizations is not configured', 503);
+  return deps;
+};
 const auth0cfg = auth0ConfigFromEnv();
 const organizer = requireOrganizer({ auth0: auth0cfg ? createAuth0Verifier(auth0cfg) : undefined });
 
@@ -20,7 +25,7 @@ const app = new Hono();
 // Actual (non-preflight) responses need CORS headers too: API Gateway's
 // defaultCorsPreflightOptions only answers OPTIONS, so browsers block GET/POST replies
 // unless the Lambda sets Access-Control-Allow-Origin itself.
-app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'] }));
+app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 const body = z.object({
   contact: z.string(),
   roles: z.array(z.string()).default([]),
@@ -41,23 +46,28 @@ app.get('/identities/verify', (c) => {
   const claims = verifyToken(bearerToken(c));
   return claims ? c.json(claims) : c.json({ code: 'INVALID_TOKEN' }, 401);
 });
-// S19 — per-tenant membership & roles. All mutations organizer-guarded (Auth0 / bridge).
+// T3 — per-tenant membership & roles on Auth0 Organizations. All mutations organizer-guarded.
+// Members/invitations are org-scoped (Auth0 needs the org id for every operation).
 const invitationBody = z.object({ name: z.string().min(1), email: z.string().min(1), role: z.string() });
-app.get('/organizations/:orgId/members', organizer, async (c) => c.json(await listMembers(deps)(c.req.param('orgId'))));
-app.get('/organizations/:orgId/invitations', organizer, async (c) => c.json(await listInvitations(deps)(c.req.param('orgId'))));
+app.get('/organizations/:orgId/members', organizer, async (c) => c.json(await listMembers(requireDirectory())(c.req.param('orgId'))));
+app.get('/organizations/:orgId/invitations', organizer, async (c) => c.json(await listInvitations(requireDirectory())(c.req.param('orgId'))));
 app.post('/organizations/:orgId/invitations', organizer, async (c) => {
   const b = invitationBody.parse(await c.req.json());
-  const inv = await invite(deps)({ invitationId: randomUUID(), organizationId: c.req.param('orgId'), ...b });
+  const inv = await invite(requireDirectory())({ organizationId: c.req.param('orgId'), ...b });
   return c.json(inv, 201);
 });
-app.post('/invitations/:id/accept', organizer, async (c) =>
-  c.json(await acceptInvitation(deps)({ invitationId: c.req.param('id'), memberId: randomUUID() }), 201));
-app.delete('/invitations/:id', organizer, async (c) => { await revokeInvitation(deps)(c.req.param('id')); return c.body(null, 204); });
-app.put('/members/:id/role', organizer, async (c) => {
-  const { role } = z.object({ role: z.string() }).parse(await c.req.json());
-  return c.json(await changeMemberRole(deps)({ memberId: c.req.param('id'), role }));
+app.delete('/organizations/:orgId/invitations/:id', organizer, async (c) => {
+  await revokeInvitation(requireDirectory())(c.req.param('orgId'), c.req.param('id'));
+  return c.body(null, 204);
 });
-app.delete('/members/:id', organizer, async (c) => { await removeMember(deps)(c.req.param('id')); return c.body(null, 204); });
+app.put('/organizations/:orgId/members/:id/role', organizer, async (c) => {
+  const { role } = z.object({ role: z.string() }).parse(await c.req.json());
+  return c.json(await changeMemberRole(requireDirectory())({ organizationId: c.req.param('orgId'), memberId: c.req.param('id'), role }));
+});
+app.delete('/organizations/:orgId/members/:id', organizer, async (c) => {
+  await removeMember(requireDirectory())({ organizationId: c.req.param('orgId'), memberId: c.req.param('id') });
+  return c.body(null, 204);
+});
 
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
 

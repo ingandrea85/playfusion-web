@@ -1,56 +1,41 @@
 import { DomainError, checkpoint } from '@playfusion/platform-lib';
-import type { MemberRepository, InvitationRepository } from '../ports.js';
-import { makeInvitation, memberFromInvitation, assertCanChangeRole, assertCanRemove, type Member, type Invitation } from '../membership.js';
+import type { MembershipDirectory } from '../ports.js';
+import { validateInvite, assertCanChangeRole, assertCanRemove, type Member, type Invitation } from '../membership.js';
 
-type Deps = { members: MemberRepository; invitations: InvitationRepository; now?: () => string };
-const clock = (d: Deps) => (d.now ?? (() => new Date().toISOString()))();
+type Deps = { directory: MembershipDirectory };
 
-export const listMembers = (d: Deps) => (organizationId: string): Promise<Member[]> => d.members.listByOrg(organizationId);
-export const listInvitations = (d: Deps) => (organizationId: string): Promise<Invitation[]> => d.invitations.listByOrg(organizationId);
+export const listMembers = (d: Deps) => (organizationId: string): Promise<Member[]> => d.directory.listMembers(organizationId);
+export const listInvitations = (d: Deps) => (organizationId: string): Promise<Invitation[]> => d.directory.listInvitations(organizationId);
 
-export const invite = (d: Deps) => async (cmd: { invitationId: string; organizationId: string; name: string; email: string; role: string }): Promise<Invitation> => {
+/** Invite a member: validate, then create an Auth0 Organization invitation (hosted acceptance). */
+export const invite = (d: Deps) => async (cmd: { organizationId: string; name: string; email: string; role: string }): Promise<Invitation> => {
   checkpoint('inviteMember', 'START', { organizationId: cmd.organizationId, role: cmd.role });
-  const inv = makeInvitation({ ...cmd, createdAt: clock(d) });
-  await d.invitations.save(inv);
+  const v = validateInvite(cmd);
+  const inv = await d.directory.createInvitation({ organizationId: cmd.organizationId, ...v });
   checkpoint('inviteMember', 'STOP', { invitationId: inv.invitationId });
   return inv;
 };
 
-/** Demo lever: accept a PENDING invitation → create the member, mark the invitation ACCEPTED. */
-export const acceptInvitation = (d: Deps) => async (cmd: { invitationId: string; memberId: string }): Promise<Member> => {
-  checkpoint('acceptInvitation', 'START', { invitationId: cmd.invitationId });
-  const inv = await d.invitations.get(cmd.invitationId);
-  if (!inv) throw new DomainError('INVITATION_NOT_FOUND', `invitation ${cmd.invitationId} does not exist`, 404);
-  const member = memberFromInvitation(inv, cmd.memberId, clock(d));
-  await d.members.save(member);
-  await d.invitations.save({ ...inv, status: 'ACCEPTED' });
-  checkpoint('acceptInvitation', 'STOP', { memberId: member.memberId });
-  return member;
-};
-
 /** Revoke a pending invitation. Idempotent. */
-export const revokeInvitation = (d: Deps) => async (invitationId: string): Promise<void> => {
-  await d.invitations.delete(invitationId);
+export const revokeInvitation = (d: Deps) => async (organizationId: string, invitationId: string): Promise<void> => {
+  await d.directory.revokeInvitation(organizationId, invitationId);
 };
 
-export const changeMemberRole = (d: Deps) => async (cmd: { memberId: string; role: string }): Promise<Member> => {
+export const changeMemberRole = (d: Deps) => async (cmd: { organizationId: string; memberId: string; role: string }): Promise<Member> => {
   checkpoint('changeMemberRole', 'START', { memberId: cmd.memberId, role: cmd.role });
-  const member = await d.members.get(cmd.memberId);
-  if (!member) throw new DomainError('MEMBER_NOT_FOUND', `member ${cmd.memberId} does not exist`, 404);
-  const members = await d.members.listByOrg(member.organizationId);
+  const members = await d.directory.listMembers(cmd.organizationId);
+  if (!members.some((m) => m.memberId === cmd.memberId)) throw new DomainError('MEMBER_NOT_FOUND', `member ${cmd.memberId} does not exist`, 404);
   const role = assertCanChangeRole(members, cmd.memberId, cmd.role); // throws LAST_OWNER / INVALID_MEMBER
-  const updated = { ...member, role };
-  await d.members.save(updated);
+  const updated = await d.directory.setMemberRole(cmd.organizationId, cmd.memberId, role);
   checkpoint('changeMemberRole', 'STOP', { memberId: cmd.memberId });
   return updated;
 };
 
-export const removeMember = (d: Deps) => async (memberId: string): Promise<void> => {
-  checkpoint('removeMember', 'START', { memberId });
-  const member = await d.members.get(memberId);
-  if (!member) throw new DomainError('MEMBER_NOT_FOUND', `member ${memberId} does not exist`, 404);
-  const members = await d.members.listByOrg(member.organizationId);
-  assertCanRemove(members, memberId); // throws LAST_OWNER
-  await d.members.delete(memberId);
-  checkpoint('removeMember', 'STOP', { memberId });
+export const removeMember = (d: Deps) => async (cmd: { organizationId: string; memberId: string }): Promise<void> => {
+  checkpoint('removeMember', 'START', { memberId: cmd.memberId });
+  const members = await d.directory.listMembers(cmd.organizationId);
+  if (!members.some((m) => m.memberId === cmd.memberId)) throw new DomainError('MEMBER_NOT_FOUND', `member ${cmd.memberId} does not exist`, 404);
+  assertCanRemove(members, cmd.memberId); // throws LAST_OWNER
+  await d.directory.removeMember(cmd.organizationId, cmd.memberId);
+  checkpoint('removeMember', 'STOP', { memberId: cmd.memberId });
 };
