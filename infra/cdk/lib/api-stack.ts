@@ -57,7 +57,7 @@ const BCS: BcSpec[] = [
     consumer: { tables: ['o12-fees'], detailTypes: ['RegistrationApplied'] },
   },
   // O7 scheduling (S7): reads o3/o5 over HTTP (PF_API_BASE_URL), no consumer.
-  { key: 'o7-scheduling', route: 'o7', tables: ['o7-schedules', 'o7-matches', 'o7-tie-overrides', 'o7-resources'] },
+  { key: 'o7-scheduling', route: 'o7', tables: ['o7-schedules', 'o7-matches', 'o7-tie-overrides', 'o7-resources', 'o7-finals-formats'] },
   // O9 communications (S15): organizer announcements, public read. No consumer (SYSTEM/auto deferred).
   { key: 'o9-communications', route: 'o9', tables: ['o9-announcements'] },
   // O1 organization (S18): per-tenant brand identity, public read + organizer write. No consumer.

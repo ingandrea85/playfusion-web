@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import {
   withCorrelation, currentCorrelationId, checkpoint, makeDocClient, toHttpError,
-  auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, getIdentity,
+  auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, requirePlatformAdmin, getIdentity,
   bearerToken, verifyMagicLink, signMagicLink, ForbiddenError, UnauthorizedError,
 } from '@playfusion/platform-lib';
 import { DIRECTOR_ROLE, DIRECTOR_PURPOSE, directorSubject, parseDirectorScope } from './director-token.js';
@@ -23,6 +23,8 @@ import { decideWinner } from './application/decide-winner.js';
 import { setTieOverride } from './application/resolve-tie.js';
 import { startMatch, finishMatch, cancelMatch } from './application/transition-status.js';
 import { getScheduleOrDefault, listMatches, listStandings, listFinalStandings } from './application/read.js';
+import { DynamoDbFinalsFormatRepository } from './adapters/dynamodb-finals-format-repository.js';
+import { listFinalsFormats, getFinalsFormat, saveFinalsFormat, deleteFinalsFormat } from './application/finals-formats.js';
 
 const db = makeDocClient();
 const schedules = new DynamoDbScheduleRepository(db);
@@ -31,6 +33,7 @@ const overrides = new DynamoDbTieOverrideRepository(db);
 const resourceRepo = new DynamoDbResourceRepository(db);
 const events = new HttpEventSource();
 const teams = new HttpTeamSource();
+const finalsFormats = new DynamoDbFinalsFormatRepository(db);
 
 const app = new Hono();
 // Actual (non-preflight) responses need CORS headers too (see o3/o5 handlers).
@@ -73,6 +76,7 @@ export const scheduleConfigBody = z.object({
 const auth0cfg = auth0ConfigFromEnv();
 const auth0verify = auth0cfg ? createAuth0Verifier(auth0cfg) : undefined;
 const organizer = requireOrganizer({ auth0: auth0verify });
+const platformAdmin = requirePlatformAdmin({ auth0: auth0verify });
 
 // S25: who may report a result — the organizer (Auth0 / RegistrationManager bridge) OR a field
 // director (magic-link, role 'director'). Stashes the reporter's scope: `{ full: true }` for the
@@ -102,7 +106,7 @@ const requireResultReporter = async (c: any, next: () => Promise<unknown>) => {
 
 app.post('/events/:id/schedule:generate', organizer, async (c) => {
   const config = scheduleConfigBody.parse(await c.req.json().catch(() => ({})));
-  const schedule = await generateSchedule({ schedules, matches, events, teams })({
+  const schedule = await generateSchedule({ schedules, matches, events, teams, formats: finalsFormats })({
     sportEventId: c.req.param('id'), organizationId: orgOf(c), config,
   });
   return c.json(schedule);
@@ -226,6 +230,29 @@ app.get('/events/:id/schedule', async (c) =>
 // placeholders to the ranked teams on read (same S11 ranking as the standings).
 app.get('/events/:id/matches', async (c) =>
   c.json(await listMatches(matches, { overrides, events })(c.req.param('id'))));
+
+// SP1 — global custom finals-format catalog. List is organizer-readable (populates the selector);
+// writes are platform-admin only.
+const seedRefSchema = z.union([z.object({ seed: z.number().int() }), z.object({ winnerOf: z.string() }), z.object({ loserOf: z.string() })]);
+const formatBody = z.object({
+  name: z.string().min(1),
+  seeds: z.number().int(),
+  rounds: z.array(z.object({
+    name: z.string().min(1),
+    matches: z.array(z.object({ slot: z.string().min(1), home: seedRefSchema, away: seedRefSchema, placementFrom: z.number().int().optional(), placementTo: z.number().int().optional() })),
+  })),
+});
+app.get('/finals-formats', organizer, async (c) => c.json(await listFinalsFormats({ repo: finalsFormats })()));
+app.get('/finals-formats/:id', organizer, async (c) => c.json(await getFinalsFormat({ repo: finalsFormats })(c.req.param('id'))));
+app.post('/finals-formats', platformAdmin, async (c) => {
+  const b = formatBody.parse(await c.req.json());
+  return c.json(await saveFinalsFormat({ repo: finalsFormats })({ id: randomUUID(), ...b }), 201);
+});
+app.put('/finals-formats/:id', platformAdmin, async (c) => {
+  const b = formatBody.parse(await c.req.json());
+  return c.json(await saveFinalsFormat({ repo: finalsFormats })({ id: c.req.param('id'), ...b }));
+});
+app.delete('/finals-formats/:id', platformAdmin, async (c) => { await deleteFinalsFormat({ repo: finalsFormats })(c.req.param('id')); return c.body(null, 204); });
 
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
 

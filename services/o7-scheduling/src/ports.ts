@@ -1,5 +1,14 @@
 import type { ResolvedGroup, Schedule, ScheduledMatch, TieBreakCriterion, TieOverride } from './domain.js';
 import type { ResourceConfig } from './resources.js';
+import type { CustomFinalsFormat } from './finals-format.js';
+
+/** SP1: persistence seam for the GLOBAL custom finals-format catalog (not per-tenant). */
+export interface FinalsFormatRepository {
+  list(): Promise<CustomFinalsFormat[]>;
+  get(formatId: string): Promise<CustomFinalsFormat | undefined>;
+  save(format: CustomFinalsFormat): Promise<void>;
+  delete(formatId: string): Promise<void>;
+}
 
 /** Persistence seam for the Schedule aggregate (one per event). */
 export interface ScheduleRepository {

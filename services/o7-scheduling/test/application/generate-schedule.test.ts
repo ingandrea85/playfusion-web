@@ -4,7 +4,7 @@ import { approveSchedule, publishSchedule } from '../../src/application/change-s
 import { getScheduleOrDefault, listMatches } from '../../src/application/read.js';
 import { EventNotFoundError } from '../../src/errors.js';
 import type { ScheduleConfig } from '../../src/domain.js';
-import { FakeEventSource, FakeTeamSource, InMemoryMatchRepository, InMemoryScheduleRepository } from '../fakes.js';
+import { FakeEventSource, FakeTeamSource, InMemoryMatchRepository, InMemoryScheduleRepository, InMemoryFinalsFormatRepository } from '../fakes.js';
 
 const config: ScheduleConfig = { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', groupsCount: 1, legs: 'SINGLE' };
 
@@ -12,11 +12,13 @@ let schedules: InMemoryScheduleRepository;
 let matches: InMemoryMatchRepository;
 let events: FakeEventSource;
 let teams: FakeTeamSource;
-const deps = () => ({ schedules, matches, events, teams });
+let formats: InMemoryFinalsFormatRepository;
+const deps = () => ({ schedules, matches, events, teams, formats });
 
 beforeEach(() => {
   schedules = new InMemoryScheduleRepository();
   matches = new InMemoryMatchRepository();
+  formats = new InMemoryFinalsFormatRepository();
   events = new FakeEventSource({ 'evt-1': { sportEventId: 'evt-1', dates: { from: '2026-08-29', to: '2026-08-30' }, categorie: ['U10', 'U12'] } });
   teams = new FakeTeamSource({ 'evt-1': { U10: ['A', 'B', 'C'], U12: ['X', 'Y'] } });
 });
@@ -169,3 +171,19 @@ test('test_generate_finalsStartAfterGroupMatchesOnFinalsDay', async () => {
   expect(finals.length).toBeGreaterThan(0);
   for (const f of finals) expect(toMin(f.time)).toBeGreaterThanOrEqual(lastGroupEnd);
 })
+
+test('test_generate_customFormat_emitsCompiledDrawsWithSeedPlaceholders', async () => {
+  await formats.save({ id: 'fmt1', name: 'Finale secca', seeds: 2, createdAt: 't',
+    rounds: [{ name: 'Finale', matches: [{ slot: 'F', home: { seed: 1 }, away: { seed: 2 }, placementFrom: 1, placementTo: 2 }] }] });
+  const cfg: ScheduleConfig = { ...config, byCategory: { U12: { fields: ['Campo A'], periods: 2, periodMinutes: 20, breakMinutes: 10, legs: 'SINGLE', finalsFormatId: 'fmt1' } } };
+  await generateSchedule(deps())({ sportEventId: 'evt-1', organizationId: 'org-1', config: cfg });
+  const final = (await listMatches(matches)('evt-1')).find((x) => x.categoryId === 'U12' && x.phase === 'FINAL');
+  expect(final).toMatchObject({ slot: 'F', home: 'Seed 1', away: 'Seed 2', placementFrom: 1, placementTo: 2 });
+});
+
+test('test_generate_customFormat_seedsExceedingQualifiers_throws422', async () => {
+  await formats.save({ id: 'big', name: 'Troppi seed', seeds: 8, createdAt: 't',
+    rounds: [{ name: 'R', matches: [{ slot: 'A', home: { seed: 1 }, away: { seed: 2 } }] }] });
+  const cfg: ScheduleConfig = { ...config, byCategory: { U12: { fields: ['Campo A'], periods: 2, periodMinutes: 20, breakMinutes: 10, legs: 'SINGLE', finalsFormatId: 'big' } } };
+  await expect(generateSchedule(deps())({ sportEventId: 'evt-1', organizationId: 'org-1', config: cfg })).rejects.toMatchObject({ httpStatus: 422 });
+});

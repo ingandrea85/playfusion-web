@@ -117,3 +117,25 @@ test('test_resolve_drawnSemifinal_advancesDecreedWinner', async () => {
   expect(final.homeResolved).toBe('A'); // SF1 drawn, decreed HOME = 1ª (A)
   expect(final.awayResolved).toBe('B'); // SF2 won by 2ª (B)
 })
+
+test('test_resolve_seedPlaceholder_resolvesCrossGroupWhenAllGroupsComplete', () => {
+  const gm = (grpLabel: string, home: string, away: string, hs: number, as: number, id: number): ScheduledMatch =>
+    ({ id: `g${id}`, sportEventId: 'e', categoryId: 'U10', groupLabel: grpLabel, day: '2026-09-01', time: '09:00', field: 'C', home, away, homeScore: hs, awayScore: as, status: 'FINISHED', phase: 'GROUP' });
+  const finSlot = (slot: string, home: string, away: string): ScheduledMatch =>
+    ({ id: `f${slot}`, sportEventId: 'e', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-09-02', time: '10:00', field: 'C', home, away, status: 'SCHEDULED', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'SF', order: 1, slot });
+  // Girone A: Alfa 3 > Beta 0; Girone B: Gamma 3 > Delta 0 → seeds [Alfa, Gamma, Beta, Delta].
+  const ms = [gm('Girone A', 'Alfa', 'Beta', 3, 0, 1), gm('Girone B', 'Gamma', 'Delta', 3, 0, 2), finSlot('SF1', 'Seed 1', 'Seed 4')];
+  const out = resolvePlaceholders(ms, ranked(ms)).find((m) => m.slot === 'SF1')!;
+  expect(out.homeResolved).toBe('Alfa'); // Seed 1 = best winner
+  expect(out.awayResolved).toBe('Delta'); // Seed 4 = worst runner-up
+});
+
+test('test_resolve_seedPlaceholder_staysWhileAGroupIncomplete', () => {
+  const gm = (grpLabel: string, home: string, away: string, hs: number | null, as: number | null, id: number): ScheduledMatch =>
+    ({ id: `g${id}`, sportEventId: 'e', categoryId: 'U10', groupLabel: grpLabel, day: '2026-09-01', time: '09:00', field: 'C', home, away, homeScore: hs, awayScore: as, status: hs === null ? 'SCHEDULED' : 'FINISHED', phase: 'GROUP' });
+  const finSlot = (slot: string, home: string, away: string): ScheduledMatch =>
+    ({ id: `f${slot}`, sportEventId: 'e', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-09-02', time: '10:00', field: 'C', home, away, status: 'SCHEDULED', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'SF', order: 1, slot });
+  const ms = [gm('Girone A', 'Alfa', 'Beta', 3, 0, 1), gm('Girone B', 'Gamma', 'Delta', null, null, 2), finSlot('SF1', 'Seed 1', 'Seed 4')];
+  const out = resolvePlaceholders(ms, ranked(ms)).find((m) => m.slot === 'SF1')!;
+  expect(out.homeResolved).toBeUndefined();
+});

@@ -50,6 +50,23 @@ export function requireOrganizer(opts: { auth0?: Auth0Verify; organizerRole?: st
 }
 
 /**
+ * Platform-admin routes (global, cross-tenant) — e.g. the custom finals-format catalog. Requires a
+ * valid Auth0 JWT carrying the `platform_admin` role. No magic-link bridge (this is not an
+ * organizer/tenant capability). 401 without a usable token; 403 when the role is missing.
+ */
+export function requirePlatformAdmin(opts: { auth0?: Auth0Verify; adminRole?: string } = {}): Middleware {
+  const adminRole = opts.adminRole ?? 'platform_admin';
+  return async (c, next) => {
+    const token = bearerToken(c);
+    if (!token || !opts.auth0) throw new UnauthorizedError('missing token');
+    const identity = await opts.auth0(token); // throws UnauthorizedError on bad token
+    if (!identity.roles.includes(adminRole)) throw new ForbiddenError('actor is not a platform admin');
+    c.set(IDENTITY_KEY, identity);
+    return next();
+  };
+}
+
+/**
  * S2.4 — coach routes (apply). Possession of a valid O2 magic-link is the capability;
  * no role is required. 401 when missing or invalid.
  */

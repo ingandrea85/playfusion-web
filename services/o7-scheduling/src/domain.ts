@@ -26,6 +26,9 @@ export interface CategorySchedule {
   finalsType?: FinalsType;
   finalsEnabled?: boolean;
   finalsTeamsToBracket?: number;
+  /** SP1: a custom finals format id (from the global catalog). When set, it OVERRIDES `finalsType`
+   *  for this category — generate compiles the format's bracket instead of a built-in. */
+  finalsFormatId?: string;
 }
 
 /** Fields + match-format params live on the Schedule (O7), never on the Event/Category.
@@ -49,6 +52,8 @@ export interface ScheduleConfig {
   finalsType?: FinalsType;
   finalsEnabled?: boolean;
   finalsTeamsToBracket?: number;
+  /** SP1: default custom finals format id (overrides finalsType). Per-category via byCategory. */
+  finalsFormatId?: string;
 }
 
 /** Resolve a category's playing config: its `byCategory` override if present, else the
@@ -58,6 +63,7 @@ export function categoryConfig(config: ScheduleConfig, categoria: string): Categ
     fields: config.fields, periods: config.periods, periodMinutes: config.periodMinutes,
     breakMinutes: config.breakMinutes, legs: config.legs,
     finalsType: config.finalsType, finalsEnabled: config.finalsEnabled, finalsTeamsToBracket: config.finalsTeamsToBracket,
+    finalsFormatId: config.finalsFormatId,
   };
 }
 

@@ -1,8 +1,10 @@
+import { DomainError } from '@playfusion/platform-lib';
 import { buildFixtures } from '../fixtures.js';
 import { buildFinals } from '../finals.js';
+import { compileFormat, type CustomFinalsFormat } from '../finals-format.js';
 import { autoSplit, canGenerate, categoryConfig, defaultConfig, type FixtureCategory, type Schedule, type ScheduleConfig, type ScheduledMatch } from '../domain.js';
 import { EventNotFoundError } from '../errors.js';
-import type { EventSource, MatchRepository, ScheduleRepository, TeamSource } from '../ports.js';
+import type { EventSource, FinalsFormatRepository, MatchRepository, ScheduleRepository, TeamSource } from '../ports.js';
 
 /** Add minutes to an 'HH:mm' clock (wraps at 24h; mirrors the fixtures placer). */
 function addMinutes(hhmm: string, mins: number): string {
@@ -20,6 +22,7 @@ const toMinutes = (hhmm: string): number => { const [h, m] = hhmm.split(':').map
 function buildFinalMatches(
   sportEventId: string, finalsDate: string, dailyStart: string,
   cats: FixtureCategory[], config: ScheduleConfig, fixtures: ScheduledMatch[],
+  formatMap: Map<string, CustomFinalsFormat | undefined>,
 ): ScheduledMatch[] {
   // Latest end among group fixtures scheduled on the finals day → finals start there (or dailyStart).
   const slotOf = new Map(cats.map((c) => [c.id, c.periods * c.periodMinutes + c.breakMinutes]));
@@ -37,8 +40,19 @@ function buildFinalMatches(
     // Finals format is per category (moved from the o3 event): the byCategory override else the
     // top-level default ("same play-config for all categories" flag). No format ⇒ skip this category.
     const cc = categoryConfig(config, cat.id);
-    if (!cc.finalsType || cc.finalsEnabled === false) continue;
-    const draws = buildFinals(cat.groups.map((g) => ({ label: g.label, size: g.teams.length })), cc.finalsType, { finalsTeamsToBracket: cc.finalsTeamsToBracket });
+    // SP1: a custom finals format (finalsFormatId) OVERRIDES the built-in finalsType for this category.
+    let draws;
+    if (cc.finalsFormatId) {
+      const format = formatMap.get(cc.finalsFormatId);
+      if (!format) continue; // catalog entry removed → no bracket for this category
+      const totalTeams = cat.groups.reduce((sum, g) => sum + g.teams.length, 0);
+      if (format.seeds > totalTeams) throw new DomainError('FINALS_SEEDS_EXCEED_TEAMS', `format "${format.name}" needs ${format.seeds} qualifiers but ${cat.id} has ${totalTeams}`, 422);
+      draws = compileFormat(format);
+    } else if (cc.finalsType && cc.finalsEnabled !== false) {
+      draws = buildFinals(cat.groups.map((g) => ({ label: g.label, size: g.teams.length })), cc.finalsType, { finalsTeamsToBracket: cc.finalsTeamsToBracket });
+    } else {
+      continue;
+    }
     const fields = cat.fields.length ? cat.fields : ['Campo 1'];
     const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
     draws.forEach((d, i) => {
@@ -62,6 +76,7 @@ export interface GenerateScheduleDeps {
   matches: MatchRepository;
   events: EventSource;
   teams: TeamSource;
+  formats: FinalsFormatRepository;
 }
 export interface GenerateScheduleInput {
   sportEventId: string;
@@ -98,9 +113,14 @@ export function generateSchedule(deps: GenerateScheduleDeps) {
       return { id: categoria, name: categoria, legs: cc.legs, groups, fields: cc.fields, periods: cc.periods, periodMinutes: cc.periodMinutes, breakMinutes: cc.breakMinutes };
     });
     const fixtures = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config.dailyStart, cats);
+    // SP1: load the custom finals formats referenced by any category (global catalog), so the
+    // synchronous bracket builder can compile them. Distinct ids only.
+    const formatIds = [...new Set(cats.map((c) => categoryConfig(input.config, c.id).finalsFormatId).filter((x): x is string => !!x))];
+    const formatMap = new Map<string, CustomFinalsFormat | undefined>();
+    for (const id of formatIds) formatMap.set(id, await deps.formats.get(id));
     // S12/S13: append each category's finals bracket (per-category format from the schedule config —
     // moved off the o3 event; buildFinalMatches skips categories with no format).
-    const finals = buildFinalMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, cats, input.config, fixtures);
+    const finals = buildFinalMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, cats, input.config, fixtures, formatMap);
     await matches.replace(input.sportEventId, [...fixtures, ...finals]);
 
     const next: Schedule = { ...current, organizationId: current.organizationId, config: input.config, status: 'GENERATED' };

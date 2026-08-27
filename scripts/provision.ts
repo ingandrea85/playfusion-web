@@ -123,6 +123,14 @@ for (const t of ['o7-schedules', 'o7-matches'] as const) {
 
 console.log('provision: O7 tables (o7-schedules, o7-matches) ensured on', endpoint);
 
+// SP1: global custom finals-format catalog.
+await ddb.send(new CreateTableCommand({
+  TableName: resourceName('o7-finals-formats'), BillingMode: 'PAY_PER_REQUEST',
+  AttributeDefinitions: [{ AttributeName: 'formatId', AttributeType: 'S' }],
+  KeySchema: [{ AttributeName: 'formatId', KeyType: 'HASH' }],
+})).catch(ignoreExists);
+console.log('provision: O7 table (o7-finals-formats) ensured on', endpoint);
+
 // O9 communications (S15): announcements keyed by announcementId + event-index GSI to list per event.
 await ddb.send(new CreateTableCommand({
   TableName: resourceName('o9-announcements'), BillingMode: 'PAY_PER_REQUEST',
