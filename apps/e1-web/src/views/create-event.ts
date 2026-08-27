@@ -73,7 +73,7 @@ export function renderCapBlocked(): string {
         <h2 class="pf-h3">Hai raggiunto il limite del piano Free</h2>
         <p class="pf-muted">Il piano Free include <b>1 evento</b>. Passa a Pro per crearne quanti vuoi.</p>
         <div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">
-          <a class="pf-btn pf-btn--primary" href="#/account/subscription">Passa a Pro</a>
+          <a class="pf-btn pf-btn--primary" href="#/org/subscription">Passa a Pro</a>
           <a class="pf-btn" href="#/">← Torna ai tornei</a>
         </div>
       </div>

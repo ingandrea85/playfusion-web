@@ -1,9 +1,9 @@
 import { esc, applyBrand } from '@playfusion/app-shell'
-import type { Brand, EventDetail } from '@playfusion/rest-client'
+import type { Brand } from '@playfusion/rest-client'
 import { inlineError, lockCard, type Screen, type ViewCtx } from '../view.js'
-import { workspaceShell } from './workspace.js'
+import { renderOrgShell } from './org.js'
 
-export interface BrandData { event: EventDetail; brand: Brand | null; locked?: boolean }
+export interface BrandData { brand: Brand | null; locked?: boolean }
 
 // Token defaults (tokens.css) — the starting point when the tenant has no brand yet.
 const DEFAULT_PRIMARY = '#0b5fff'
@@ -19,8 +19,8 @@ function preview(logoText: string, primary: string, accent: string): string {
   </div>`
 }
 
-export function renderBrand(data: BrandData, activeTab = 'brand'): string {
-  if (data.locked) return workspaceShell(data.event, activeTab, lockCard('Brand personalizzato'))
+export function renderBrand(data: BrandData): string {
+  if (data.locked) return renderOrgShell('brand', lockCard('Brand personalizzato'))
   const b = data.brand
   const logoText = b?.logoText ?? ''
   const primary = b?.primaryColor ?? DEFAULT_PRIMARY
@@ -41,17 +41,14 @@ export function renderBrand(data: BrandData, activeTab = 'brand'): string {
         <button class="pf-btn pf-btn--ghost" id="b-reset">Ripristina default</button>
       </div>
     </div>`
-  return workspaceShell(data.event, activeTab, body)
+  return renderOrgShell('brand', body)
 }
 
 export const brandScreen: Screen<BrandData> = {
-  load: async (ctx, p) => {
-    const [event, brand] = await Promise.all([
-      ctx.client.o3.getEvent(p.id),
-      ctx.client.o1.getBrand(ctx.orgId).catch(() => null as Brand | null),
-    ])
-    return { event, brand, locked: !ctx.entitlements.hasBrand }
-  },
+  load: async (ctx) => ({
+    brand: await ctx.client.o1.getBrand(ctx.orgId).catch(() => null as Brand | null),
+    locked: !ctx.entitlements.hasBrand,
+  }),
   render: (data) => renderBrand(data),
   mount(root, ctx: ViewCtx, data) {
     if (data.locked) return // plan-gated: only the lock card is shown

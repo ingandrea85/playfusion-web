@@ -109,6 +109,10 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-wtab { padding: 10px 14px; font-weight: 700; font-size: 14px; color: var(--color-text-soft); text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap; }
 .pf-wtab--active { color: var(--color-action-primary); border-bottom-color: var(--color-action-primary); }
 
+/* Organization console tab bar (renderOrgShell) — reuses .pf-wtab pills under the topbar. */
+.pf-orgnav { position: sticky; top: 0; z-index: 20; background: var(--color-surface-default); border-bottom: 1px solid var(--color-border-strong); }
+.pf-orgnav .pf-wtabs { max-width: none; }
+
 /* ---------- Form primitives (create-event + enroll forms) ---------- */
 .pf-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-md); }
 .pf-field label { font-weight: 700; font-size: 13px; color: var(--color-text-soft); }

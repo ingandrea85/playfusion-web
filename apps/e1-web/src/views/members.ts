@@ -1,9 +1,9 @@
 import { esc } from '@playfusion/app-shell'
-import type { EventDetail, Invitation, Member, OrgRole } from '@playfusion/rest-client'
+import type { Invitation, Member, OrgRole } from '@playfusion/rest-client'
 import { inlineError, lockCard, type Screen, type ViewCtx } from '../view.js'
-import { workspaceShell } from './workspace.js'
+import { renderOrgShell } from './org.js'
 
-export interface MembersData { event: EventDetail; members: Member[]; invitations: Invitation[]; locked?: boolean }
+export interface MembersData { members: Member[]; invitations: Invitation[]; locked?: boolean }
 
 const ROLES: OrgRole[] = ['OWNER', 'ORGANIZER', 'DIRECTOR']
 const ROLE_LABEL: Record<OrgRole, string> = { OWNER: 'Owner', ORGANIZER: 'Organizer', DIRECTOR: 'Director' }
@@ -45,9 +45,9 @@ function invitationsCard(invitations: Invitation[]): string {
   return `<div class="pf-card"><h2 class="pf-h3">Inviti in sospeso</h2><ul class="pf-stack" style="list-style:none;padding:0;margin:0">${rows}</ul></div>`
 }
 
-export function renderMembers(data: MembersData, activeTab = 'members'): string {
-  if (data.locked) return workspaceShell(data.event, activeTab, lockCard('Gestione membri'))
-  const body = `<div id="err"></div>
+export function renderMembers(data: MembersData): string {
+  if (data.locked) return renderOrgShell('members', lockCard('Gestione membri'))
+  const body = `<div class="pf-pagehead"><div class="pf-eyebrow">Organizzazione</div><h1>Membri</h1></div><div id="err"></div>
     ${membersCard(data.members)}
     ${invitationsCard(data.invitations)}
     <div class="pf-card">
@@ -60,18 +60,15 @@ export function renderMembers(data: MembersData, activeTab = 'members'): string 
       </div>
       <p class="pf-muted" style="margin-top:var(--space-sm)">L'accettazione reale via email/Auth0 arriverà con la gestione account; per ora usa «Simula accettazione».</p>
     </div>`
-  return workspaceShell(data.event, activeTab, body)
+  return renderOrgShell('members', body)
 }
 
 export const membersScreen: Screen<MembersData> = {
-  load: async (ctx, p) => {
-    const [event, members, invitations] = await Promise.all([
-      ctx.client.o3.getEvent(p.id),
-      ctx.client.o2.listMembers(ctx.orgId).catch(() => [] as Member[]),
-      ctx.client.o2.listInvitations(ctx.orgId).catch(() => [] as Invitation[]),
-    ])
-    return { event, members, invitations, locked: !ctx.entitlements.canInviteMembers }
-  },
+  load: async (ctx) => ({
+    members: await ctx.client.o2.listMembers(ctx.orgId).catch(() => [] as Member[]),
+    invitations: await ctx.client.o2.listInvitations(ctx.orgId).catch(() => [] as Invitation[]),
+    locked: !ctx.entitlements.canInviteMembers,
+  }),
   render: (data) => renderMembers(data),
   mount(root, ctx: ViewCtx, data) {
     if (data.locked) return // plan-gated

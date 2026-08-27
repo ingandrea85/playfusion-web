@@ -1,14 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import type { Brand, EventDetail } from '@playfusion/rest-client'
+import type { Brand } from '@playfusion/rest-client'
 import { applyBrand } from '@playfusion/app-shell'
 import { renderBrand, brandScreen, type BrandData } from '../src/views/brand'
 
-const event: EventDetail = {
-  sportEventId: 'e1', organizationId: 'org-1', sport: 'Calcio', categorie: ['U10'],
-  dates: { from: '2026-09-01', to: '2026-09-02' }, status: 'Published', playbook: 'PB-1', name: 'Torneo',
-}
-const data = (brand: Brand | null = null): BrandData => ({ event, brand })
+const data = (brand: Brand | null = null): BrandData => ({ brand })
 
 afterEach(() => applyBrand(null))
 
