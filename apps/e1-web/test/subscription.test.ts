@@ -60,6 +60,6 @@ describe('create-event Free cap (from entitlements)', () => {
 
 describe('renderCapBlocked', () => {
   it('links to the subscription page', () => {
-    expect(renderCapBlocked()).toContain('#/account/subscription')
+    expect(renderCapBlocked()).toContain('#/org/subscription')
   })
 })

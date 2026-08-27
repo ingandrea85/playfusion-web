@@ -19,7 +19,7 @@ export const lockCard = (feature: string): string =>
     <div class="pf-lock__ic">🔒</div>
     <h2 class="pf-h3" style="margin:0">${feature} — richiede Pro</h2>
     <p class="pf-muted" style="margin:6px 0 14px">Con il piano Free questa funzione è disattivata. Passa a Pro per sbloccarla.</p>
-    <a class="pf-btn pf-btn--primary" href="#/account/subscription">Passa a Pro</a>
+    <a class="pf-btn pf-btn--primary" href="#/org/subscription">Passa a Pro</a>
   </div>`
 
 /** A screen = pure render(data) + optional mount(root,ctx,data) that wires DOM events and

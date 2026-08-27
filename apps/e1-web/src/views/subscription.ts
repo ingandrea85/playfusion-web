@@ -1,6 +1,7 @@
-import { renderOrganizerTopbar, esc } from '@playfusion/app-shell'
+import { esc } from '@playfusion/app-shell'
 import type { PlanKey, Subscription } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
+import { renderOrgShell } from './org.js'
 
 const PLANS: Array<{ key: PlanKey; label: string; price: number; features: string[] }> = [
   { key: 'FREE', label: 'Free', price: 0, features: ['1 evento attivo', 'Gironi, calendario, classifiche', 'Tabellone pubblico'] },
@@ -36,14 +37,11 @@ export function renderSubscription(sub: Subscription): string {
   const expireLever = sub.status === 'TRIAL'
     ? `<button class="pf-btn pf-btn--ghost" id="expire-trial">Simula scadenza prova</button>`
     : ''
-  return `${renderOrganizerTopbar('dashboard')}
-    <main class="pf-container">
-      <div class="pf-pagehead"><div class="pf-eyebrow">Account</div><h1>Abbonamento</h1></div>
+  return renderOrgShell('subscription', `
+      <div class="pf-pagehead"><div class="pf-eyebrow">Organizzazione</div><h1>Abbonamento</h1></div>
       <div id="err"></div>
       <div class="pf-card"><h2 class="pf-h3">Il tuo piano</h2><p>${statusLine(sub)}</p>${expireLever}</div>
-      <div class="pf-plangrid">${PLANS.map((p) => planCard(p, sub)).join('')}</div>
-      <div class="pf-row" style="margin-top:var(--space-md)"><a class="pf-btn" href="#/">← Torna ai tornei</a></div>
-    </main>`
+      <div class="pf-plangrid">${PLANS.map((p) => planCard(p, sub)).join('')}</div>`)
 }
 
 export const subscriptionScreen: Screen<Subscription> = {

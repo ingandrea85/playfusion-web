@@ -1,15 +1,11 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
-import type { EventDetail, Invitation, Member } from '@playfusion/rest-client'
+import type { Invitation, Member } from '@playfusion/rest-client'
 import { renderMembers, lastOwnerId, membersScreen, type MembersData } from '../src/views/members'
 
-const event: EventDetail = {
-  sportEventId: 'e1', organizationId: 'org-1', sport: 'Calcio', categorie: ['U10'],
-  dates: { from: '2026-09-01', to: '2026-09-02' }, status: 'Published', playbook: 'PB-1', name: 'Torneo',
-}
 const member = (memberId: string, role: Member['role']): Member => ({ memberId, organizationId: 'org-1', name: memberId, email: `${memberId}@x.io`, role, createdAt: 't' })
 const inv: Invitation = { invitationId: 'i1', organizationId: 'org-1', name: 'Giulia', email: 'g@x.io', role: 'ORGANIZER', status: 'PENDING', createdAt: 't' }
-const data = (over: Partial<MembersData> = {}): MembersData => ({ event, members: [], invitations: [], ...over })
+const data = (over: Partial<MembersData> = {}): MembersData => ({ members: [], invitations: [], ...over })
 
 describe('lastOwnerId', () => {
   it('is the sole owner, else null', () => {
