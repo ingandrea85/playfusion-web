@@ -50,8 +50,11 @@ interface BcSpec {
 }
 
 const BCS: BcSpec[] = [
-  // T3: membership lives in Auth0 Organizations; o2 keeps only the magic-link identities table.
-  { key: 'o2-identity-access', route: 'o2', tables: ['o2-identities'] },
+  // T3: membership lives in Auth0 Organizations; the handler no longer reads o2-members/o2-invitations,
+  // but the grants are kept for now so this deploy doesn't churn the cross-stack table-ARN exports
+  // (removing them here + in data-stack in one deploy fails with "Cannot delete export … in use").
+  // A follow-up two-phase cleanup drops the grants first, then the tables.
+  { key: 'o2-identity-access', route: 'o2', tables: ['o2-identities', 'o2-members', 'o2-invitations'] },
   { key: 'o3-sport-events', route: 'o3', tables: ['o3-events'] },
   { key: 'o4-participant-management', route: 'o4', tables: ['o4-participants'] },
   {
