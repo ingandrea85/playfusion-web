@@ -1,3 +1,5 @@
+import { richTextOrUndefined } from '@playfusion/platform-lib';
+
 export type EventStatus = 'Published';
 
 /** Playbook / workflow the event follows: PB-1 = enrollment-with-invites, PB-2 = direct roster (S14). */
@@ -58,8 +60,9 @@ export function makeEventSite(input: EventSite): EventSite {
   const out: EventSite = {};
   if (input.enabled === false) out.enabled = false;
   const tagline = trim(input.tagline); if (tagline) out.tagline = tagline;
-  const about = trim(input.about); if (about) out.about = about;
-  const program = trim(input.program); if (program) out.program = program;
+  // "Chi siamo" + "Programma" are rich text (WYSIWYG) → sanitise to the allowlist before storing.
+  const about = richTextOrUndefined(input.about); if (about) out.about = about;
+  const program = richTextOrUndefined(input.program); if (program) out.program = program;
   const venue = input.venue && compact({ name: trim(input.venue.name), address: trim(input.venue.address), mapUrl: trim(input.venue.mapUrl) });
   if (venue) out.venue = venue;
   const contacts = input.contacts && compact({ email: trim(input.contacts.email), phone: trim(input.contacts.phone), social: trim(input.contacts.social) });

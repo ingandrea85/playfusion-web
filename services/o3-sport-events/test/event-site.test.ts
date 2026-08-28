@@ -21,6 +21,11 @@ describe('makeEventSite (domain)', () => {
     expect(out.contacts).toEqual({ phone: '333' });
     expect(out.sponsors).toEqual([{ name: 'A', url: 'https://a' }]);
   });
+  it('sanitises rich about + program HTML', () => {
+    const out = makeEventSite({ about: '<h3>Titolo</h3><script>x</script>', program: '<ul><li>uno</li></ul><img src=x>' });
+    expect(out.about).toBe('<h3>Titolo</h3>');
+    expect(out.program).toBe('<ul><li>uno</li></ul>'); // img dropped
+  });
   it('keeps an optional sponsor logo URL', () => {
     expect(makeEventSite({ sponsors: [{ name: 'A', logoUrl: ' https://l.png ' }] }).sponsors)
       .toEqual([{ name: 'A', logoUrl: 'https://l.png' }]);
