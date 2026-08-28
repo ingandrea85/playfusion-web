@@ -21,6 +21,11 @@ describe('makeSiteDefaults (domain)', () => {
     expect(out.contacts).toEqual({ email: 'info@x.it' });
     expect(Object.keys(out.contacts!)).toEqual(['email']);
   });
+  it('sanitises rich "about" HTML (keeps formatting, drops scripts)', () => {
+    const out = makeSiteDefaults({ about: '<p><strong>Ciao</strong><script>alert(1)</script></p>' });
+    expect(out.about).toContain('<strong>Ciao</strong>');
+    expect(out.about).not.toContain('script');
+  });
   it('keeps an optional sponsor logo URL', () => {
     const out = makeSiteDefaults({ sponsors: [{ name: 'Rossi', logoUrl: ' https://logo.png ' }, { name: 'Senza logo' }] });
     expect(out.sponsors).toEqual([{ name: 'Rossi', logoUrl: 'https://logo.png' }, { name: 'Senza logo' }]);

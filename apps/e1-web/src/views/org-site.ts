@@ -2,6 +2,7 @@ import { esc } from '@playfusion/app-shell'
 import type { OrgSiteDefaults, Sponsor } from '@playfusion/rest-client'
 import { inlineError, lockCard, notAuthorizedCard, type Screen, type ViewCtx } from '../view.js'
 import { renderOrgShell } from './org.js'
+import { richField, initRichEditors } from './rich-editor.js'
 
 export interface OrgSiteData { site: OrgSiteDefaults | null; locked?: boolean; forbidden?: boolean }
 
@@ -32,7 +33,7 @@ function form(site: OrgSiteDefaults | null): string {
     <div class="pf-card">
       <h2 class="pf-h3">Contenuti dell'organizzazione</h2>
       <p class="pf-muted">Questi contenuti vengono <b>ereditati da tutti gli eventi</b>. In ogni evento potrai sovrascriverli nel tab «Sito».</p>
-      <div class="pf-field"><label>Chi siamo</label><textarea id="s-about" rows="4" placeholder="Racconta la tua organizzazione…">${esc(v.about ?? '')}</textarea></div>
+      ${richField('s-about', 'Chi siamo', v.about ?? '')}
     </div>
     <div class="pf-card">
       <h2 class="pf-h3">Sede abituale</h2>
@@ -75,6 +76,7 @@ export const orgSiteScreen: Screen<OrgSiteData> = {
     const fail = (msg: string) => { err.innerHTML = inlineError(msg) }
     const q = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!
     const val = (sel: string) => q<HTMLInputElement>(sel).value.trim()
+    initRichEditors(root)
 
     const sponsors = q('#s-sponsors')
     q<HTMLButtonElement>('#s-sp-add').addEventListener('click', () => sponsors.insertAdjacentHTML('beforeend', sponsorRow()))

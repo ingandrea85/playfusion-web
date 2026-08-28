@@ -14,3 +14,4 @@ export * from './magic-link.js';
 export * from './auth0.js';
 export * from './auth-middleware.js';
 export * from './auth-config.js';
+export * from './rich-text.js';

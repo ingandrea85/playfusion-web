@@ -4,6 +4,7 @@ import { resolveEventSite } from '@playfusion/rest-client'
 import { inlineError, lockCard, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
 import { sponsorRow, collectSponsors } from './org-site.js'
+import { richField, richFieldBare, initRichEditors } from './rich-editor.js'
 
 export interface EventSiteData { event: EventDetail; org: OrgSiteDefaults | null; locked?: boolean }
 
@@ -28,8 +29,8 @@ function previewHtml(r: ResolvedEventSite, event: EventDetail): string {
   const venue = r.venue && (r.venue.name || r.venue.address) ? `${esc(r.venue.name ?? '')}${r.venue.address ? ` · ${esc(r.venue.address)}` : ''}` : ''
   return `<div class="pf-siteprev">
     <div class="pf-siteprev__hero"><div class="pf-eyebrow">Evento</div><h3 style="margin:2px 0">${esc(event.name ?? event.sport)}</h3>${r.tagline ? `<div>${esc(r.tagline)}</div>` : ''}</div>
-    ${sec('Chi siamo', r.about ? `<p style="margin:2px 0">${esc(r.about)}</p>` : '')}
-    ${sec('Programma', r.program ? `<p style="margin:2px 0;white-space:pre-line">${esc(r.program)}</p>` : '')}
+    ${sec('Chi siamo', r.about ? `<div class="pf-esite-rich">${r.about}</div>` : '')}
+    ${sec('Programma', r.program ? `<div class="pf-esite-rich">${r.program}</div>` : '')}
     ${sec('Dove', venue)}
     ${sec('Sponsor', sponsors)}
   </div>`
@@ -50,11 +51,11 @@ function form(data: EventSiteData): string {
       <div class="pf-stack">
         <div class="pf-card">
           <div class="pf-field"><label>Tagline dell'evento</label><input id="s-tagline" value="${esc(s.tagline ?? '')}" placeholder="Es. Tre giorni di calcio giovanile" /></div>
-          <div class="pf-field"><label>Programma</label><textarea id="s-program" rows="4" placeholder="Ven 15:00 Accoglienza · 16:30 Gironi…">${esc(s.program ?? '')}</textarea></div>
+          ${richField('s-program', 'Programma', s.program ?? '')}
         </div>
         <div class="pf-card">
-          ${overrideGroup('about', 'Chi siamo', s.about !== undefined, esc(org.about ?? '') || dash,
-            `<textarea id="s-about" rows="4">${esc(s.about ?? '')}</textarea>`)}
+          ${overrideGroup('about', 'Chi siamo', s.about !== undefined, org.about ? '<span class="pf-muted">(contenuto dell\'organizzazione)</span>' : dash,
+            richFieldBare('s-about', s.about ?? ''))}
         </div>
         <div class="pf-card">
           ${overrideGroup('venue', 'Dove si gioca', s.venue !== undefined,
@@ -124,6 +125,7 @@ export const eventSiteScreen: Screen<EventSiteData> = {
     const q = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!
 
     const redraw = () => { q('#s-preview').innerHTML = previewHtml(resolveEventSite(data.org, collectEventSite(root)), data.event) }
+    initRichEditors(root, redraw)
 
     // Override switches: show/hide the field body + inherit hint, then refresh the preview.
     root.querySelectorAll<HTMLInputElement>('.pf-ovrgroup .js-ovr').forEach((sw) => sw.addEventListener('change', () => {

@@ -1,4 +1,4 @@
-import { DomainError } from '@playfusion/platform-lib';
+import { DomainError, richTextOrUndefined } from '@playfusion/platform-lib';
 
 // S18 (O1 organization) — brand identity is presentation metadata owned by the Organization
 // (Blueprint D-O1-1): a text wordmark + primary/accent colours, applied to the organizer shell
@@ -49,7 +49,8 @@ const normVenue = (v: Venue | undefined): Venue | undefined => v && obj({ name: 
 /** Normalise org site-defaults (trim strings, drop empty). Returns a clean OrgSiteDefaults. */
 export function makeSiteDefaults(input: OrgSiteDefaults): OrgSiteDefaults {
   const out: OrgSiteDefaults = {};
-  const about = s(input.about); if (about) out.about = about;
+  // "Chi siamo" is rich text (WYSIWYG) → sanitise to the allowlist before storing.
+  const about = richTextOrUndefined(input.about); if (about) out.about = about;
   const sponsors = normalizeSponsors(input.sponsors); if (sponsors.length) out.sponsors = sponsors;
   const contacts = normContacts(input.contacts); if (contacts) out.contacts = contacts;
   const venue = normVenue(input.venue); if (venue) out.venue = venue;

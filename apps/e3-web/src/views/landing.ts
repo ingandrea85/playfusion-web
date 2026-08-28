@@ -54,8 +54,9 @@ function renderEventHome(event: EventDetail, window: RegistrationWindowView, pub
     venueName ? `📍 ${esc(venue?.name || venue?.address || '')}` : '',
   ].filter(Boolean).join(' · ')
 
-  const about = site.about ? `<p class="pf-esite-lead">${esc(site.about)}</p>` : ''
-  const program = site.program ? `<p class="pf-esite-pre">${esc(site.program)}</p>` : ''
+  // about/program are rich HTML, sanitised server-side at save → safe to render as-is.
+  const about = site.about ? `<div class="pf-esite-rich">${site.about}</div>` : ''
+  const program = site.program ? `<div class="pf-esite-rich">${site.program}</div>` : ''
   const venueBlock = venue && (venue.name || venue.address) ? `
     <p style="margin:2px 0 var(--space-md)">${esc([venue.name, venue.address].filter(Boolean).join(' — '))}</p>
     ${venue.mapUrl ? `<a class="pf-btn" href="${esc(venue.mapUrl)}" target="_blank" rel="noopener">📍 Apri in Maps →</a>` : ''}` : ''
