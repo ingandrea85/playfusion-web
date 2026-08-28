@@ -5,15 +5,16 @@ import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import {
   withCorrelation, makeDocClient, EventBridgeEventPublisher, toHttpError, busName, resourceName,
-  auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, getIdentity,
+  auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, requireOwner, getIdentity,
 } from '@playfusion/platform-lib';
-import { PutCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { DynamoDbEventStore } from './adapters/dynamodb-event-store.js';
 import { DynamoDbGironiRepository } from './adapters/dynamodb-gironi-repository.js';
 import { HttpTeamSource } from './adapters/http-team-source.js';
 import { drawGironi } from './application/draw-gironi.js';
 import { saveGironi, getGironi } from './application/save-gironi.js';
 import { listEvents, getEvent } from './read-model.js';
+import { makeEventSite, type EventSite } from './domain.js';
 
 const db = makeDocClient();
 const publisher = new EventBridgeEventPublisher(busName());
@@ -42,7 +43,10 @@ export const createEventBody = z.object({
 
 // S2.4: creating an event is an organizer mutation.
 const auth0cfg = auth0ConfigFromEnv();
-const organizer = requireOrganizer({ auth0: auth0cfg ? createAuth0Verifier(auth0cfg) : undefined });
+const verifier = auth0cfg ? createAuth0Verifier(auth0cfg) : undefined;
+const organizer = requireOrganizer({ auth0: verifier });
+// Event Site is owner-only (part of the org's public identity, like brand).
+const owner = requireOwner({ auth0: verifier });
 
 app.post('/events', organizer, async (c) => {
   const b = createEventBody.parse(await c.req.json());
@@ -82,6 +86,19 @@ app.put('/events/:id/gironi/:categoria', organizer, async (c) => {
 });
 
 app.get('/events/:id/gironi', async (c) => c.json(await getGironi(gironiRepo)(c.req.param('id'))));
+
+// Event Site (Pro) — per-event overrides of the public website. Owner-only; the resolved site is
+// read publicly via GET /events/:id (site is stored on the event item and returned by getEvent).
+app.put('/events/:id/site', owner, async (c) => {
+  const sportEventId = c.req.param('id');
+  if (!(await getEvent(store)(sportEventId))) return c.json({ error: 'EventNotFound', sportEventId }, 404);
+  const site = makeEventSite((await c.req.json()) as EventSite);
+  await db.send(new UpdateCommand({
+    TableName: resourceName('o3-events'), Key: { sportEventId },
+    UpdateExpression: 'SET site = :s', ExpressionAttributeValues: { ':s': site },
+  }));
+  return c.json(site);
+});
 // Finals format is per-category on the o7 ScheduleConfig (edited in the Calendario tab), not on the
 // event — there is no o3 finals-config endpoint.
 
