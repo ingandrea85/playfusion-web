@@ -122,6 +122,21 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-siteprev__hero .pf-eyebrow { color: rgba(255,255,255,.8); }
 @media (max-width: 860px) { .pf-sitegrid { grid-template-columns: 1fr; } .pf-sitepreview-card { position: static; } }
 
+/* E3 public event home (landing.ts, Pro event site). */
+.pf-esite-hero { background: var(--color-action-primary); color: #fff; padding: clamp(40px, 7vw, 72px) 0; }
+.pf-esite-hero .pf-eyebrow { color: rgba(255,255,255,.82); }
+.pf-esite-hero h1 { margin: 8px 0 4px; font-size: clamp(30px, 6vw, 52px); }
+.pf-esite-tagline { font-size: clamp(16px, 2.4vw, 20px); color: rgba(255,255,255,.9); max-width: 60ch; margin: 8px 0 0; }
+.pf-esite-meta { margin-top: 16px; color: rgba(255,255,255,.85); font-weight: 600; }
+.pf-esite-sec { padding: clamp(28px, 5vw, 44px) 0; border-bottom: 1px solid var(--color-border-strong); }
+.pf-esite-sec:nth-of-type(even) { background: var(--color-surface-muted, transparent); }
+.pf-esite-lead { font-size: 18px; max-width: 68ch; margin: 8px 0 0; }
+.pf-esite-pre { white-space: pre-line; margin: 8px 0 0; }
+.pf-esite-sponsors { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+.pf-esite-sponsor { display: inline-flex; flex-direction: column; padding: 12px 18px; border-radius: 12px; border: 1px solid var(--color-border-strong); font-weight: 800; color: var(--color-text-default); text-decoration: none; }
+.pf-esite-sponsor small { font-weight: 600; color: var(--color-text-soft); font-size: 11px; }
+.pf-esite-foot { padding: 28px 0; color: var(--color-text-soft); }
+
 /* ---------- Form primitives (create-event + enroll forms) ---------- */
 .pf-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-md); }
 .pf-field label { font-weight: 700; font-size: 13px; color: var(--color-text-soft); }

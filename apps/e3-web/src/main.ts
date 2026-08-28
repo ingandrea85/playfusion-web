@@ -2,7 +2,7 @@ import '@playfusion/tokens/tokens.css'
 import '@playfusion/app-shell/chrome.css'
 import '@playfusion/ui'
 import { HashRouter, applyBrand } from '@playfusion/app-shell'
-import { createClient } from '@playfusion/rest-client'
+import { createClient, resolveEventSite } from '@playfusion/rest-client'
 import { readConfig } from './config.js'
 import { renderLanding, renderParticipants, wireParticipants } from './views/landing.js'
 import { renderPublicCalendar, wirePublicCalendar } from './views/calendar.js'
@@ -109,7 +109,9 @@ new HashRouter()
     try {
       const [ev, win, sched] = await Promise.all([client.o3.getEvent(id), client.o5.getRegistrationWindow(id), client.o7.getSchedule(id)])
       await applyEventBrand(ev)
-      app.innerHTML = renderLanding(ev, win, sched.status === 'PUBLISHED')
+      // Event Site (Pro): resolve the org defaults + per-event overrides into the public home.
+      const orgSite = ev.organizationId ? await client.o1.getSite(ev.organizationId).catch(() => null) : null
+      app.innerHTML = renderLanding(ev, win, sched.status === 'PUBLISHED', resolveEventSite(orgSite, ev.site))
     } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/', () => { app.innerHTML = '<main class="pf-container"><div class="pf-card pf-muted">Apri il link del tuo evento.</div></main>' })
