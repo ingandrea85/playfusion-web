@@ -12,10 +12,18 @@ describe('makeSiteDefaults (domain)', () => {
     const out = makeSiteDefaults({ sponsors: [{ name: '  Rossi ', url: ' https://r ' }, { name: '' } as any, { name: 'Caffè', url: '', tier: 'Partner' }] });
     expect(out.sponsors).toEqual([{ name: 'Rossi', url: 'https://r' }, { name: 'Caffè', tier: 'Partner' }]);
   });
-  it('normalises venue + contacts, dropping empty', () => {
+  it('normalises venue + contacts, dropping empty (no undefined keys reach DynamoDB)', () => {
     const out = makeSiteDefaults({ venue: { name: ' Le Betulle ', address: '', mapUrl: 'https://m' }, contacts: { email: 'info@x.it', phone: '' } });
     expect(out.venue).toEqual({ name: 'Le Betulle', mapUrl: 'https://m' });
+    // partial objects must NOT carry undefined values (the DocumentClient would reject them)
+    expect(Object.keys(out.venue!)).toEqual(['name', 'mapUrl']);
+    expect(Object.values(out.venue!).every((v) => v !== undefined)).toBe(true);
     expect(out.contacts).toEqual({ email: 'info@x.it' });
+    expect(Object.keys(out.contacts!)).toEqual(['email']);
+  });
+  it('keeps an optional sponsor logo URL', () => {
+    const out = makeSiteDefaults({ sponsors: [{ name: 'Rossi', logoUrl: ' https://logo.png ' }, { name: 'Senza logo' }] });
+    expect(out.sponsors).toEqual([{ name: 'Rossi', logoUrl: 'https://logo.png' }, { name: 'Senza logo' }]);
   });
   it('returns an empty object when nothing meaningful is provided', () => {
     expect(makeSiteDefaults({ about: '   ', sponsors: [{ name: ' ' } as any] })).toEqual({});

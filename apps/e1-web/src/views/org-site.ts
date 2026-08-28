@@ -7,10 +7,11 @@ export interface OrgSiteData { site: OrgSiteDefaults | null; locked?: boolean; f
 
 /** One editable sponsor row (name + url + tier + remove). Reused by the event editor. */
 export function sponsorRow(s: Partial<Sponsor> = {}): string {
-  return `<div class="pf-sprow pf-row" style="gap:var(--space-sm);align-items:flex-end">
-    <div class="pf-field" style="margin:0;flex:1 1 auto"><label>Nome</label><input class="js-sp-name" value="${esc(s.name ?? '')}" placeholder="Es. Rossi Sport" /></div>
-    <div class="pf-field" style="margin:0;flex:1 1 auto"><label>Link</label><input class="js-sp-url" value="${esc(s.url ?? '')}" placeholder="https://…" /></div>
-    <div class="pf-field" style="margin:0;width:130px"><label>Ruolo</label><input class="js-sp-tier" value="${esc(s.tier ?? '')}" placeholder="Partner" /></div>
+  return `<div class="pf-sprow pf-row" style="gap:var(--space-sm);align-items:flex-end;flex-wrap:wrap">
+    <div class="pf-field" style="margin:0;flex:1 1 140px"><label>Nome</label><input class="js-sp-name" value="${esc(s.name ?? '')}" placeholder="Es. Rossi Sport" /></div>
+    <div class="pf-field" style="margin:0;flex:1 1 160px"><label>Link (opz.)</label><input class="js-sp-url" value="${esc(s.url ?? '')}" placeholder="https://…" /></div>
+    <div class="pf-field" style="margin:0;flex:1 1 160px"><label>Logo URL (opz.)</label><input class="js-sp-logo" value="${esc(s.logoUrl ?? '')}" placeholder="https://…/logo.png" /></div>
+    <div class="pf-field" style="margin:0;width:120px"><label>Ruolo (opz.)</label><input class="js-sp-tier" value="${esc(s.tier ?? '')}" placeholder="Partner" /></div>
     <button type="button" class="pf-btn pf-btn--ghost js-sp-del" title="Rimuovi">✕</button>
   </div>`
 }
@@ -19,8 +20,8 @@ export function sponsorRow(s: Partial<Sponsor> = {}): string {
 export function collectSponsors(root: ParentNode): Sponsor[] {
   return [...root.querySelectorAll('.pf-sprow')].map((r) => {
     const val = (sel: string) => (r.querySelector<HTMLInputElement>(sel)?.value ?? '').trim()
-    return { name: val('.js-sp-name'), url: val('.js-sp-url'), tier: val('.js-sp-tier') }
-  }).filter((s) => s.name).map((s) => ({ name: s.name, ...(s.url ? { url: s.url } : {}), ...(s.tier ? { tier: s.tier } : {}) }))
+    return { name: val('.js-sp-name'), url: val('.js-sp-url'), tier: val('.js-sp-tier'), logoUrl: val('.js-sp-logo') }
+  }).filter((s) => s.name).map((s) => ({ name: s.name, ...(s.url ? { url: s.url } : {}), ...(s.tier ? { tier: s.tier } : {}), ...(s.logoUrl ? { logoUrl: s.logoUrl } : {}) }))
 }
 
 function form(site: OrgSiteDefaults | null): string {

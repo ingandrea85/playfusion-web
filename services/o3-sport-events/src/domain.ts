@@ -42,12 +42,16 @@ export interface EventSite {
   program?: string;
   venue?: { name?: string; address?: string; mapUrl?: string };
   contacts?: { email?: string; phone?: string; social?: string };
-  sponsors?: Array<{ name: string; url?: string; tier?: string }>;
+  sponsors?: Array<{ name: string; url?: string; tier?: string; logoUrl?: string }>;
   inheritOrgSponsors?: boolean;
 }
 
 const trim = (v: unknown): string | undefined => { const t = typeof v === 'string' ? v.trim() : ''; return t || undefined; };
-const compact = <T extends object>(o: T): T | undefined => (Object.values(o).some((v) => v !== undefined) ? o : undefined);
+// Keep only defined keys (no `undefined` reaches DynamoDB); undefined when the object is empty.
+const compact = <T extends object>(o: T): T | undefined => {
+  const e = Object.entries(o).filter(([, v]) => v !== undefined);
+  return e.length ? (Object.fromEntries(e) as T) : undefined;
+};
 
 /** Normalise a per-event site submission: trim strings, drop blanks/empty sponsors. */
 export function makeEventSite(input: EventSite): EventSite {
@@ -61,9 +65,9 @@ export function makeEventSite(input: EventSite): EventSite {
   const contacts = input.contacts && compact({ email: trim(input.contacts.email), phone: trim(input.contacts.phone), social: trim(input.contacts.social) });
   if (contacts) out.contacts = contacts;
   const sponsors = (Array.isArray(input.sponsors) ? input.sponsors : [])
-    .map((x) => ({ name: trim(x?.name) ?? '', url: trim(x?.url), tier: trim(x?.tier) }))
+    .map((x) => ({ name: trim(x?.name) ?? '', url: trim(x?.url), tier: trim(x?.tier), logoUrl: trim(x?.logoUrl) }))
     .filter((x) => x.name)
-    .map((x) => ({ name: x.name, ...(x.url ? { url: x.url } : {}), ...(x.tier ? { tier: x.tier } : {}) }));
+    .map((x) => ({ name: x.name, ...(x.url ? { url: x.url } : {}), ...(x.tier ? { tier: x.tier } : {}), ...(x.logoUrl ? { logoUrl: x.logoUrl } : {}) }));
   if (sponsors.length) out.sponsors = sponsors;
   if (input.inheritOrgSponsors === false) out.inheritOrgSponsors = false;
   return out;

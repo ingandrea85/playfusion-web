@@ -135,6 +135,7 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-esite-sponsors { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
 .pf-esite-sponsor { display: inline-flex; flex-direction: column; padding: 12px 18px; border-radius: 12px; border: 1px solid var(--color-border-strong); font-weight: 800; color: var(--color-text-default); text-decoration: none; }
 .pf-esite-sponsor small { font-weight: 600; color: var(--color-text-soft); font-size: 11px; }
+.pf-esite-sponsor__logo { max-height: 40px; max-width: 140px; object-fit: contain; display: block; }
 .pf-esite-foot { padding: 28px 0; color: var(--color-text-soft); }
 
 /* ---------- Form primitives (create-event + enroll forms) ---------- */
