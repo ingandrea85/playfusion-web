@@ -48,6 +48,14 @@ describe('E1 auth guard', () => {
     await ensureAuthenticated(p, '')
     expect(p.loginWithRedirect).toHaveBeenCalledWith({ signup: false })
   })
+  it('starts an org-scoped login to accept an invitation link', async () => {
+    // Even an already-authenticated session must switch into the invited org to accept.
+    const p = port({ isAuthenticated: vi.fn().mockResolvedValue(true) })
+    const ok = await ensureAuthenticated(p, '?invitation=INV&organization=org_1&organization_name=acme')
+    expect(ok).toBe(false)
+    expect(p.loginWithRedirect).toHaveBeenCalledWith({ invitation: 'INV', organization: 'org_1' })
+    expect(p.isAuthenticated).not.toHaveBeenCalled()
+  })
 })
 
 describe('orgIdFromClaims', () => {

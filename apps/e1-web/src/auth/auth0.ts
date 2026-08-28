@@ -14,7 +14,7 @@ export function appBaseFromPath(pathname: string): string {
 export interface Auth0Port {
   isAuthenticated(): Promise<boolean>
   handleRedirectCallback(): Promise<void>
-  loginWithRedirect(opts?: { signup?: boolean }): Promise<void>
+  loginWithRedirect(opts?: { signup?: boolean; organization?: string; invitation?: string }): Promise<void>
   logout(): Promise<void>
   getToken(): Promise<string>
   getOrgId(): Promise<string | undefined>
@@ -52,7 +52,15 @@ export function createAuth0Adapter(cfg: NonNullable<AppConfig['auth0']>): Auth0P
       finally { window.history.replaceState({}, '', appBase) }
     },
     loginWithRedirect: async (opts) => (await client()).loginWithRedirect(
-      opts?.signup ? { authorizationParams: { screen_hint: 'signup' } } : undefined),
+      opts?.signup || opts?.organization || opts?.invitation
+        ? { authorizationParams: {
+            ...(opts.signup ? { screen_hint: 'signup' } : {}),
+            // Org invitation acceptance: Auth0 joins the invitee to the org and applies the
+            // invited role, then returns to redirect_uri with a code (invitation is consumed).
+            ...(opts.organization ? { organization: opts.organization } : {}),
+            ...(opts.invitation ? { invitation: opts.invitation } : {}),
+          } }
+        : undefined),
     logout: async () => (await client()).logout({ logoutParams: { returnTo: redirectUri } }),
     getToken: async () => (await client()).getTokenSilently(),
     getOrgId: async () => orgIdFromClaims((await (await client()).getUser()) as Record<string, unknown> | undefined, cfg.audience),
@@ -86,6 +94,14 @@ export async function ensureAuthenticated(port: Auth0Port, search = window.locat
     // A stale/expired/invalid callback must not permanently blank the page on reload —
     // fall through to the isAuthenticated() check, which restarts login when needed.
     try { await port.handleRedirectCallback() } catch { /* fall through */ }
+  }
+  // Org invitation link (`?invitation=…&organization=…`): always start an org-scoped login to
+  // consume the invite — even a pre-existing session must switch into the invited org to accept.
+  const invitation = params.get('invitation') ?? undefined
+  const organization = params.get('organization') ?? undefined
+  if (invitation && organization) {
+    await port.loginWithRedirect({ invitation, organization })
+    return false
   }
   if (await port.isAuthenticated()) return true
   // The marketing site sends new users here with ?signup=1 → open Auth0 on the sign-up screen.
