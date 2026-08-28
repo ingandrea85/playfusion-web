@@ -137,8 +137,10 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-esite-sponsor small { font-weight: 600; color: var(--color-text-soft); font-size: 11px; }
 .pf-esite-sponsor__logo { max-height: 40px; max-width: 140px; object-fit: contain; display: block; }
 .pf-esite-foot { padding: 28px 0; color: var(--color-text-soft); }
-/* Rendered rich text (sanitised HTML from the WYSIWYG): About / Programma. */
-.pf-esite-rich { max-width: 68ch; }
+/* Rendered rich text (sanitised HTML from the WYSIWYG): About / Programma.
+   pre-line preserves literal newlines — both legacy plain-text content and Quill HTML that carries
+   raw \n inside a block — so line breaks render without needing a <br> everywhere. */
+.pf-esite-rich { max-width: 68ch; white-space: pre-line; }
 .pf-esite-rich h2, .pf-esite-rich h3 { margin: 1em 0 .3em; line-height: 1.2; }
 .pf-esite-rich p { margin: .5em 0; }
 .pf-esite-rich ul, .pf-esite-rich ol { margin: .5em 0; padding-left: 1.4em; }
