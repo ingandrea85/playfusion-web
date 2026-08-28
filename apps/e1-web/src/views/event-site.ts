@@ -1,11 +1,11 @@
 import { esc } from '@playfusion/app-shell'
 import type { EventDetail, EventSite, OrgSiteDefaults, ResolvedEventSite } from '@playfusion/rest-client'
 import { resolveEventSite } from '@playfusion/rest-client'
-import { inlineError, lockCard, notAuthorizedCard, type Screen, type ViewCtx } from '../view.js'
+import { inlineError, lockCard, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
 import { sponsorRow, collectSponsors } from './org-site.js'
 
-export interface EventSiteData { event: EventDetail; org: OrgSiteDefaults | null; locked?: boolean; forbidden?: boolean }
+export interface EventSiteData { event: EventDetail; org: OrgSiteDefaults | null; locked?: boolean }
 
 /** An override-toggle group: switch controls whether the field is inherited or event-specific. */
 function overrideGroup(field: string, label: string, on: boolean, inheritedHint: string, body: string): string {
@@ -87,7 +87,6 @@ function form(data: EventSiteData): string {
 }
 
 export function renderEventSite(data: EventSiteData): string {
-  if (data.forbidden) return workspaceShell(data.event, 'site', notAuthorizedCard('Sito evento'))
   if (data.locked) return workspaceShell(data.event, 'site', lockCard('Sito evento'))
   return workspaceShell(data.event, 'site', form(data))
 }
@@ -111,15 +110,16 @@ export function collectEventSite(root: ParentNode): EventSite {
 
 export const eventSiteScreen: Screen<EventSiteData> = {
   load: async (ctx, p) => {
+    // Per-event site is editable by any org member (organizer or owner) — whoever operates the event.
+    // Org-level defaults stay owner-only (org console). Pro-gated.
     const event = await ctx.client.o3.getEvent(p.id)
-    if (ctx.orgRole !== 'OWNER') return { event, org: null, forbidden: true }
     if (!ctx.entitlements.hasEventSite) return { event, org: null, locked: true }
     const org = await ctx.client.o1.getSite(ctx.orgId).catch(() => null)
     return { event, org }
   },
   render: (data) => renderEventSite(data),
   mount(root, ctx: ViewCtx, data) {
-    if (data.forbidden || data.locked) return
+    if (data.locked) return
     const err = root.querySelector('#err')!
     const q = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!
 

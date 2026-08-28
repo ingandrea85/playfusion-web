@@ -28,14 +28,14 @@ const mounted = async (c: ViewCtx) => {
 }
 
 describe('event site editor gating', () => {
-  it('ORGANIZER is forbidden and does not fetch org defaults', async () => {
+  it('ORGANIZER can edit the event site (loads org defaults, renders the form)', async () => {
     const c = ctx({ orgRole: 'ORGANIZER' })
     const data = await eventSiteScreen.load(c, { id: 'e1' })
-    expect(data).toMatchObject({ forbidden: true })
-    expect(c.client.o1.getSite).not.toHaveBeenCalled()
-    expect(renderEventSite(data)).toMatch(/riservato all'owner/)
+    expect(data.locked).toBeUndefined()
+    expect(c.client.o1.getSite).toHaveBeenCalled()
+    expect(renderEventSite(data)).toContain('id="s-save"')
   })
-  it('Free owner sees the Pro lock', async () => {
+  it('Free plan sees the Pro lock', async () => {
     const data = await eventSiteScreen.load(ctx({ entitlements: entitlements('FREE') }), { id: 'e1' })
     expect(data).toMatchObject({ locked: true })
     expect(renderEventSite(data)).toMatch(/richiede Pro/i)
