@@ -1,9 +1,9 @@
 import { esc, applyBrand } from '@playfusion/app-shell'
 import type { Brand } from '@playfusion/rest-client'
-import { inlineError, lockCard, type Screen, type ViewCtx } from '../view.js'
+import { inlineError, lockCard, notAuthorizedCard, type Screen, type ViewCtx } from '../view.js'
 import { renderOrgShell } from './org.js'
 
-export interface BrandData { brand: Brand | null; locked?: boolean }
+export interface BrandData { brand: Brand | null; locked?: boolean; forbidden?: boolean }
 
 // Token defaults (tokens.css) — the starting point when the tenant has no brand yet.
 const DEFAULT_PRIMARY = '#0b5fff'
@@ -20,6 +20,7 @@ function preview(logoText: string, primary: string, accent: string): string {
 }
 
 export function renderBrand(data: BrandData): string {
+  if (data.forbidden) return renderOrgShell('brand', notAuthorizedCard('Brand organizzazione'))
   if (data.locked) return renderOrgShell('brand', lockCard('Brand personalizzato'))
   const b = data.brand
   const logoText = b?.logoText ?? ''
@@ -45,13 +46,16 @@ export function renderBrand(data: BrandData): string {
 }
 
 export const brandScreen: Screen<BrandData> = {
-  load: async (ctx) => ({
-    brand: await ctx.client.o1.getBrand(ctx.orgId).catch(() => null as Brand | null),
-    locked: !ctx.entitlements.hasBrand,
-  }),
+  load: async (ctx) => {
+    if (ctx.orgRole !== 'OWNER') return { brand: null, forbidden: true }
+    return {
+      brand: await ctx.client.o1.getBrand(ctx.orgId).catch(() => null as Brand | null),
+      locked: !ctx.entitlements.hasBrand,
+    }
+  },
   render: (data) => renderBrand(data),
   mount(root, ctx: ViewCtx, data) {
-    if (data.locked) return // plan-gated: only the lock card is shown
+    if (data.forbidden || data.locked) return // role- or plan-gated: only the card is shown
     const err = root.querySelector('#err')!
     const fail = (msg: string) => { err.innerHTML = inlineError(msg) }
     const q = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!

@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { handle } from 'hono/aws-lambda';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken, auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, DomainError } from '@playfusion/platform-lib';
+import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken, auth0ConfigFromEnv, createAuth0Verifier, requireOwner, DomainError } from '@playfusion/platform-lib';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { signToken, verifyToken } from './token.js';
 import { Auth0MembershipDirectory, auth0MgmtConfigFromEnv } from './adapters/auth0-membership.js';
@@ -19,7 +19,9 @@ const requireDirectory = () => {
   return deps;
 };
 const auth0cfg = auth0ConfigFromEnv();
-const organizer = requireOrganizer({ auth0: auth0cfg ? createAuth0Verifier(auth0cfg) : undefined });
+const verifier = auth0cfg ? createAuth0Verifier(auth0cfg) : undefined;
+// T4: managing members/roles/invitations is owner-only (billing/brand/members capability).
+const owner = requireOwner({ auth0: verifier });
 
 const app = new Hono();
 // Actual (non-preflight) responses need CORS headers too: API Gateway's
@@ -46,25 +48,25 @@ app.get('/identities/verify', (c) => {
   const claims = verifyToken(bearerToken(c));
   return claims ? c.json(claims) : c.json({ code: 'INVALID_TOKEN' }, 401);
 });
-// T3 — per-tenant membership & roles on Auth0 Organizations. All mutations organizer-guarded.
-// Members/invitations are org-scoped (Auth0 needs the org id for every operation).
+// T3 — per-tenant membership & roles on Auth0 Organizations, org-scoped.
+// T4 — the whole surface (list + mutations) is owner-only: managing members is a tenant-owner capability.
 const invitationBody = z.object({ name: z.string().min(1), email: z.string().min(1), role: z.string() });
-app.get('/organizations/:orgId/members', organizer, async (c) => c.json(await listMembers(requireDirectory())(c.req.param('orgId'))));
-app.get('/organizations/:orgId/invitations', organizer, async (c) => c.json(await listInvitations(requireDirectory())(c.req.param('orgId'))));
-app.post('/organizations/:orgId/invitations', organizer, async (c) => {
+app.get('/organizations/:orgId/members', owner, async (c) => c.json(await listMembers(requireDirectory())(c.req.param('orgId'))));
+app.get('/organizations/:orgId/invitations', owner, async (c) => c.json(await listInvitations(requireDirectory())(c.req.param('orgId'))));
+app.post('/organizations/:orgId/invitations', owner, async (c) => {
   const b = invitationBody.parse(await c.req.json());
   const inv = await invite(requireDirectory())({ organizationId: c.req.param('orgId'), ...b });
   return c.json(inv, 201);
 });
-app.delete('/organizations/:orgId/invitations/:id', organizer, async (c) => {
+app.delete('/organizations/:orgId/invitations/:id', owner, async (c) => {
   await revokeInvitation(requireDirectory())(c.req.param('orgId'), c.req.param('id'));
   return c.body(null, 204);
 });
-app.put('/organizations/:orgId/members/:id/role', organizer, async (c) => {
+app.put('/organizations/:orgId/members/:id/role', owner, async (c) => {
   const { role } = z.object({ role: z.string() }).parse(await c.req.json());
   return c.json(await changeMemberRole(requireDirectory())({ organizationId: c.req.param('orgId'), memberId: c.req.param('id'), role }));
 });
-app.delete('/organizations/:orgId/members/:id', organizer, async (c) => {
+app.delete('/organizations/:orgId/members/:id', owner, async (c) => {
   await removeMember(requireDirectory())({ organizationId: c.req.param('orgId'), memberId: c.req.param('id') });
   return c.body(null, 204);
 });

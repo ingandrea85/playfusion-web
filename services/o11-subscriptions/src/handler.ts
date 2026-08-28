@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { randomUUID } from 'node:crypto';
 import {
   withCorrelation, currentCorrelationId, toHttpError, checkpoint,
-  makeDocClient, auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer,
+  makeDocClient, auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, requireOwner,
 } from '@playfusion/platform-lib';
 import { DynamoDbSubscriptionRepository } from './adapters/dynamodb-subscription-repository.js';
 import { getOrProvision, activatePro, expireTrial } from './application/subscription.js';
@@ -13,17 +13,21 @@ const repo = new DynamoDbSubscriptionRepository(db);
 const deps = { repo };
 
 const auth0cfg = auth0ConfigFromEnv();
-const organizer = requireOrganizer({ auth0: auth0cfg ? createAuth0Verifier(auth0cfg) : undefined });
+const verifier = auth0cfg ? createAuth0Verifier(auth0cfg) : undefined;
+// GET is organizer-readable (the E1 shell reads the plan at boot to compute entitlements); the
+// billing levers (activate/expire) are owner-only (T4).
+const organizer = requireOrganizer({ auth0: verifier });
+const owner = requireOwner({ auth0: verifier });
 
 const app = new Hono();
 app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 
 // Read the tenant subscription (provisions a PRO trial on first read — trial-first). Organizer only.
 app.get('/organizations/:orgId/subscription', organizer, async (c) => c.json(await getOrProvision(deps)(c.req.param('orgId'))));
-// Fake upgrade to paid Pro.
-app.post('/organizations/:orgId/subscription:activate-pro', organizer, async (c) => c.json(await activatePro(deps)(c.req.param('orgId'))));
-// Demo lever: expire the trial → limited Free.
-app.post('/organizations/:orgId/subscription:expire-trial', organizer, async (c) => c.json(await expireTrial(deps)(c.req.param('orgId'))));
+// Fake upgrade to paid Pro. Owner-only.
+app.post('/organizations/:orgId/subscription:activate-pro', owner, async (c) => c.json(await activatePro(deps)(c.req.param('orgId'))));
+// Demo lever: expire the trial → limited Free. Owner-only.
+app.post('/organizations/:orgId/subscription:expire-trial', owner, async (c) => c.json(await expireTrial(deps)(c.req.param('orgId'))));
 
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
 

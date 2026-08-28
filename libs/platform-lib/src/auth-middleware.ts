@@ -67,6 +67,24 @@ export function requirePlatformAdmin(opts: { auth0?: Auth0Verify; adminRole?: st
 }
 
 /**
+ * T4 — organization-owner routes (billing, brand, members). Requires a valid Auth0 JWT carrying the
+ * `tenant_admin` (OWNER) role. No magic-link bridge: ownership is a real Auth0 tenant capability, not
+ * an operational one. 401 without a usable token; 403 when the owner role is missing (e.g. an
+ * ORGANIZER hitting an owner-only endpoint).
+ */
+export function requireOwner(opts: { auth0?: Auth0Verify; ownerRole?: string } = {}): Middleware {
+  const ownerRole = opts.ownerRole ?? 'tenant_admin';
+  return async (c, next) => {
+    const token = bearerToken(c);
+    if (!token || !opts.auth0) throw new UnauthorizedError('missing token');
+    const identity = await opts.auth0(token); // throws UnauthorizedError on bad token
+    if (!identity.roles.includes(ownerRole)) throw new ForbiddenError('actor is not an organization owner');
+    c.set(IDENTITY_KEY, identity);
+    return next();
+  };
+}
+
+/**
  * S2.4 — coach routes (apply). Possession of a valid O2 magic-link is the capability;
  * no role is required. 401 when missing or invalid.
  */

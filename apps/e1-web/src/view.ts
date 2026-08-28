@@ -1,4 +1,4 @@
-import type { Client } from '@playfusion/rest-client'
+import type { Client, OrgRole } from '@playfusion/rest-client'
 import type { Entitlements } from '@playfusion/entitlements'
 
 export interface ViewCtx {
@@ -9,6 +9,8 @@ export interface ViewCtx {
   refresh: () => void
   /** SP2: the logged-in user has the global `platform_admin` role (gates the finals-format editor). */
   isPlatformAdmin: boolean
+  /** T4: the user's org role (OWNER manages billing/brand/members; ORGANIZER operates events). */
+  orgRole: OrgRole
   /** T1: what the org's plan unlocks (computed once at boot from the subscription). */
   entitlements: Entitlements
 }
@@ -20,6 +22,15 @@ export const lockCard = (feature: string): string =>
     <h2 class="pf-h3" style="margin:0">${feature} — richiede Pro</h2>
     <p class="pf-muted" style="margin:6px 0 14px">Con il piano Free questa funzione è disattivata. Passa a Pro per sbloccarla.</p>
     <a class="pf-btn pf-btn--primary" href="#/org/subscription">Passa a Pro</a>
+  </div>`
+
+/** T4: shown when an ORGANIZER reaches an owner-only surface (members, brand, billing). */
+export const notAuthorizedCard = (feature: string): string =>
+  `<div class="pf-card pf-lock">
+    <div class="pf-lock__ic">🔒</div>
+    <h2 class="pf-h3" style="margin:0">${feature} — riservato all'owner</h2>
+    <p class="pf-muted" style="margin:6px 0 14px">Solo il proprietario dell'organizzazione può gestire questa sezione. Chiedi all'owner del tuo team.</p>
+    <a class="pf-btn pf-btn--ghost" href="#/">Torna ai tornei</a>
   </div>`
 
 /** A screen = pure render(data) + optional mount(root,ctx,data) that wires DOM events and

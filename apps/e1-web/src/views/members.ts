@@ -1,9 +1,9 @@
 import { esc } from '@playfusion/app-shell'
 import type { Invitation, Member, OrgRole } from '@playfusion/rest-client'
-import { inlineError, lockCard, type Screen, type ViewCtx } from '../view.js'
+import { inlineError, lockCard, notAuthorizedCard, type Screen, type ViewCtx } from '../view.js'
 import { renderOrgShell } from './org.js'
 
-export interface MembersData { members: Member[]; invitations: Invitation[]; locked?: boolean }
+export interface MembersData { members: Member[]; invitations: Invitation[]; locked?: boolean; forbidden?: boolean }
 
 // Two membership roles: directors enter via magic link, not org membership (T3).
 const ROLES: OrgRole[] = ['OWNER', 'ORGANIZER']
@@ -46,6 +46,7 @@ function invitationsCard(invitations: Invitation[]): string {
 }
 
 export function renderMembers(data: MembersData): string {
+  if (data.forbidden) return renderOrgShell('members', notAuthorizedCard('Gestione membri'))
   if (data.locked) return renderOrgShell('members', lockCard('Gestione membri'))
   const body = `<div class="pf-pagehead"><div class="pf-eyebrow">Organizzazione</div><h1>Membri</h1></div><div id="err"></div>
     ${membersCard(data.members)}
@@ -64,14 +65,17 @@ export function renderMembers(data: MembersData): string {
 }
 
 export const membersScreen: Screen<MembersData> = {
-  load: async (ctx) => ({
-    members: await ctx.client.o2.listMembers(ctx.orgId).catch(() => [] as Member[]),
-    invitations: await ctx.client.o2.listInvitations(ctx.orgId).catch(() => [] as Invitation[]),
-    locked: !ctx.entitlements.canInviteMembers,
-  }),
+  load: async (ctx) => {
+    if (ctx.orgRole !== 'OWNER') return { members: [], invitations: [], forbidden: true }
+    return {
+      members: await ctx.client.o2.listMembers(ctx.orgId).catch(() => [] as Member[]),
+      invitations: await ctx.client.o2.listInvitations(ctx.orgId).catch(() => [] as Invitation[]),
+      locked: !ctx.entitlements.canInviteMembers,
+    }
+  },
   render: (data) => renderMembers(data),
   mount(root, ctx: ViewCtx, data) {
-    if (data.locked) return // plan-gated
+    if (data.forbidden || data.locked) return // role- or plan-gated
     const err = root.querySelector('#err')!
     const fail = (msg: string) => { err.innerHTML = inlineError(msg) }
     const q = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!

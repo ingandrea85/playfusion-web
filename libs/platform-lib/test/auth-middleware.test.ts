@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { requireOrganizer, requireMagicLink, getIdentity } from '../src/auth-middleware.js';
+import { requireOrganizer, requireOwner, requireMagicLink, getIdentity } from '../src/auth-middleware.js';
 import { signMagicLink } from '../src/magic-link.js';
 import type { Identity } from '../src/identity.js';
 
@@ -47,6 +47,25 @@ test('test_requireOrganizer_auth0OrganizerPasses', async () => {
 test('test_requireOrganizer_auth0NonOrganizerIs403', async () => {
   const auth0 = async (_t: string): Promise<Identity> => ({ subject: 'auth0|1', roles: ['viewer'], source: 'auth0' });
   await expect(run(requireOrganizer({ auth0 }), ctx({ authorization: 'a.real.jwt' }))).rejects.toMatchObject({ httpStatus: 403 });
+});
+
+test('test_requireOwner_ownerRolePasses', async () => {
+  const identity: Identity = { subject: 'auth0|1', roles: ['organizer', 'tenant_admin'], organizationId: 'org-1', source: 'auth0' };
+  const c = ctx({ authorization: 'a.real.jwt' });
+  expect(await run(requireOwner({ auth0: async () => identity }), c)).toBe(true);
+  expect(getIdentity(c as any)).toEqual(identity);
+});
+
+test('test_requireOwner_organizerWithoutOwnerRoleIs403', async () => {
+  const auth0 = async (_t: string): Promise<Identity> => ({ subject: 'auth0|1', roles: ['organizer'], source: 'auth0' });
+  await expect(run(requireOwner({ auth0 }), ctx({ authorization: 'a.real.jwt' }))).rejects.toMatchObject({ httpStatus: 403 });
+});
+
+test('test_requireOwner_noTokenOrNoVerifierIs401_noMagicLinkBridge', async () => {
+  await expect(run(requireOwner(), ctx())).rejects.toMatchObject({ httpStatus: 401 });
+  // Even a valid manager magic-link is NOT accepted as owner (no bridge).
+  const mgr = signMagicLink({ subject: 'mgr', roles: ['RegistrationManager'] });
+  await expect(run(requireOwner(), ctx({ authorization: mgr }))).rejects.toMatchObject({ httpStatus: 401 });
 });
 
 test('test_requireMagicLink_validPasses_invalid401', async () => {
