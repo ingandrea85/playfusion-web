@@ -7,6 +7,7 @@ import { readConfig } from './config.js'
 import { runScreen, errorCard, type ViewCtx, type Screen } from './view.js'
 import { dashboardScreen } from './views/dashboard.js'
 import { setOrgNavOwner } from './views/org.js'
+import { orgSiteScreen } from './views/org-site.js'
 import { createEventScreen } from './views/create-event.js'
 import { workspaceScreen, competitionScreen, categorieScreen } from './views/workspace.js'
 import { gironiScreen } from './views/gironi.js'
@@ -74,6 +75,7 @@ async function boot() {
       .on('#/org', () => route(dashboardScreen, {}))
       .on('#/org/members', () => route(membersScreen, {}))
       .on('#/org/brand', () => route(brandScreen, {}))
+      .on('#/org/site', () => route(orgSiteScreen, {}))
       .on('#/org/subscription', () => route(subscriptionScreen, {}))
       .on('#/admin/finals-formats/new', () => route(finalsFormatEditorScreen, {}))
       .on('#/admin/finals-formats/:id', (p) => route(finalsFormatEditorScreen, p))
