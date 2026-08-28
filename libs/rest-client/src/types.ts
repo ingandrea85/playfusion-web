@@ -18,6 +18,8 @@ export interface EventDetail {
   startTime?: string
   tieBreak?: TieBreakCriterion[]
   // Finals format is per-category on the ScheduleConfig (Calendario tab), not on the event.
+  // Event Site: per-event overrides of the public event website (resolved against org defaults).
+  site?: EventSite
 }
 export type EventSummary = EventDetail
 export interface CreateEventInput {
@@ -201,6 +203,28 @@ export interface PublishAnnouncementInput { categoryId: string | null; title: st
 
 // S18 (O1 organization) — per-tenant brand identity. A null brand from the API = default theme.
 export interface Brand { logoText: string; primaryColor: string; accentColor: string }
+
+// Event Site (public event website, Pro). Two levels: org defaults inherited by events, with
+// per-field overrides on the event. Effective = event override ?? org default (see resolveEventSite).
+export interface Sponsor { name: string; url?: string; tier?: string }
+export interface Contacts { email?: string; phone?: string; social?: string }
+export interface Venue { name?: string; address?: string; mapUrl?: string }
+/** Org-level defaults, inherited by every event. Public read + owner write (o1). */
+export interface OrgSiteDefaults { about?: string; sponsors?: Sponsor[]; contacts?: Contacts; venue?: Venue }
+/** Per-event overrides. A field present overrides the org default; absent = inherit. */
+export interface EventSite {
+  enabled?: boolean
+  tagline?: string
+  about?: string
+  program?: string
+  venue?: Venue
+  contacts?: Contacts
+  sponsors?: Sponsor[]
+  /** default true → effective sponsors = org.sponsors + event.sponsors; false → only event.sponsors. */
+  inheritOrgSponsors?: boolean
+}
+/** The resolved site shown to the public (org defaults merged with event overrides). */
+export interface ResolvedEventSite { enabled: boolean; tagline?: string; about?: string; program?: string; venue?: Venue; contacts?: Contacts; sponsors: Sponsor[] }
 
 // S20 (O11) — per-tenant subscription (trial-first billing). trialDaysLeft is server-computed.
 export type PlanKey = 'FREE' | 'PRO' | 'BUSINESS'

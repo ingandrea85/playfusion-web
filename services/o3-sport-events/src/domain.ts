@@ -30,4 +30,41 @@ export interface SportEvent {
   gironi?: import('./gironi.js').GironiMap;
   // Finals format moved to the o7 ScheduleConfig (per-category, edited in the Calendario tab) — it is
   // no longer part of the event.
+  /** Event Site (Pro): per-event overrides of the public website (resolved against org defaults). */
+  site?: EventSite;
+}
+
+// Event Site — per-event overrides. All fields optional; the editor sends the whole object each save.
+export interface EventSite {
+  enabled?: boolean;
+  tagline?: string;
+  about?: string;
+  program?: string;
+  venue?: { name?: string; address?: string; mapUrl?: string };
+  contacts?: { email?: string; phone?: string; social?: string };
+  sponsors?: Array<{ name: string; url?: string; tier?: string }>;
+  inheritOrgSponsors?: boolean;
+}
+
+const trim = (v: unknown): string | undefined => { const t = typeof v === 'string' ? v.trim() : ''; return t || undefined; };
+const compact = <T extends object>(o: T): T | undefined => (Object.values(o).some((v) => v !== undefined) ? o : undefined);
+
+/** Normalise a per-event site submission: trim strings, drop blanks/empty sponsors. */
+export function makeEventSite(input: EventSite): EventSite {
+  const out: EventSite = {};
+  if (input.enabled === false) out.enabled = false;
+  const tagline = trim(input.tagline); if (tagline) out.tagline = tagline;
+  const about = trim(input.about); if (about) out.about = about;
+  const program = trim(input.program); if (program) out.program = program;
+  const venue = input.venue && compact({ name: trim(input.venue.name), address: trim(input.venue.address), mapUrl: trim(input.venue.mapUrl) });
+  if (venue) out.venue = venue;
+  const contacts = input.contacts && compact({ email: trim(input.contacts.email), phone: trim(input.contacts.phone), social: trim(input.contacts.social) });
+  if (contacts) out.contacts = contacts;
+  const sponsors = (Array.isArray(input.sponsors) ? input.sponsors : [])
+    .map((x) => ({ name: trim(x?.name) ?? '', url: trim(x?.url), tier: trim(x?.tier) }))
+    .filter((x) => x.name)
+    .map((x) => ({ name: x.name, ...(x.url ? { url: x.url } : {}), ...(x.tier ? { tier: x.tier } : {}) }));
+  if (sponsors.length) out.sponsors = sponsors;
+  if (input.inheritOrgSponsors === false) out.inheritOrgSponsors = false;
+  return out;
 }

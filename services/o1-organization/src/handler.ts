@@ -8,6 +8,8 @@ import {
 } from '@playfusion/platform-lib';
 import { DynamoDbBrandRepository } from './adapters/dynamodb-brand-repository.js';
 import { getBrand, setBrand, resetBrand } from './application/brand.js';
+import { getSite, setSite } from './application/site.js';
+import type { OrgSiteDefaults } from './domain.js';
 
 const db = makeDocClient();
 const repo = new DynamoDbBrandRepository(db);
@@ -35,6 +37,13 @@ app.put('/organizations/:orgId/brand', owner, async (c) => {
 app.delete('/organizations/:orgId/brand', owner, async (c) => {
   await resetBrand({ repo })(c.req.param('orgId'));
   return c.body(null, 204);
+});
+
+// Event Site — org-level defaults. Public read (E3), owner write.
+app.get('/organizations/:orgId/site', async (c) => c.json(await getSite({ repo })(c.req.param('orgId'))));
+app.put('/organizations/:orgId/site', owner, async (c) => {
+  const body = (await c.req.json()) as OrgSiteDefaults;
+  return c.json(await setSite({ repo })(c.req.param('orgId'), body));
 });
 
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });

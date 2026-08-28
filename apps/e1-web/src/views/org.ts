@@ -9,6 +9,7 @@ const ORG_TABS: Array<{ key: string; label: string; href: string; ownerOnly?: bo
   { key: 'overview', label: 'Panoramica', href: '#/' },
   { key: 'members', label: 'Membri', href: '#/org/members', ownerOnly: true },
   { key: 'brand', label: 'Brand', href: '#/org/brand', ownerOnly: true },
+  { key: 'site', label: 'Sito', href: '#/org/site', ownerOnly: true },
   { key: 'subscription', label: 'Abbonamento', href: '#/org/subscription', ownerOnly: true },
 ]
 

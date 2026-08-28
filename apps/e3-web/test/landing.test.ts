@@ -23,6 +23,28 @@ describe('e3 views', () => {
     expect(renderLanding(ev, win)).toContain('link ricevuto dall\'organizzatore')
     expect(renderLanding(ev, closedWin)).not.toContain('link ricevuto')
   })
+  it('renders the rich event home when a site with content is resolved', () => {
+    const site = { enabled: true, tagline: 'Tre giorni di calcio', about: 'La nostra storia', program: 'Ven 15:00', venue: { name: 'Le Betulle', address: 'Via 1', mapUrl: 'https://maps/x' }, contacts: { email: 'info@x.it' }, sponsors: [{ name: 'Rossi', url: 'https://r' }] }
+    const html = renderLanding(ev, win, true, site)
+    expect(html).toContain('pf-esite-hero')
+    expect(html).toContain('Tre giorni di calcio')
+    expect(html).toContain('La nostra storia')
+    expect(html).toContain('Le Betulle')
+    expect(html).toContain('https://maps/x')     // Maps link
+    expect(html).toContain('Rossi')
+    expect(html).toContain('PlayFusion')          // footer
+  })
+  it('falls back to the basic landing when the resolved site is empty', () => {
+    const empty = { enabled: true, sponsors: [] }
+    const html = renderLanding(ev, win, true, empty)
+    expect(html).toContain('pf-hero')
+    expect(html).not.toContain('pf-esite-hero')
+  })
+  it('falls back to the basic landing when the site is disabled', () => {
+    const disabled = { enabled: false, about: 'x', sponsors: [] }
+    expect(renderLanding(ev, win, true, disabled)).not.toContain('pf-esite-hero')
+  })
+
   it('participants lists confirmed teams', () => {
     const html = renderParticipants([{ registrationId: 'r', participantRef: 'Team A', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' }])
     expect(html).toContain('Team A')
