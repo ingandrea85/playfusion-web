@@ -69,8 +69,8 @@ E1 and E3 so behaviour never diverges):
   - `PUT  /organizations/:orgId/site` — **owner-only** (`requireOwner`, like brand: org identity).
 - **O3** (`o3-sport-events`): add optional `site` to the event.
   - The existing `GET /events/:id` returns `site` (public read already used by E3).
-  - `PUT  /events/:id/site` — **owner-only** (`requireOwner`). Decision: both the org defaults AND the
-    per-event site are owner-only (the event site is part of the org's public identity).
+  - `PUT  /events/:id/site` — **organizer** (`requireOrganizer`; owners pass too). Decision (revised):
+    whoever operates the event curates its site; only the org-level defaults (o1) stay owner-only.
 - No new BC, no new table (extends existing o1 org record and o3 event item).
 
 ## Entitlement (Pro gate)
@@ -88,7 +88,7 @@ Add `hasEventSite: boolean` to `@playfusion/entitlements` — `FREE: false`, `PR
 
 - **Org "Sito" tab** in the **organization console** (next to Brand), **owner-only + Pro-gated**:
   edits `OrgSiteDefaults` (Chi siamo, sponsor ricorrenti, contatti, sede abituale).
-- **Event "Sito" tab** in the **event workspace**, **owner-only + Pro-gated**: edits `EventSite`.
+- **Event "Sito" tab** in the **event workspace**, **organizer + Pro-gated** (any org member): edits `EventSite`.
   Each inheritable field shows an **Eredita dall'org / Personalizza** switch:
   - *Eredita* → the field is unset on the event (shows the org value greyed as placeholder).
   - *Personalizza* → the field is written on the event (overrides).
