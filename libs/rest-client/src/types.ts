@@ -206,7 +206,7 @@ export interface Brand { logoText: string; primaryColor: string; accentColor: st
 
 // Event Site (public event website, Pro). Two levels: org defaults inherited by events, with
 // per-field overrides on the event. Effective = event override ?? org default (see resolveEventSite).
-export interface Sponsor { name: string; url?: string; tier?: string }
+export interface Sponsor { name: string; url?: string; tier?: string; logoUrl?: string }
 export interface Contacts { email?: string; phone?: string; social?: string }
 export interface Venue { name?: string; address?: string; mapUrl?: string }
 /** Org-level defaults, inherited by every event. Public read + owner write (o1). */

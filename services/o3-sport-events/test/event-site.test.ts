@@ -17,8 +17,13 @@ describe('makeEventSite (domain)', () => {
       sponsors: [{ name: ' A ', url: ' https://a ' }, { name: '' } as any],
     });
     expect(out.venue).toEqual({ name: 'Campo', mapUrl: 'https://m' });
+    expect(Object.keys(out.venue!)).toEqual(['name', 'mapUrl']); // no undefined 'address' key
     expect(out.contacts).toEqual({ phone: '333' });
     expect(out.sponsors).toEqual([{ name: 'A', url: 'https://a' }]);
+  });
+  it('keeps an optional sponsor logo URL', () => {
+    expect(makeEventSite({ sponsors: [{ name: 'A', logoUrl: ' https://l.png ' }] }).sponsors)
+      .toEqual([{ name: 'A', logoUrl: 'https://l.png' }]);
   });
   it('empty submission normalises to an empty object', () => {
     expect(makeEventSite({ about: '  ', sponsors: [] })).toEqual({});

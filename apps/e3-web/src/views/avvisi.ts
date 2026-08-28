@@ -31,7 +31,7 @@ export function renderPublicAvvisi(event: EventDetail, announcements: Announceme
 }
 
 export function wirePublicAvvisi(root: ParentNode, event: EventDetail, announcements: AnnouncementView[]): void {
-  const list = root.querySelector('#av-list'); if (!list) return
+  const list = root.querySelector('#av-list')!; if (!list) return
   const tabbar = root.querySelector('#av-tabs')!
   const tabs = [{ key: 'ALL', label: 'Tutte' }, ...event.categorie.map((c) => ({ key: c, label: c }))]
   let sel = 'ALL'

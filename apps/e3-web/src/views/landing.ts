@@ -59,9 +59,12 @@ function renderEventHome(event: EventDetail, window: RegistrationWindowView, pub
   const venueBlock = venue && (venue.name || venue.address) ? `
     <p style="margin:2px 0 var(--space-md)">${esc([venue.name, venue.address].filter(Boolean).join(' — '))}</p>
     ${venue.mapUrl ? `<a class="pf-btn" href="${esc(venue.mapUrl)}" target="_blank" rel="noopener">📍 Apri in Maps →</a>` : ''}` : ''
+  const sponsorInner = (s: { name: string; tier?: string; logoUrl?: string }): string =>
+    (s.logoUrl ? `<img class="pf-esite-sponsor__logo" src="${esc(s.logoUrl)}" alt="${esc(s.name)}" loading="lazy" />` : `<span>${esc(s.name)}</span>`)
+    + (s.tier ? `<small>${esc(s.tier)}</small>` : '')
   const sponsors = site.sponsors.length ? `<div class="pf-esite-sponsors">${site.sponsors.map((s) =>
-    s.url ? `<a class="pf-esite-sponsor" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.name)}${s.tier ? `<small>${esc(s.tier)}</small>` : ''}</a>`
-          : `<span class="pf-esite-sponsor">${esc(s.name)}${s.tier ? `<small>${esc(s.tier)}</small>` : ''}</span>`).join('')}</div>` : ''
+    s.url ? `<a class="pf-esite-sponsor" href="${esc(s.url)}" target="_blank" rel="noopener" title="${esc(s.name)}">${sponsorInner(s)}</a>`
+          : `<span class="pf-esite-sponsor" title="${esc(s.name)}">${sponsorInner(s)}</span>`).join('')}</div>` : ''
   const c = site.contacts
   const contacts = c && (c.email || c.phone || c.social) ? [
     c.email ? `<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>` : '',
