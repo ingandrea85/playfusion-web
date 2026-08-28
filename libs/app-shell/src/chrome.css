@@ -113,6 +113,15 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-orgnav { position: sticky; top: 0; z-index: 20; background: var(--color-surface-default); border-bottom: 1px solid var(--color-border-strong); }
 .pf-orgnav .pf-wtabs { max-width: none; }
 
+/* Event Site editor (event-site.ts): two-column form + sticky preview. */
+.pf-sitegrid { display: grid; grid-template-columns: 1fr 340px; gap: var(--space-lg); align-items: start; }
+.pf-sitepreview-card { position: sticky; top: 80px; }
+.pf-ovrswitch { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--color-text-soft); cursor: pointer; }
+.pf-ovrgroup .js-ovr-body { margin-top: var(--space-sm); }
+.pf-siteprev__hero { padding: 12px; border-radius: 10px; background: var(--color-action-primary); color: #fff; margin-bottom: var(--space-md); }
+.pf-siteprev__hero .pf-eyebrow { color: rgba(255,255,255,.8); }
+@media (max-width: 860px) { .pf-sitegrid { grid-template-columns: 1fr; } .pf-sitepreview-card { position: static; } }
+
 /* ---------- Form primitives (create-event + enroll forms) ---------- */
 .pf-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-md); }
 .pf-field label { font-weight: 700; font-size: 13px; color: var(--color-text-soft); }

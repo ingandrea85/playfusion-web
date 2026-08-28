@@ -8,6 +8,7 @@ import { runScreen, errorCard, type ViewCtx, type Screen } from './view.js'
 import { dashboardScreen } from './views/dashboard.js'
 import { setOrgNavOwner } from './views/org.js'
 import { orgSiteScreen } from './views/org-site.js'
+import { eventSiteScreen } from './views/event-site.js'
 import { createEventScreen } from './views/create-event.js'
 import { workspaceScreen, competitionScreen, categorieScreen } from './views/workspace.js'
 import { gironiScreen } from './views/gironi.js'
@@ -89,6 +90,7 @@ async function boot() {
       .on('#/events/:id/finals', (p) => route(finalsScreen, p))
       .on('#/events/:id/resources', (p) => route(resourcesScreen, p))
       .on('#/events/:id/announcements', (p) => route(announcementsScreen, p))
+      .on('#/events/:id/site', (p) => route(eventSiteScreen, p))
       .on('#/events/:id/enroll', (p) => route(enrollScreen, p))
       .on('#/events/:id/participants', (p) => route(participantsScreen, p))
       .on('#/events/:id', (p) => route(workspaceScreen, p))
