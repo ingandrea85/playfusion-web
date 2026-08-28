@@ -25,9 +25,14 @@ export type Auth0Verify = (token: string) => Promise<Identity>;
  * bridge that keeps the deployed SFN + pilot green until the tenant exists). 401 when no
  * usable credential is present; 403 when a valid credential lacks the organizer role.
  */
-export function requireOrganizer(opts: { auth0?: Auth0Verify; organizerRole?: string; managerRole?: string } = {}): Middleware {
+export function requireOrganizer(opts: { auth0?: Auth0Verify; organizerRole?: string; ownerRole?: string; managerRole?: string } = {}): Middleware {
   const organizerRole = opts.organizerRole ?? 'organizer';
+  // OWNER (tenant_admin) is a SUPERSET of ORGANIZER: owners operate their org's events too. A fresh
+  // sign-up owner carries only `tenant_admin` (no `organizer`), so without this they'd 403 on every
+  // organizer route (create event, read subscription, …). Accept either role.
+  const ownerRole = opts.ownerRole ?? 'tenant_admin';
   const managerRole = opts.managerRole ?? 'RegistrationManager';
+  const isOrganizer = (roles: string[]) => roles.includes(organizerRole) || roles.includes(ownerRole);
   return async (c, next) => {
     const token = bearerToken(c);
     if (!token) throw new UnauthorizedError('missing token');
@@ -38,10 +43,10 @@ export function requireOrganizer(opts: { auth0?: Auth0Verify; organizerRole?: st
       c.set(IDENTITY_KEY, magic);
       return next();
     }
-    // Real path: an Auth0 organizer JWT (only when configured).
+    // Real path: an Auth0 organizer (or owner) JWT (only when configured).
     if (opts.auth0) {
       const identity = await opts.auth0(token); // throws UnauthorizedError on bad token
-      if (!identity.roles.includes(organizerRole)) throw new ForbiddenError('actor lacks the organizer role');
+      if (!isOrganizer(identity.roles)) throw new ForbiddenError('actor lacks the organizer role');
       c.set(IDENTITY_KEY, identity);
       return next();
     }

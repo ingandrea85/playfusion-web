@@ -49,6 +49,14 @@ test('test_requireOrganizer_auth0NonOrganizerIs403', async () => {
   await expect(run(requireOrganizer({ auth0 }), ctx({ authorization: 'a.real.jwt' }))).rejects.toMatchObject({ httpStatus: 403 });
 });
 
+test('test_requireOrganizer_ownerIsAlsoOrganizer', async () => {
+  // A fresh sign-up owner carries only tenant_admin — must still pass organizer routes.
+  const identity: Identity = { subject: 'auth0|1', roles: ['tenant_admin'], organizationId: 'org-1', source: 'auth0' };
+  const c = ctx({ authorization: 'a.real.jwt' });
+  expect(await run(requireOrganizer({ auth0: async () => identity }), c)).toBe(true);
+  expect(getIdentity(c as any)).toEqual(identity);
+});
+
 test('test_requireOwner_ownerRolePasses', async () => {
   const identity: Identity = { subject: 'auth0|1', roles: ['organizer', 'tenant_admin'], organizationId: 'org-1', source: 'auth0' };
   const c = ctx({ authorization: 'a.real.jwt' });
