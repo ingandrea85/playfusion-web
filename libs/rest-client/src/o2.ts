@@ -1,6 +1,6 @@
 import { request, type HttpConfig } from './http.js'
 import { bearer } from './auth.js'
-import type { MagicLinkInput, MagicLinkResult, VerifyResult, Member, Invitation, OrgRole, InviteMemberInput } from './types.js'
+import type { MagicLinkInput, MagicLinkResult, VerifyResult, Member, Invitation, OrgRole, InviteMemberInput, AdminOrgSummary, AdminOrgDetail } from './types.js'
 export interface O2Api {
   mintMagicLink(input: MagicLinkInput): Promise<MagicLinkResult>
   verify(token: string): Promise<VerifyResult>
@@ -11,6 +11,9 @@ export interface O2Api {
   revokeInvitation(orgId: string, invitationId: string): Promise<void>
   changeMemberRole(orgId: string, memberId: string, role: OrgRole): Promise<Member>
   removeMember(orgId: string, memberId: string): Promise<void>
+  // S21 admin (platform_admin) — cross-tenant org monitoring via Auth0.
+  adminListOrgs(): Promise<AdminOrgSummary[]>
+  adminGetOrg(orgId: string): Promise<AdminOrgDetail>
 }
 export const o2 = (cfg: HttpConfig): O2Api => ({
   mintMagicLink: (input) => request(cfg, 'POST', '/o2/identities/magic-link', input),
@@ -22,4 +25,6 @@ export const o2 = (cfg: HttpConfig): O2Api => ({
   revokeInvitation: (orgId, id) => request(cfg, 'DELETE', `/o2/organizations/${encodeURIComponent(orgId)}/invitations/${encodeURIComponent(id)}`),
   changeMemberRole: (orgId, memberId, role) => request(cfg, 'PUT', `/o2/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(memberId)}/role`, { role }),
   removeMember: (orgId, memberId) => request(cfg, 'DELETE', `/o2/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(memberId)}`),
+  adminListOrgs: () => request(cfg, 'GET', '/o2/admin/organizations'),
+  adminGetOrg: (orgId) => request(cfg, 'GET', `/o2/admin/organizations/${encodeURIComponent(orgId)}`),
 })

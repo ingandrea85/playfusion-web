@@ -3,11 +3,11 @@ import { cors } from 'hono/cors';
 import { handle } from 'hono/aws-lambda';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken, auth0ConfigFromEnv, createAuth0Verifier, requireOwner, DomainError } from '@playfusion/platform-lib';
+import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken, auth0ConfigFromEnv, createAuth0Verifier, requireOwner, requirePlatformAdmin, DomainError } from '@playfusion/platform-lib';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { signToken, verifyToken } from './token.js';
 import { Auth0MembershipDirectory, auth0MgmtConfigFromEnv } from './adapters/auth0-membership.js';
-import { listMembers, listInvitations, invite, revokeInvitation, changeMemberRole, removeMember } from './application/membership.js';
+import { listMembers, listInvitations, invite, revokeInvitation, changeMemberRole, removeMember, adminListOrganizations, adminGetOrganization } from './application/membership.js';
 
 const db = makeDocClient();
 // T3: membership is backed by Auth0 Organizations. Absent config → the membership endpoints
@@ -22,6 +22,8 @@ const auth0cfg = auth0ConfigFromEnv();
 const verifier = auth0cfg ? createAuth0Verifier(auth0cfg) : undefined;
 // T4: managing members/roles/invitations is owner-only (billing/brand/members capability).
 const owner = requireOwner({ auth0: verifier });
+// S21: cross-tenant admin monitoring (E4).
+const platformAdmin = requirePlatformAdmin({ auth0: verifier });
 
 const app = new Hono();
 // Actual (non-preflight) responses need CORS headers too: API Gateway's
@@ -70,6 +72,10 @@ app.delete('/organizations/:orgId/members/:id', owner, async (c) => {
   await removeMember(requireDirectory())({ organizationId: c.req.param('orgId'), memberId: c.req.param('id') });
   return c.body(null, 204);
 });
+
+// S21 admin — cross-tenant org monitoring (E4). platform_admin only.
+app.get('/admin/organizations', platformAdmin, async (c) => c.json(await adminListOrganizations(requireDirectory())()));
+app.get('/admin/organizations/:orgId', platformAdmin, async (c) => c.json(await adminGetOrganization(requireDirectory())(c.req.param('orgId'))));
 
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
 

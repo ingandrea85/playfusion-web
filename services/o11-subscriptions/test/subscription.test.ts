@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { trialSubscription, freeSubscription, proSubscription, trialDaysLeft } from '../src/domain.js';
-import { getOrProvision, activatePro, expireTrial } from '../src/application/subscription.js';
+import { getOrProvision, activatePro, expireTrial, adminSetPlan } from '../src/application/subscription.js';
 import type { SubscriptionRepository } from '../src/ports.js';
 import type { Subscription } from '../src/domain.js';
 
@@ -51,5 +51,17 @@ describe('subscription application', () => {
     const repo = new InMemoryRepo();
     const s = await expireTrial({ repo, now: at('2026-01-01T00:00:00Z') })('org-1');
     expect(s).toMatchObject({ plan: 'FREE', status: 'ACTIVE' });
+  });
+
+  it('adminSetPlan sets an ACTIVE plan or grants a fresh trial', async () => {
+    const repo = new InMemoryRepo();
+    const now = at('2026-01-01T00:00:00Z');
+    expect(await adminSetPlan({ repo, now })('org-1', 'BUSINESS')).toMatchObject({ plan: 'BUSINESS', status: 'ACTIVE' });
+    expect(await adminSetPlan({ repo, now })('org-1', 'FREE')).toMatchObject({ plan: 'FREE', status: 'ACTIVE' });
+    const trial = await adminSetPlan({ repo, now })('org-1', 'PRO', true);
+    expect(trial).toMatchObject({ plan: 'PRO', status: 'TRIAL' });
+    expect(trial.trialDaysLeft).toBe(14);
+    // persisted
+    expect((await repo.get('org-1'))!.status).toBe('TRIAL');
   });
 });

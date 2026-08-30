@@ -137,6 +137,12 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-esite-sponsor small { font-weight: 600; color: var(--color-text-soft); font-size: 11px; }
 .pf-esite-sponsor__logo { max-height: 40px; max-width: 140px; object-fit: contain; display: block; }
 .pf-esite-foot { padding: 28px 0; color: var(--color-text-soft); }
+
+/* E4 admin plan badges. */
+.pf-plan--pro { background: #eaf1ff; color: #0b5fff; }
+.pf-plan--business { background: #efe9ff; color: #6d28d9; }
+.pf-plan--trial { background: #fef3e2; color: #b45309; }
+.pf-plan--free { background: #eef2f7; color: var(--color-text-soft); }
 /* Rendered rich text (sanitised HTML from the WYSIWYG): About / Programma.
    pre-line preserves literal newlines — both legacy plain-text content and Quill HTML that carries
    raw \n inside a block — so line breaks render without needing a <br> everywhere. */

@@ -30,6 +30,19 @@ export function freeSubscription(organizationId: string, now: Date): Subscriptio
   return { organizationId, plan: 'FREE', status: 'ACTIVE', renewsOn: addDays(now, -1) };
 }
 
+/** Paid Business (renews a month out). */
+export function businessSubscription(organizationId: string, now: Date): Subscription {
+  return { organizationId, plan: 'BUSINESS', status: 'ACTIVE', renewsOn: addDays(now, 30) };
+}
+
+/** S21 admin: build the subscription for an explicit plan (ACTIVE), or a fresh PRO trial. */
+export function planSubscription(organizationId: string, plan: PlanKey, now: Date, trial = false): Subscription {
+  if (trial) return trialSubscription(organizationId, now);
+  return plan === 'FREE' ? freeSubscription(organizationId, now)
+    : plan === 'BUSINESS' ? businessSubscription(organizationId, now)
+    : proSubscription(organizationId, now);
+}
+
 /** Whole days left in the trial (0 once past renewsOn); only meaningful while status TRIAL. */
 export function trialDaysLeft(sub: Subscription, now: Date): number {
   if (sub.status !== 'TRIAL') return 0;

@@ -57,6 +57,15 @@ test('test_requireOrganizer_ownerIsAlsoOrganizer', async () => {
   expect(getIdentity(c as any)).toEqual(identity);
 });
 
+test('test_requireOrganizer_platformAdminPassesOnlyWhenAllowed', async () => {
+  const identity: Identity = { subject: 'auth0|a', roles: ['platform_admin'], source: 'auth0' };
+  const auth0 = async () => identity;
+  // opt-in: allowed
+  expect(await run(requireOrganizer({ auth0, allowPlatformAdmin: true }), ctx({ authorization: 'jwt' }))).toBe(true);
+  // default: a platform admin is NOT an organizer of the org
+  await expect(run(requireOrganizer({ auth0 }), ctx({ authorization: 'jwt' }))).rejects.toMatchObject({ httpStatus: 403 });
+});
+
 test('test_requireOwner_ownerRolePasses', async () => {
   const identity: Identity = { subject: 'auth0|1', roles: ['organizer', 'tenant_admin'], organizationId: 'org-1', source: 'auth0' };
   const c = ctx({ authorization: 'a.real.jwt' });

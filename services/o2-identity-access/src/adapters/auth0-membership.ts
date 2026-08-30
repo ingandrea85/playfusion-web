@@ -83,6 +83,20 @@ export class Auth0MembershipDirectory implements MembershipDirectory {
     return text ? (JSON.parse(text) as T) : (undefined as T);
   }
 
+  async listOrganizations(): Promise<Array<{ id: string; name: string; memberCount: number }>> {
+    const orgs = await this.api<Array<{ id: string; name: string; display_name?: string }>>('GET', '/organizations?per_page=100');
+    return Promise.all(orgs.map(async (o) => {
+      // include_totals returns { members, total, … }; per_page=1 keeps the payload tiny.
+      const m = await this.api<{ total?: number }>('GET', `/organizations/${encodeURIComponent(o.id)}/members?include_totals=true&per_page=1`).catch(() => ({ total: 0 }));
+      return { id: o.id, name: o.display_name || o.name, memberCount: m.total ?? 0 };
+    }));
+  }
+
+  async getOrganizationName(organizationId: string): Promise<string> {
+    const o = await this.api<{ id: string; name: string; display_name?: string }>('GET', `/organizations/${encodeURIComponent(organizationId)}`);
+    return o.display_name || o.name;
+  }
+
   async listMembers(organizationId: string): Promise<Member[]> {
     const org = encodeURIComponent(organizationId);
     const raw = await this.api<Array<{ user_id: string; name?: string; email?: string }>>(

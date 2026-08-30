@@ -5,6 +5,13 @@ import { validateInvite, assertCanChangeRole, assertCanRemove, type Member, type
 type Deps = { directory: MembershipDirectory };
 
 export const listMembers = (d: Deps) => (organizationId: string): Promise<Member[]> => d.directory.listMembers(organizationId);
+
+// S21 admin (platform_admin, cross-tenant).
+export const adminListOrganizations = (d: Deps) => () => d.directory.listOrganizations();
+export const adminGetOrganization = (d: Deps) => async (organizationId: string): Promise<{ id: string; name: string; members: Member[] }> => {
+  const [name, members] = await Promise.all([d.directory.getOrganizationName(organizationId), d.directory.listMembers(organizationId)]);
+  return { id: organizationId, name, members };
+};
 export const listInvitations = (d: Deps) => (organizationId: string): Promise<Invitation[]> => d.directory.listInvitations(organizationId);
 
 /** Invite a member: validate, then create an Auth0 Organization invitation (hosted acceptance). */
