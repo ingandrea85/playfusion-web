@@ -21,6 +21,7 @@ function navButtons(event: EventDetail, published: boolean): string {
   return `${calendarCta}
     ${standingsCta}
     ${bracketCta}
+    <a class="pf-btn pf-btn--ghost" href="#/events/${id}/formula">Formula →</a>
     <a class="pf-btn pf-btn--ghost" href="#/events/${id}/avvisi">Avvisi →</a>
     <a class="pf-btn pf-btn--ghost" href="#/events/${id}/participants">${esc(eventLabels(event).participantPlural)} iscritt${event.participantType === 'individual' ? 'i' : 'e'} →</a>`
 }

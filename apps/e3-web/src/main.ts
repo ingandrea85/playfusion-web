@@ -8,6 +8,7 @@ import { renderLanding, renderParticipants, wireParticipants } from './views/lan
 import { renderPublicCalendar, wirePublicCalendar } from './views/calendar.js'
 import { renderPublicStandings, wirePublicStandings } from './views/standings.js'
 import { renderPublicBracket, wirePublicBracket } from './views/bracket.js'
+import { renderPublicFormula } from './views/formula.js'
 import { renderDirector, wireDirector, directorScopeFromToken } from './views/director.js'
 import { renderApply, buildApplyInput } from './views/apply.js'
 import { renderPublicAvvisi, wirePublicAvvisi } from './views/avvisi.js'
@@ -105,6 +106,15 @@ new HashRouter()
   .on('#/events/:id/avvisi', async ({ id }) => {
     try { const [ev, anns] = await Promise.all([client.o3.getEvent(id), client.o9.listAnnouncements(id)]); await applyEventBrand(ev); app.innerHTML = renderPublicAvvisi(ev, anns); wirePublicAvvisi(app, ev, anns) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
+  })
+  .on('#/events/:id/formula', async ({ id }) => {
+    try {
+      const [ev, sched, regs] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o5.listRegistrations(id, 'Confirmed').catch(() => [])])
+      await applyEventBrand(ev)
+      const teamsByCat: Record<string, number> = {}
+      for (const c of ev.categorie) teamsByCat[c] = regs.filter((r) => r.categoria === c).length
+      app.innerHTML = renderPublicFormula(ev, sched.config, teamsByCat)
+    } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/bracket', async ({ id }) => {
     try { const [ev, sched, matches, ranking] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id), client.o7.getFinalStandings(id)]); await applyEventBrand(ev); app.innerHTML = renderPublicBracket(ev, sched, matches, ranking); wirePublicBracket(app, matches, ranking) }
