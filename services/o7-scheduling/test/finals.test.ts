@@ -1,7 +1,38 @@
 import { test, expect } from 'vitest';
-import { buildFinals, type FinalGroupInput } from '../src/finals.js';
+import { buildFinals, bracketFromParticipants, type FinalGroupInput } from '../src/finals.js';
 
 const g = (label: string, size: number): FinalGroupInput => ({ label, size });
+
+// --- Epic #143 S4: bracketFromParticipants (solo tabellone, winners-only single elim) ---
+test('test_bracket_empty_or_single_isNoBracket', () => {
+  expect(bracketFromParticipants([])).toEqual([]);
+  expect(bracketFromParticipants(['solo'])).toEqual([]);
+});
+test('test_bracket_two_isSingleFinal_withPlacement', () => {
+  const d = bracketFromParticipants(['A', 'B']);
+  expect(d).toEqual([{ bracketLabel: 'Tabellone', round: 'F', order: 1, slot: 'F1', home: 'A', away: 'B', phase: 'FINAL', placementFrom: 1, placementTo: 2 }]);
+});
+test('test_bracket_four_pow2_realNamesRound1_winnerLinksFinal', () => {
+  const d = bracketFromParticipants(['A', 'B', 'C', 'D']);
+  expect(d.filter((x) => x.round === 'SF').map((x) => [x.slot, x.home, x.away])).toEqual([['SF1', 'A', 'B'], ['SF2', 'C', 'D']]);
+  const fin = d.find((x) => x.round === 'F')!;
+  expect(fin).toMatchObject({ home: 'Vincente SF1', away: 'Vincente SF2', placementFrom: 1, placementTo: 2 });
+  expect(d.every((x) => x.phase === 'FINAL')).toBe(true);
+});
+test('test_bracket_three_padsWithBye_theExtraAdvances', () => {
+  const d = bracketFromParticipants(['A', 'B', 'C']);
+  // size 4, one bye: A vs B in SF, C advances (bye) to the final.
+  expect(d.filter((x) => x.round === 'SF').map((x) => [x.home, x.away])).toEqual([['A', 'B']]);
+  expect(d.find((x) => x.round === 'F')).toMatchObject({ home: 'Vincente SF1', away: 'C', placementFrom: 1, placementTo: 2 });
+});
+test('test_bracket_eight_hasQuarterSemiFinalRounds', () => {
+  const d = bracketFromParticipants(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
+  expect(d.filter((x) => x.round === 'QF')).toHaveLength(4);
+  expect(d.filter((x) => x.round === 'SF')).toHaveLength(2);
+  expect(d.filter((x) => x.round === 'F')).toHaveLength(1);
+  // slots are unique across the whole bracket.
+  expect(new Set(d.map((x) => x.slot)).size).toBe(d.length);
+});
 
 // --- SINGLE_GROUP_CROSSOVER (v1): one group, consecutive-rank pairs ---
 test('test_single_consecutivePairs', () => {

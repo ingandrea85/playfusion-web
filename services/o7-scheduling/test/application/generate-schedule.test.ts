@@ -187,3 +187,41 @@ test('test_generate_customFormat_seedsExceedingQualifiers_throws422', async () =
   const cfg: ScheduleConfig = { ...config, byCategory: { U12: { fields: ['Campo A'], periods: 2, periodMinutes: 20, breakMinutes: 10, legs: 'SINGLE', finalsFormatId: 'big' } } };
   await expect(generateSchedule(deps())({ sportEventId: 'evt-1', organizationId: 'org-1', config: cfg })).rejects.toMatchObject({ httpStatus: 422 });
 });
+
+test('test_generate_bracketFormat_seedsFromParticipants_noGroupsNoStandings', async () => {
+  // Epic #143 S4: solo tabellone — no gironi/standings; the bracket is seeded from participants.
+  events = new FakeEventSource({ 'evt-b': { sportEventId: 'evt-b', dates: { from: '2026-09-01', to: '2026-09-02' }, categorie: ['Singolare'], format: 'bracket' } });
+  teams = new FakeTeamSource({ 'evt-b': { Singolare: ['Rossi', 'Bianchi', 'Verdi', 'Neri'] } });
+  await generateSchedule(deps())({ sportEventId: 'evt-b', organizationId: 'org-1', config });
+  const all = await matches.list('evt-b');
+  expect(all.every((m) => m.phase === 'FINAL')).toBe(true); // no GROUP matches
+  // 4 participants → 2 semifinals + 1 final = 3 matches.
+  expect(all).toHaveLength(3);
+  const round1 = all.filter((m) => m.round === 'SF');
+  expect(round1).toHaveLength(2);
+  // Round 1 carries REAL participant names (not placeholders).
+  expect(round1.flatMap((m) => [m.home, m.away]).sort()).toEqual(['Bianchi', 'Neri', 'Rossi', 'Verdi']);
+  // The final links the two semifinal winners and decides 1º/2º.
+  const fin = all.find((m) => m.round === 'F')!;
+  expect(fin).toMatchObject({ home: 'Vincente SF1', away: 'Vincente SF2', placementFrom: 1, placementTo: 2 });
+});
+
+test('test_generate_bracketFormat_oddCount_getsByes', async () => {
+  events = new FakeEventSource({ 'evt-b3': { sportEventId: 'evt-b3', dates: { from: '2026-09-01', to: '2026-09-01' }, categorie: ['C'], format: 'bracket' } });
+  teams = new FakeTeamSource({ 'evt-b3': { C: ['P1', 'P2', 'P3'] } });
+  await generateSchedule(deps())({ sportEventId: 'evt-b3', organizationId: 'org-1', config });
+  const all = await matches.list('evt-b3');
+  // 3 players (size 4, one bye): 1 semifinal (P1 vs P2) + final (winner vs P3) = 2 matches.
+  expect(all).toHaveLength(2);
+  expect(all.find((m) => m.round === 'SF')).toMatchObject({ home: 'P1', away: 'P2' });
+  expect(all.find((m) => m.round === 'F')).toMatchObject({ home: 'Vincente SF1', away: 'P3', placementFrom: 1, placementTo: 2 });
+});
+
+test('test_generate_bracketFormat_standingsEmpty', async () => {
+  events = new FakeEventSource({ 'evt-b2': { sportEventId: 'evt-b2', dates: { from: '2026-09-01', to: '2026-09-01' }, categorie: ['C'], format: 'bracket' } });
+  teams = new FakeTeamSource({ 'evt-b2': { C: ['A', 'B'] } });
+  await generateSchedule(deps())({ sportEventId: 'evt-b2', organizationId: 'org-1', config });
+  const { listStandings } = await import('../../src/application/read.js');
+  const standings = await listStandings(matches, { events })('evt-b2');
+  expect(standings).toEqual([]); // bracket events have no group standings
+});

@@ -16,8 +16,10 @@ function navButtons(event: EventDetail, published: boolean): string {
   const id = encodeURIComponent(event.sportEventId)
   const calendarCta = published ? `<a class="pf-btn" href="#/events/${id}/calendar">Calendario →</a>` : ''
   const bracketCta = published ? `<a class="pf-btn pf-btn--ghost" href="#/events/${id}/bracket">Tabellone →</a>` : ''
+  // Epic #143 (S4): solo tabellone has no standings — hide the Classifiche link.
+  const standingsCta = event.format === 'bracket' ? '' : `<a class="pf-btn pf-btn--ghost" href="#/events/${id}/standings">Classifiche →</a>`
   return `${calendarCta}
-    <a class="pf-btn pf-btn--ghost" href="#/events/${id}/standings">Classifiche →</a>
+    ${standingsCta}
     ${bracketCta}
     <a class="pf-btn pf-btn--ghost" href="#/events/${id}/avvisi">Avvisi →</a>
     <a class="pf-btn pf-btn--ghost" href="#/events/${id}/participants">Squadre iscritte →</a>`

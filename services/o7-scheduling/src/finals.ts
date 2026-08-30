@@ -131,6 +131,44 @@ function splitGroupFinals(groups: FinalGroupInput[], bracket: number): FinalDraw
   return draws;
 }
 
+const nextPow2 = (n: number): number => { let p = 1; while (p < n) p *= 2; return p; };
+
+/** Epic #143 (S4) — `bracket` (solo tabellone): a **winners-only** single-elimination seeded directly
+ *  from an ordered participant list (no gironi, no standings). Round 1 carries the real participant
+ *  names as `home`/`away` (so the on-read resolver treats them as literals — no seed/standings source
+ *  needed); every later round carries `Vincente <slot>` links resolved on read from the finished match.
+ *  A non-power-of-2 field is padded with byes: a lone entrant advances with no match. The deciding
+ *  final carries placement 1º/2º. Unlike `classify`, it produces no loser/classification branches
+ *  (3º/4º etc. are out of scope for this epic). */
+export function bracketFromParticipants(entrants: string[]): FinalDraw[] {
+  const n = entrants.length;
+  if (n < 2) return [];
+  let slots: (string | null)[] = [...entrants, ...Array(nextPow2(n) - n).fill(null)];
+  const draws: FinalDraw[] = [];
+  let roundSize = slots.length;
+  while (roundSize >= 2) {
+    const code = codeLabel(roundSize);
+    const next: (string | null)[] = [];
+    let k = 0;
+    for (let i = 0; i < slots.length; i += 2) {
+      const a = slots[i]!, b = slots[i + 1]!;
+      if (a != null && b != null) {
+        const slot = `${code}${++k}`;
+        draws.push({
+          bracketLabel: 'Tabellone', round: code, order: k, slot, home: a, away: b, phase: 'FINAL',
+          ...(roundSize === 2 ? { placementFrom: 1, placementTo: 2 } : {}),
+        });
+        next.push(win(slot));
+      } else {
+        next.push(a ?? b ?? null); // bye: the present entrant advances (or the empty half propagates)
+      }
+    }
+    slots = next;
+    roundSize = next.length;
+  }
+  return draws;
+}
+
 export function buildFinals(groups: FinalGroupInput[], finalsType: FinalsType, opts: { finalsTeamsToBracket?: number } = {}): FinalDraw[] {
   if (finalsType === 'SINGLE_GROUP_CROSSOVER') return singleGroupCrossover(groups);
   if (finalsType === 'SPLIT_GROUP_FINALS') return splitGroupFinals(groups, Math.max(0, Math.floor(opts.finalsTeamsToBracket ?? 0)));

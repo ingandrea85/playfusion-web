@@ -85,7 +85,12 @@ new HashRouter()
     } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/standings', async ({ id }) => {
-    try { const [ev, standings] = await Promise.all([client.o3.getEvent(id), client.o7.getStandings(id)]); await applyEventBrand(ev); app.innerHTML = renderPublicStandings(ev, standings); wirePublicStandings(app, standings) }
+    try {
+      const [ev, standings] = await Promise.all([client.o3.getEvent(id), client.o7.getStandings(id)]); await applyEventBrand(ev)
+      // Epic #143 (S4): solo tabellone has no standings — send the visitor to the bracket instead.
+      if (ev.format === 'bracket') { location.hash = `#/events/${encodeURIComponent(id)}/bracket`; return }
+      app.innerHTML = renderPublicStandings(ev, standings); wirePublicStandings(app, standings)
+    }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/calendar', async ({ id }) => {

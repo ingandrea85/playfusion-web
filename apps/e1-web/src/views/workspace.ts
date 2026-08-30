@@ -14,9 +14,9 @@ const SCHEDULE_LABEL: Record<ScheduleView['status'], string> = {
   NONE: 'Da generare', GENERATED: 'Generato', APPROVED: 'Approvato', PUBLISHED: 'Pubblicato',
 }
 
-export const workspaceTabs = (id: string): WorkspaceTab[] => {
-  const e = encodeURIComponent(id)
-  return [
+export const workspaceTabs = (event: Pick<EventDetail, 'sportEventId' | 'format'>): WorkspaceTab[] => {
+  const e = encodeURIComponent(event.sportEventId)
+  const tabs: WorkspaceTab[] = [
     { key: 'overview', label: 'Panoramica', href: `#/events/${e}` },
     { key: 'categorie', label: 'Categorie', href: `#/events/${e}/categorie` },
     { key: 'gironi', label: 'Gironi', href: `#/events/${e}/gironi` },
@@ -29,6 +29,8 @@ export const workspaceTabs = (id: string): WorkspaceTab[] => {
     { key: 'enroll', label: 'Iscrizioni', href: `#/events/${e}/enroll` },
     { key: 'participants', label: 'Partecipanti', href: `#/events/${e}/participants` },
   ]
+  // Epic #143 (S4): solo tabellone has no gironi and no standings — hide those tabs.
+  return event.format === 'bracket' ? tabs.filter((t) => t.key !== 'gironi' && t.key !== 'standings') : tabs
 }
 
 const PLAYBOOK_LABEL: Record<Playbook, string> = {
@@ -52,7 +54,7 @@ const PHASE_MOD: Record<EventPhase, 'prep' | 'live' | 'done'> = { PREP: 'prep', 
 export function workspaceShell(event: EventDetail, activeTab: string, body: string, phase?: EventPhase): string {
   const hero = renderOrganizerWorkspace(
     { name: esc(eventTitle(event)), meta: esc(heroMeta(event)), phaseLabel: phase ? PHASE_LABEL[phase] : undefined, phaseMod: phase ? PHASE_MOD[phase] : undefined },
-    workspaceTabs(event.sportEventId), activeTab,
+    workspaceTabs(event), activeTab,
   )
   return `${hero}<main class="pf-container">${body}</main>`
 }
