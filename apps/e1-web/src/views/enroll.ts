@@ -1,5 +1,6 @@
 import { renderOrganizerWorkspace, esc, copyToClipboard, type WorkspaceTab } from '@playfusion/app-shell'
 import type { EventDetail, RegistrationView, RegistrationWindowView } from '@playfusion/rest-client'
+import { eventLabels } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
 
 export interface EnrollData { event: EventDetail; window: RegistrationWindowView; pending: RegistrationView[]; confirmed: RegistrationView[]; e3BaseUrl: string; enrollToken?: string }
@@ -25,6 +26,8 @@ const tabs = (id: string): WorkspaceTab[] => [
 /** S14 — PB-2 direct roster: the organizer types teams straight in (no invite window / inbox). */
 function renderRoster(d: EnrollData): string {
   const id = d.event.sportEventId
+  const lb = eventLabels(d.event)
+  const indiv = d.event.participantType === 'individual'
   const opts = d.event.categorie.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('')
   const byCat = (c: string) => d.confirmed.filter((r) => r.categoria === c)
   const lists = d.event.categorie.map((c) => {
@@ -33,18 +36,18 @@ function renderRoster(d: EnrollData): string {
       ? teams.map((r) => `<li class="pf-row" style="justify-content:space-between">
           <span><b>${esc(teamLabel(r))}</b></span>
           <button class="pf-btn pf-btn--ghost" data-remove="${esc(r.registrationId)}">Rimuovi</button></li>`).join('')
-      : `<li class="pf-muted">Nessuna squadra.</li>`
+      : `<li class="pf-muted">Nessun${indiv ? ' giocatore' : 'a squadra'}.</li>`
     return `<div class="pf-card"><h3 class="pf-h4">${esc(c)} · <span class="pf-mono">${teams.length}</span></h3>
       <ul class="pf-stack" style="list-style:none;padding:0">${items}</ul></div>`
   }).join('')
   return `${renderOrganizerWorkspace({ name: `${esc(d.event.name ?? d.event.sport)}`, meta: `${esc(d.event.dates.from)}→${esc(d.event.dates.to)}` }, tabs(id), 'enroll')}
     <main class="pf-container">
       <div id="err"></div>
-      <div class="pf-card"><h2>Squadre (inserimento diretto)</h2>
-        <p class="pf-muted">PB-2: aggiungi qui le squadre. Il nome inserito è quello che comparirà nel calendario, nelle classifiche e nel tabellone.</p>
+      <div class="pf-card"><h2>${esc(lb.participantPlural)} (inserimento diretto)</h2>
+        <p class="pf-muted">PB-2: aggiungi qui ${indiv ? 'i giocatori' : 'le squadre'}. Il nome inserito è quello che comparirà nel calendario, nelle classifiche e nel tabellone.</p>
         <div class="pf-row">
           <select id="rteam-cat">${opts}</select>
-          <input id="rteam-name" placeholder="Nome squadra" style="flex:1" />
+          <input id="rteam-name" placeholder="Nome ${indiv ? 'giocatore' : 'squadra'}" style="flex:1" />
           <button class="pf-btn pf-btn--primary" data-addteam>Aggiungi</button>
         </div></div>
       ${lists}

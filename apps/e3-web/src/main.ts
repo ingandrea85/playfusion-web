@@ -2,7 +2,7 @@ import '@playfusion/tokens/tokens.css'
 import '@playfusion/app-shell/chrome.css'
 import '@playfusion/ui'
 import { HashRouter, applyBrand } from '@playfusion/app-shell'
-import { createClient, resolveEventSite } from '@playfusion/rest-client'
+import { createClient, resolveEventSite, eventLabels } from '@playfusion/rest-client'
 import { readConfig } from './config.js'
 import { renderLanding, renderParticipants, wireParticipants } from './views/landing.js'
 import { renderPublicCalendar, wirePublicCalendar } from './views/calendar.js'
@@ -70,7 +70,7 @@ async function applyRoute(id: string) {
 
 new HashRouter()
   .on('#/events/:id/participants', async ({ id }) => {
-    try { const [ev, rows] = await Promise.all([client.o3.getEvent(id), client.o5.listRegistrations(id, 'Confirmed')]); await applyEventBrand(ev); app.innerHTML = renderParticipants(rows); wireParticipants(app, rows) }
+    try { const [ev, rows] = await Promise.all([client.o3.getEvent(id), client.o5.listRegistrations(id, 'Confirmed')]); await applyEventBrand(ev); const lb = eventLabels(ev); app.innerHTML = renderParticipants(rows, lb.participantPlural, lb.participant); wireParticipants(app, rows, lb.participant) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/apply', ({ id }) => applyRoute(id))
@@ -85,7 +85,12 @@ new HashRouter()
     } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/standings', async ({ id }) => {
-    try { const [ev, standings] = await Promise.all([client.o3.getEvent(id), client.o7.getStandings(id)]); await applyEventBrand(ev); app.innerHTML = renderPublicStandings(ev, standings); wirePublicStandings(app, standings) }
+    try {
+      const [ev, standings] = await Promise.all([client.o3.getEvent(id), client.o7.getStandings(id)]); await applyEventBrand(ev)
+      // Epic #143 (S4): solo tabellone has no standings — send the visitor to the bracket instead.
+      if (ev.format === 'bracket') { location.hash = `#/events/${encodeURIComponent(id)}/bracket`; return }
+      app.innerHTML = renderPublicStandings(ev, standings); wirePublicStandings(app, standings, eventLabels(ev).participant)
+    }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/calendar', async ({ id }) => {

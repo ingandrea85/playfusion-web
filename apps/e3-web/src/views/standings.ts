@@ -1,4 +1,5 @@
 import type { EventDetail, GroupStanding } from '@playfusion/rest-client'
+import { eventLabels } from '@playfusion/rest-client'
 import { renderPublicTopbar, renderStandings, renderTabs, categoryKeys, groupKeys, esc } from '@playfusion/app-shell'
 
 const catName = (c: string): string => c
@@ -9,6 +10,7 @@ const filterStandings = (standings: GroupStanding[], selCat: string, selGir: str
  *  wirePublicStandings after mounting. */
 export function renderPublicStandings(event: EventDetail, standings: GroupStanding[]): string {
   const id = encodeURIComponent(event.sportEventId)
+  const pl = eventLabels(event).participant
   const selCat = categoryKeys(standings)[0] ?? ''
   return `${renderPublicTopbar()}
     <main class="pf-container pf-container--narrow">
@@ -16,13 +18,13 @@ export function renderPublicStandings(event: EventDetail, standings: GroupStandi
       <div class="pf-card">
         <div id="st-cattabs">${renderTabs(categoryKeys(standings).map((c) => ({ key: c, label: c })), selCat)}</div>
         <div id="st-girtabs">${renderTabs([{ key: 'ALL', label: 'Tutti' }, ...groupKeys(standings, selCat).map((g) => ({ key: g, label: g }))], 'ALL')}</div>
-        <div id="stbody">${renderStandings(filterStandings(standings, selCat, 'ALL'), catName)}</div>
+        <div id="stbody">${renderStandings(filterStandings(standings, selCat, 'ALL'), catName, pl)}</div>
       </div>
       <div class="pf-row"><a class="pf-btn" href="#/events/${id}">← Torna all'evento</a></div>
     </main>`
 }
 
-export function wirePublicStandings(root: ParentNode, standings: GroupStanding[]): void {
+export function wirePublicStandings(root: ParentNode, standings: GroupStanding[], pl = 'Squadra'): void {
   const stbody = root.querySelector('#stbody'); if (!stbody) return
   const catbar = root.querySelector('#st-cattabs')!
   const girbar = root.querySelector('#st-girtabs')!
@@ -35,7 +37,7 @@ export function wirePublicStandings(root: ParentNode, standings: GroupStanding[]
     girbar.innerHTML = renderTabs([{ key: 'ALL', label: 'Tutti' }, ...groupKeys(standings, selCat).map((g) => ({ key: g, label: g }))], selGir)
     girbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
       b.addEventListener('click', () => { selGir = b.dataset.key!; draw() }))
-    stbody!.innerHTML = renderStandings(filterStandings(standings, selCat, selGir), catName)
+    stbody!.innerHTML = renderStandings(filterStandings(standings, selCat, selGir), catName, pl)
   }
   draw()
 }

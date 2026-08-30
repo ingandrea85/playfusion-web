@@ -15,6 +15,23 @@ describe('e3 views', () => {
   it('landing category chips are not links before the calendar is published', () => {
     expect(renderLanding(ev, win, false)).not.toContain('/calendar')
   })
+  it('landing uses player wording for an individual event (S5)', () => {
+    const indivEv = { ...ev, participantType: 'individual' as const, sportProfile: { sportId: 't', name: 'Tennis', scoreLabel: 'Set', points: { win: 2, draw: null, loss: 0 }, tieBreak: [] } }
+    const html = renderLanding(indivEv, win, true)
+    expect(html).toContain('Giocatori iscritti')
+    expect(html).not.toContain('Squadre iscritte')
+  })
+  it('renders individual participants with player wording (S5)', () => {
+    const html = renderParticipants([{ registrationId: 'r1', participantRef: 'Rossi', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' }], 'Giocatori', 'Giocatore')
+    expect(html).toContain('Giocatori iscritti')
+  })
+  it('landing hides the Classifiche button for a bracket (solo tabellone) event (S4)', () => {
+    const bracketEv = { ...ev, format: 'bracket' as const }
+    const html = renderLanding(bracketEv, win, true)
+    expect(html).not.toContain('/standings')
+    expect(html).toContain('/bracket')   // the bracket link stays
+    expect(renderLanding(ev, win, true)).toContain('/standings') // default event still shows it
+  })
   it('landing has NO apply CTA (registration is a separate page via the organizer link)', () => {
     expect(renderLanding(ev, win)).not.toContain(`#/events/${ev.sportEventId}/apply`)
     expect(renderLanding(ev, closedWin)).not.toContain(`#/events/${ev.sportEventId}/apply`)

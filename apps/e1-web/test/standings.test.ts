@@ -20,6 +20,12 @@ describe('e1 standings view', () => {
   it('shows an empty hint when there are no standings', () => {
     expect(renderStandingsView({ event, standings: [] })).toContain('Nessuna classifica')
   })
+  it('uses the "Giocatore" column header for an individual event (S5)', () => {
+    const indiv: EventDetail = { ...event, participantType: 'individual', sportProfile: { sportId: 't', name: 'Tennis', scoreLabel: 'Set', points: { win: 2, draw: null, loss: 0 }, tieBreak: [] } }
+    const html = renderStandingsView({ event: indiv, standings })
+    expect(html).toContain('<th>Giocatore</th>')
+    expect(html).not.toContain('<th>Squadra</th>')
+  })
 })
 
 describe('e1 standings category/girone tabs (S23)', () => {

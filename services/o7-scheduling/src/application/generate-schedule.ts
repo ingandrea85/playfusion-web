@@ -1,6 +1,6 @@
 import { DomainError } from '@playfusion/platform-lib';
 import { buildFixtures } from '../fixtures.js';
-import { buildFinals } from '../finals.js';
+import { buildFinals, bracketFromParticipants } from '../finals.js';
 import { compileFormat, type CustomFinalsFormat } from '../finals-format.js';
 import { autoSplit, canGenerate, categoryConfig, defaultConfig, type FixtureCategory, type Schedule, type ScheduleConfig, type ScheduledMatch } from '../domain.js';
 import { EventNotFoundError } from '../errors.js';
@@ -71,6 +71,51 @@ function buildFinalMatches(
   return out;
 }
 
+/** Epic #143 (S4) — `bracket` (solo tabellone): build each category's single-elimination bracket
+ *  directly from its confirmed participants (no gironi, no standings). Round 1 carries real names; the
+ *  per-category custom finals format (finalsFormatId) still governs the shape when set — its `Seed k`
+ *  entry refs are substituted with the k-th participant, later `Vincente <slot>` links resolve on read.
+ *  Absent a custom format, a default single-elim over all participants. Matches are placed on
+ *  `finalsDate` from `dailyStart`, sequential per category (few matches, no cross-category conflict
+ *  check — same simplification as the finals). */
+const SEED_ONLY = /^Seed (\d+)$/;
+function buildBracketMatches(
+  sportEventId: string, finalsDate: string, dailyStart: string,
+  categorie: string[], config: ScheduleConfig,
+  byCategory: Map<string, string[]>, formatMap: Map<string, CustomFinalsFormat | undefined>,
+): ScheduledMatch[] {
+  const out: ScheduledMatch[] = [];
+  let n = 0;
+  for (const categoria of categorie) {
+    const participants = byCategory.get(categoria) ?? [];
+    if (participants.length < 2) continue; // nothing to bracket
+    const cc = categoryConfig(config, categoria);
+    let draws;
+    if (cc.finalsFormatId) {
+      const format = formatMap.get(cc.finalsFormatId);
+      if (!format) continue; // catalog entry removed → no bracket for this category
+      if (format.seeds > participants.length) throw new DomainError('FINALS_SEEDS_EXCEED_TEAMS', `format "${format.name}" needs ${format.seeds} qualifiers but ${categoria} has ${participants.length}`, 422);
+      const sub = (label: string): string => { const m = SEED_ONLY.exec(label); return m ? (participants[Number(m[1]) - 1] ?? label) : label; };
+      draws = compileFormat(format).map((d) => ({ ...d, home: sub(d.home), away: sub(d.away) }));
+    } else {
+      draws = bracketFromParticipants(participants);
+    }
+    const fields = cc.fields.length ? cc.fields : ['Campo 1'];
+    const slotMinutes = cc.periods * cc.periodMinutes + cc.breakMinutes;
+    draws.forEach((d, i) => {
+      out.push({
+        id: `bm-${++n}`, sportEventId, categoryId: categoria, groupLabel: d.bracketLabel,
+        day: finalsDate, time: addMinutes(dailyStart, Math.floor(i / fields.length) * slotMinutes),
+        field: fields[i % fields.length]!, home: d.home, away: d.away, status: 'SCHEDULED',
+        phase: d.phase, bracketLabel: d.bracketLabel, round: d.round, order: d.order, slot: d.slot,
+        ...(d.placementFrom !== undefined ? { placementFrom: d.placementFrom } : {}),
+        ...(d.placementTo !== undefined ? { placementTo: d.placementTo } : {}),
+      });
+    });
+  }
+  return out;
+}
+
 export interface GenerateScheduleDeps {
   schedules: ScheduleRepository;
   matches: MatchRepository;
@@ -101,27 +146,36 @@ export function generateSchedule(deps: GenerateScheduleDeps) {
     if (!event) throw new EventNotFoundError(input.sportEventId);
     const byCategory = await teams.confirmedByCategory(input.sportEventId);
 
-    // Resolve each category's groups: the explicit o3 gironi composition (S8) when it exists
-    // and is non-empty, otherwise the S7 auto-split of confirmed teams by config.groupsCount.
-    const cats: FixtureCategory[] = event.categorie.map((categoria) => {
-      const composed = event.gironi?.[categoria]?.groups;
-      const groups = composed?.some((g) => g.teams.length)
-        ? composed
-        : autoSplit(byCategory.get(categoria) ?? [], input.config.groupsCount);
-      // S22: each category plays on its own fields/timing/legs (byCategory override, else defaults).
-      const cc = categoryConfig(input.config, categoria);
-      return { id: categoria, name: categoria, legs: cc.legs, groups, fields: cc.fields, periods: cc.periods, periodMinutes: cc.periodMinutes, breakMinutes: cc.breakMinutes };
-    });
-    const fixtures = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config.dailyStart, cats);
     // SP1: load the custom finals formats referenced by any category (global catalog), so the
-    // synchronous bracket builder can compile them. Distinct ids only.
-    const formatIds = [...new Set(cats.map((c) => categoryConfig(input.config, c.id).finalsFormatId).filter((x): x is string => !!x))];
+    // synchronous bracket builder can compile them. Distinct ids only. (Needed by both paths.)
+    const formatIds = [...new Set(event.categorie.map((c) => categoryConfig(input.config, c).finalsFormatId).filter((x): x is string => !!x))];
     const formatMap = new Map<string, CustomFinalsFormat | undefined>();
     for (const id of formatIds) formatMap.set(id, await deps.formats.get(id));
-    // S12/S13: append each category's finals bracket (per-category format from the schedule config —
-    // moved off the o3 event; buildFinalMatches skips categories with no format).
-    const finals = buildFinalMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, cats, input.config, fixtures, formatMap);
-    await matches.replace(input.sportEventId, [...fixtures, ...finals]);
+
+    let allMatches: ScheduledMatch[];
+    if (event.format === 'bracket') {
+      // Epic #143 (S4): solo tabellone — no gironi, no group fixtures, no standings; each category's
+      // single-elimination bracket is seeded directly from its confirmed participants.
+      allMatches = buildBracketMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, event.categorie, input.config, byCategory, formatMap);
+    } else {
+      // Resolve each category's groups: the explicit o3 gironi composition (S8) when it exists
+      // and is non-empty, otherwise the S7 auto-split of confirmed teams by config.groupsCount.
+      const cats: FixtureCategory[] = event.categorie.map((categoria) => {
+        const composed = event.gironi?.[categoria]?.groups;
+        const groups = composed?.some((g) => g.teams.length)
+          ? composed
+          : autoSplit(byCategory.get(categoria) ?? [], input.config.groupsCount);
+        // S22: each category plays on its own fields/timing/legs (byCategory override, else defaults).
+        const cc = categoryConfig(input.config, categoria);
+        return { id: categoria, name: categoria, legs: cc.legs, groups, fields: cc.fields, periods: cc.periods, periodMinutes: cc.periodMinutes, breakMinutes: cc.breakMinutes };
+      });
+      const fixtures = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config.dailyStart, cats);
+      // S12/S13: append each category's finals bracket (per-category format from the schedule config —
+      // moved off the o3 event; buildFinalMatches skips categories with no format).
+      const finals = buildFinalMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, cats, input.config, fixtures, formatMap);
+      allMatches = [...fixtures, ...finals];
+    }
+    await matches.replace(input.sportEventId, allMatches);
 
     const next: Schedule = { ...current, organizationId: current.organizationId, config: input.config, status: 'GENERATED' };
     await schedules.save(next);

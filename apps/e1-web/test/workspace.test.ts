@@ -69,6 +69,22 @@ describe('workspace Categorie tab (dashboard)', () => {
   })
 })
 
+describe('format bracket (S4): solo tabellone hides gironi + classifiche tabs', () => {
+  const bracketEv: EventDetail = { ...minimal, sportEventId: 'eb', format: 'bracket' }
+  it('hides Gironi and Classifiche for a bracket event', () => {
+    const html = renderWorkspace(bracketEv, 'overview')
+    expect(html).not.toContain(`/eb/gironi`)
+    expect(html).not.toContain(`/eb/standings`)
+    expect(html).toContain(`/eb/finals`)   // finals/bracket stays
+    expect(html).toContain(`/eb/schedule`) // calendar stays
+  })
+  it('keeps Gironi and Classifiche for a groups+bracket (default) event', () => {
+    const html = renderWorkspace(full, 'overview')
+    expect(html).toContain(`/e1/gironi`)
+    expect(html).toContain(`/e1/standings`)
+  })
+})
+
 describe('finals config (S12)', () => {
   it('Panoramica points finals config to the Calendario tab (no event-level editor)', () => {
     const html = renderWorkspace(full, 'overview')

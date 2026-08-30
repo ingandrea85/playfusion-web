@@ -14,9 +14,10 @@ export function defaultTieBreak(sport: string): TieBreakCriterion[] {
   return DEFAULTS[sport] ?? GENERIC_DEFAULT
 }
 
-/** Human label for a criterion (Italian, matches the mockup). */
-export function criterionLabel(c: TieBreakCriterion): string {
+/** Human label for a criterion (Italian, matches the mockup). Epic #143 (S5): the goal noun is the
+ *  sport's `scoreLabel` — "Reti" (default) keeps the original "Differenza reti" / "Reti fatte". */
+export function criterionLabel(c: TieBreakCriterion, score = 'Reti'): string {
   return c === 'HEAD_TO_HEAD' ? 'Scontri diretti / avulsa'
-    : c === 'GOAL_DIFFERENCE' ? 'Differenza reti'
-      : 'Reti fatte'
+    : c === 'GOAL_DIFFERENCE' ? `Differenza ${score.toLowerCase()}`
+      : `${score} fatte`
 }
