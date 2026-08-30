@@ -231,6 +231,12 @@ export type PlanKey = 'FREE' | 'PRO' | 'BUSINESS'
 export type SubStatus = 'TRIAL' | 'ACTIVE'
 export interface Subscription { organizationId: string; plan: PlanKey; status: SubStatus; renewsOn: string; trialDaysLeft: number }
 
+// S21 (E4 admin) — cross-tenant monitoring, platform_admin only.
+export interface AdminOrgSummary { id: string; name: string; memberCount: number }
+export interface AdminOrgDetail { id: string; name: string; members: Member[] }
+/** Admin plan action: set the org to a plan (ACTIVE), or grant a fresh PRO trial when trial=true. */
+export interface AdminSetPlanInput { plan: PlanKey; trial?: boolean }
+
 // S19 (O2) — per-tenant membership & roles.
 // T3: membership on Auth0 Organizations. Two roles only — directors enter via magic link, not membership.
 export type OrgRole = 'OWNER' | 'ORGANIZER'
