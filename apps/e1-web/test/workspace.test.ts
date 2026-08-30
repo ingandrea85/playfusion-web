@@ -67,6 +67,12 @@ describe('workspace Categorie tab (dashboard)', () => {
     expect(html).toContain('Gironi + girone finale') // U10 finals format
     expect(html).toContain('Generato')                // calendar status
   })
+  it('drops the Gironi column and describes the auto bracket for a solo-tabellone event (S4)', () => {
+    const html = renderCategorie({ ...data, event: { ...full, format: 'bracket' } })
+    expect(html).not.toContain('<th>Gironi</th>')
+    expect(html).toContain('Tabellone (elim. diretta)')
+    expect(html).toContain('generato dai partecipanti')
+  })
 })
 
 describe('format bracket (S4): solo tabellone hides gironi + classifiche tabs', () => {

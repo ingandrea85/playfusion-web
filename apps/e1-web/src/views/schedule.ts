@@ -29,9 +29,23 @@ const defaultCat = (c: ScheduleConfig): CategorySchedule =>
 const textToFields = (s: string): string[] => s.split(',').map((f) => f.trim()).filter(Boolean)
 
 /** One playing-config card (fields + match params + legs). `cat` present → per-category card
- *  tagged with data-cat; absent → the shared "same for all" card. */
-function playCard(cc: CategorySchedule, locked: boolean, formats: CustomFinalsFormat[], cat?: string): string {
+ *  tagged with data-cat; absent → the shared "same for all" card. Epic #143 (S4): a `bracket`
+ *  (solo tabellone) event hides the group-only inputs — Andata/ritorno + the finals-format row
+ *  (its bracket is auto-seeded from the participants, not from gironi). */
+function playCard(cc: CategorySchedule, locked: boolean, formats: CustomFinalsFormat[], cat?: string, bracket = false): string {
   const dis = locked ? 'disabled' : ''
+  const legsField = bracket ? '' : `<div class="pf-field" style="margin-bottom:0"><label>Andata/ritorno</label><select class="cfg-legs" ${dis}>
+        <option value="SINGLE" ${cc.legs === 'SINGLE' ? 'selected' : ''}>Solo andata</option>
+        <option value="HOME_AWAY" ${cc.legs === 'HOME_AWAY' ? 'selected' : ''}>Andata e ritorno</option>
+      </select></div>`
+  const finalsRow = bracket ? '' : `<div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
+      <div class="pf-field" style="margin-bottom:0"><label>Fase finale</label><select class="cfg-finalsType" ${dis}>
+        <option value=""${!cc.finalsType && !cc.finalsFormatId ? ' selected' : ''}>Nessuna</option>
+        ${FINALS_TYPES.map((t) => `<option value="${t}" ${cc.finalsType === t && !cc.finalsFormatId ? 'selected' : ''}>${esc(FINALS_TYPE_LABEL[t])}</option>`).join('')}
+        ${formats.length ? `<optgroup label="Personalizzati">${formats.map((f) => `<option value="format:${esc(f.id)}" ${cc.finalsFormatId === f.id ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</optgroup>` : ''}
+      </select></div>
+      <div class="pf-field" style="margin-bottom:0"><label>Squadre al tabellone</label><input class="cfg-finalsTeamsToBracket" type="number" min="2" step="2" value="${cc.finalsTeamsToBracket ?? ''}" placeholder="solo Gironi + girone finale" ${dis} /></div>
+    </div>`
   return `<div class="pf-card js-playcard"${cat ? ` data-cat="${esc(cat)}"` : ''} style="background:var(--color-surface-sunken)">
     ${cat ? `<h3 class="pf-h4" style="margin-top:0">${esc(cat)}</h3>` : ''}
     <div class="pf-field"><label>Campi (separati da virgola)</label>
@@ -40,45 +54,38 @@ function playCard(cc: CategorySchedule, locked: boolean, formats: CustomFinalsFo
       <div class="pf-field" style="margin-bottom:0"><label>N. tempi</label><input class="cfg-periods" type="number" min="1" value="${cc.periods}" ${dis} /></div>
       <div class="pf-field" style="margin-bottom:0"><label>Durata (min)</label><input class="cfg-periodMinutes" type="number" min="1" value="${cc.periodMinutes}" ${dis} /></div>
       <div class="pf-field" style="margin-bottom:0"><label>Pausa (min)</label><input class="cfg-breakMinutes" type="number" min="0" value="${cc.breakMinutes}" ${dis} /></div>
-      <div class="pf-field" style="margin-bottom:0"><label>Andata/ritorno</label><select class="cfg-legs" ${dis}>
-        <option value="SINGLE" ${cc.legs === 'SINGLE' ? 'selected' : ''}>Solo andata</option>
-        <option value="HOME_AWAY" ${cc.legs === 'HOME_AWAY' ? 'selected' : ''}>Andata e ritorno</option>
-      </select></div>
+      ${legsField}
     </div>
-    <div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
-      <div class="pf-field" style="margin-bottom:0"><label>Fase finale</label><select class="cfg-finalsType" ${dis}>
-        <option value=""${!cc.finalsType && !cc.finalsFormatId ? ' selected' : ''}>Nessuna</option>
-        ${FINALS_TYPES.map((t) => `<option value="${t}" ${cc.finalsType === t && !cc.finalsFormatId ? 'selected' : ''}>${esc(FINALS_TYPE_LABEL[t])}</option>`).join('')}
-        ${formats.length ? `<optgroup label="Personalizzati">${formats.map((f) => `<option value="format:${esc(f.id)}" ${cc.finalsFormatId === f.id ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</optgroup>` : ''}
-      </select></div>
-      <div class="pf-field" style="margin-bottom:0"><label>Squadre al tabellone</label><input class="cfg-finalsTeamsToBracket" type="number" min="2" step="2" value="${cc.finalsTeamsToBracket ?? ''}" placeholder="solo Gironi + girone finale" ${dis} /></div>
-    </div>
+    ${finalsRow}
   </div>`
 }
 
-function renderConfigBody(mode: 'all' | 'per', config: ScheduleConfig, categorie: string[], locked: boolean, formats: CustomFinalsFormat[]): string {
-  if (mode === 'all') return playCard(defaultCat(config), locked, formats)
-  return categorie.map((c) => playCard(config.byCategory?.[c] ?? defaultCat(config), locked, formats, c)).join('')
+function renderConfigBody(mode: 'all' | 'per', config: ScheduleConfig, categorie: string[], locked: boolean, formats: CustomFinalsFormat[], bracket: boolean): string {
+  if (mode === 'all') return playCard(defaultCat(config), locked, formats, undefined, bracket)
+  return categorie.map((c) => playCard(config.byCategory?.[c] ?? defaultCat(config), locked, formats, c, bracket)).join('')
 }
 
-function globalCard(config: ScheduleConfig, locked: boolean): string {
+function globalCard(config: ScheduleConfig, locked: boolean, bracket: boolean): string {
   const dis = locked ? 'disabled' : ''
+  const hint = bracket
+    ? 'Gli slot per giornata sono calcolati automaticamente. Il <b>tabellone</b> è generato dai partecipanti iscritti (eliminazione diretta).'
+    : 'Gli slot per giornata sono calcolati automaticamente per far stare tutte le partite nei giorni dell\'evento. I gironi si compongono nel tab <b>Gironi</b>.'
   return `<div class="pf-card"><h2 class="pf-h3">Finestra impianto</h2>
     <div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
       <div class="pf-field" style="margin-bottom:0"><label>Inizio giornata</label><input id="dailyStart" type="time" value="${esc(config.dailyStart)}" ${dis} /></div>
-      <div class="pf-field" style="margin-bottom:0"><label>Data finali</label><input id="finalsDate" type="date" value="${esc(config.finalsDate ?? '')}" ${dis} /></div>
+      <div class="pf-field" style="margin-bottom:0"><label>Data ${bracket ? 'tabellone' : 'finali'}</label><input id="finalsDate" type="date" value="${esc(config.finalsDate ?? '')}" ${dis} /></div>
     </div>
-    <p class="pf-muted" style="margin:var(--space-sm) 0 0">Gli slot per giornata sono calcolati automaticamente per far stare tutte le partite nei giorni dell'evento. I gironi si compongono nel tab <b>Gironi</b>.</p></div>`
+    <p class="pf-muted" style="margin:var(--space-sm) 0 0">${hint}</p></div>`
 }
 
-function configSection(config: ScheduleConfig, categorie: string[], status: ScheduleView['status'], formats: CustomFinalsFormat[]): string {
+function configSection(config: ScheduleConfig, categorie: string[], status: ScheduleView['status'], formats: CustomFinalsFormat[], bracket: boolean): string {
   const locked = isLocked(status)
   const mode = config.byCategory ? 'per' : 'all'
-  return `${globalCard(config, locked)}
+  return `${globalCard(config, locked, bracket)}
     <div class="pf-card">
       <h2 class="pf-h3">Config di gioco</h2>
       <label class="pf-switch"><input type="checkbox" id="sameForAll" ${mode === 'all' ? 'checked' : ''} ${locked ? 'disabled' : ''} /> Stessa config di gioco per tutte le categorie</label>
-      <div id="cfgbody" style="margin-top:var(--space-md)">${renderConfigBody(mode, config, categorie, locked, formats)}</div>
+      <div id="cfgbody" style="margin-top:var(--space-md)">${renderConfigBody(mode, config, categorie, locked, formats, bracket)}</div>
       ${locked
         ? '<p class="pf-muted" style="margin-top:var(--space-md)">Calendario approvato: configurazione bloccata.</p>'
         : '<button class="pf-btn pf-btn--primary" id="generate" style="margin-top:var(--space-md)">Genera calendario</button>'}
@@ -127,10 +134,11 @@ function directorCard(matches: ScheduledMatchView[]): string {
 
 export function renderSchedule(data: ScheduleData): string {
   const { event, schedule, matches } = data
+  const bracket = event.format === 'bracket'
   const calendar = schedule.status === 'NONE' ? '' : calendarCard(matches, categoryKeys(matches)[0] ?? '', 'ALL')
   const directors = schedule.status === 'NONE' ? '' : directorCard(matches)
   return workspaceShell(event, 'schedule',
-    `<div id="err"></div>${configSection(schedule.config, event.categorie, schedule.status, data.finalsFormats)}${actionsCard(schedule.status)}${calendar}${directors}`)
+    `<div id="err"></div>${configSection(schedule.config, event.categorie, schedule.status, data.finalsFormats, bracket)}${actionsCard(schedule.status)}${calendar}${directors}`)
 }
 
 export const scheduleScreen: Screen<ScheduleData> = {
@@ -153,10 +161,11 @@ export const scheduleScreen: Screen<ScheduleData> = {
     if (isLocked(data.schedule.status)) { wireStatus(); return }
 
     const categorie = data.event.categorie
+    const bracket = data.event.format === 'bracket'
     const cfgbody = root.querySelector('#cfgbody')!
     const sameForAll = root.querySelector<HTMLInputElement>('#sameForAll')
     const mode = (): 'all' | 'per' => (sameForAll?.checked ? 'all' : 'per')
-    sameForAll?.addEventListener('change', () => { cfgbody.innerHTML = renderConfigBody(mode(), data.schedule.config, categorie, false, data.finalsFormats) })
+    sameForAll?.addEventListener('change', () => { cfgbody.innerHTML = renderConfigBody(mode(), data.schedule.config, categorie, false, data.finalsFormats, bracket) })
 
     const readCard = (el: Element): CategorySchedule => {
       const val = (s: string) => el.querySelector<HTMLInputElement>(s)?.value ?? ''

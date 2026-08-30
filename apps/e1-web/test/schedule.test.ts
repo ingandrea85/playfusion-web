@@ -295,3 +295,25 @@ describe('schedule decree winner on drawn knockout', () => {
     expect(refresh).toHaveBeenCalled()
   })
 })
+
+describe('schedule config: solo tabellone (S4) hides group-only inputs', () => {
+  const bracketData = (): ScheduleData => ({
+    event: { ...event, format: 'bracket' },
+    schedule: { sportEventId: 'e1', organizationId: 'org', status: 'NONE', config: cfg }, matches: [], finalsFormats: [],
+  })
+  it('omits Andata/ritorno and the finals-format row for a bracket event', () => {
+    const html = renderSchedule(bracketData())
+    expect(html).not.toContain('cfg-legs')
+    expect(html).not.toContain('cfg-finalsType')
+    expect(html).not.toContain('Squadre al tabellone')
+    expect(html).not.toContain('tab <b>Gironi</b>') // hint no longer points at the hidden tab
+    expect(html).toContain('generato dai partecipanti')
+    // match-timing inputs stay (they still schedule the bracket matches).
+    expect(html).toContain('cfg-periods')
+  })
+  it('keeps Andata/ritorno + finals config for a groups+bracket event', () => {
+    const html = renderSchedule(data('NONE'))
+    expect(html).toContain('cfg-legs')
+    expect(html).toContain('cfg-finalsType')
+  })
+})
