@@ -12,6 +12,11 @@ export class FakeMembershipDirectory implements MembershipDirectory {
     for (const i of seed.invitations ?? []) this.invitations.set(i.invitationId, i);
   }
 
+  async listOrganizations() {
+    const ids = [...new Set([...this.members.values()].map((m) => m.organizationId))];
+    return ids.map((id) => ({ id, name: id, memberCount: [...this.members.values()].filter((m) => m.organizationId === id).length }));
+  }
+  async getOrganizationName(organizationId: string) { return organizationId; }
   async listMembers(organizationId: string) { return [...this.members.values()].filter((m) => m.organizationId === organizationId); }
   async listInvitations(organizationId: string) { return [...this.invitations.values()].filter((i) => i.organizationId === organizationId); }
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { validateInvite, parseRole, isLastOwner, assertCanChangeRole, assertCanRemove, type Member } from '../src/membership.js';
 import { FakeMembershipDirectory } from './fakes.js';
-import { invite, revokeInvitation, changeMemberRole, removeMember, listMembers, listInvitations } from '../src/application/membership.js';
+import { invite, revokeInvitation, changeMemberRole, removeMember, listMembers, listInvitations, adminListOrganizations, adminGetOrganization } from '../src/application/membership.js';
 
 const member = (memberId: string, role: Member['role'], org = 'org-1'): Member =>
   ({ memberId, organizationId: org, name: memberId, email: `${memberId}@x.io`, role, createdAt: 't' });
@@ -75,5 +75,22 @@ describe('membership application (Auth0-backed directory)', () => {
 
   it('test_removeMember_throwsForUnknownMember', async () => {
     await expect(removeMember(deps())({ organizationId: 'org-1', memberId: 'ghost' })).rejects.toMatchObject({ httpStatus: 404 });
+  });
+});
+
+describe('S21 admin — cross-tenant org views', () => {
+  it('lists organizations with member counts', async () => {
+    const d = { directory: new FakeMembershipDirectory({ members: [member('a', 'OWNER', 'org-1'), member('b', 'ORGANIZER', 'org-1'), member('c', 'OWNER', 'org-2')] }) };
+    const orgs = await adminListOrganizations(d)();
+    expect(orgs).toEqual(expect.arrayContaining([
+      { id: 'org-1', name: 'org-1', memberCount: 2 },
+      { id: 'org-2', name: 'org-2', memberCount: 1 },
+    ]));
+  });
+  it('returns an org detail with name + members', async () => {
+    const d = { directory: new FakeMembershipDirectory({ members: [member('a', 'OWNER', 'org-1')] }) };
+    const detail = await adminGetOrganization(d)('org-1');
+    expect(detail).toMatchObject({ id: 'org-1', name: 'org-1' });
+    expect(detail.members.map((m) => m.memberId)).toEqual(['a']);
   });
 });

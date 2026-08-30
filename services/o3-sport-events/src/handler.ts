@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import {
   withCorrelation, makeDocClient, EventBridgeEventPublisher, toHttpError, busName, resourceName,
-  auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, getIdentity,
+  auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, requirePlatformAdmin, getIdentity,
 } from '@playfusion/platform-lib';
 import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { DynamoDbEventStore } from './adapters/dynamodb-event-store.js';
@@ -43,7 +43,9 @@ export const createEventBody = z.object({
 
 // S2.4: creating an event is an organizer mutation.
 const auth0cfg = auth0ConfigFromEnv();
-const organizer = requireOrganizer({ auth0: auth0cfg ? createAuth0Verifier(auth0cfg) : undefined });
+const verifier = auth0cfg ? createAuth0Verifier(auth0cfg) : undefined;
+const organizer = requireOrganizer({ auth0: verifier });
+const platformAdmin = requirePlatformAdmin({ auth0: verifier });
 
 app.post('/events', organizer, async (c) => {
   const b = createEventBody.parse(await c.req.json());
@@ -56,6 +58,8 @@ app.post('/events', organizer, async (c) => {
 
 // S1.2 reads: list per org (E1 dashboard / E3 landing) and event detail + categories.
 app.get('/events', async (c) => c.json(await listEvents(store)(orgOf(c))));
+// S21 admin: events of any org (cross-tenant monitoring). platform_admin only.
+app.get('/admin/organizations/:orgId/events', platformAdmin, async (c) => c.json(await listEvents(store)(c.req.param('orgId'))));
 app.get('/events/:id', async (c) => {
   const detail = await getEvent(store)(c.req.param('id'));
   if (!detail) return c.json({ error: 'EventNotFound', sportEventId: c.req.param('id') }, 404);

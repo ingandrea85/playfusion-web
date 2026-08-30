@@ -1,5 +1,5 @@
 import { checkpoint } from '@playfusion/platform-lib';
-import { trialSubscription, proSubscription, freeSubscription, trialDaysLeft, type Subscription } from '../domain.js';
+import { trialSubscription, proSubscription, freeSubscription, planSubscription, trialDaysLeft, type Subscription, type PlanKey } from '../domain.js';
 import type { SubscriptionRepository } from '../ports.js';
 
 type Deps = { repo: SubscriptionRepository; now?: () => Date };
@@ -29,6 +29,15 @@ export const activatePro = (d: Deps) => async (organizationId: string): Promise<
   const sub = proSubscription(organizationId, now);
   await d.repo.save(sub);
   checkpoint('activatePro', 'STOP', { organizationId });
+  return view(sub, now);
+};
+
+/** S21 admin: set an org's plan (ACTIVE) or grant a fresh PRO trial. Cross-tenant (platform_admin). */
+export const adminSetPlan = (d: Deps) => async (organizationId: string, plan: PlanKey, trial = false): Promise<SubscriptionView> => {
+  const now = clock(d);
+  const sub = planSubscription(organizationId, plan, now, trial);
+  await d.repo.save(sub);
+  checkpoint('adminSetPlan', 'STOP', { organizationId, plan, trial });
   return view(sub, now);
 };
 
