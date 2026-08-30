@@ -152,12 +152,14 @@ export function renderCategorie(data: CategorieData, activeTab = 'categorie'): s
     const t = schedule.config.byCategory?.[c]?.finalsType ?? schedule.config.finalsType
     return t ? esc(FINALS_LABEL[t]) : '<span class="pf-muted">—</span>'
   }
+  // Epic #143 (S4): solo tabellone has no gironi — drop that column and describe the auto bracket.
+  const bracket = event.format === 'bracket'
   const rows = event.categorie.map((c) => `<tr>
-    <td>${esc(c)}</td><td>${teams(c)}</td><td>${groups(c) || '<span class="pf-muted">—</span>'}</td><td>${finals(c)}</td>
+    <td>${esc(c)}</td><td>${teams(c)}</td>${bracket ? '' : `<td>${groups(c) || '<span class="pf-muted">—</span>'}</td>`}<td>${bracket ? 'Tabellone (elim. diretta)' : finals(c)}</td>
   </tr>`).join('')
   const body = event.categorie.length
-    ? `<table class="pf-table"><thead><tr><th>Categoria</th><th>${esc(eventLabels(event).participantPlural)}</th><th>Gironi</th><th>Formato finali</th></tr></thead><tbody>${rows}</tbody></table>
-       <p class="pf-muted" style="margin-top:var(--space-sm)">Calendario: <b>${esc(SCHEDULE_LABEL[schedule.status])}</b>. Composizione gironi nel tab <b>Gironi</b>, formato finali nel tab <b>Calendario</b>.</p>`
+    ? `<table class="pf-table"><thead><tr><th>Categoria</th><th>${esc(eventLabels(event).participantPlural)}</th>${bracket ? '' : '<th>Gironi</th>'}<th>Formato finali</th></tr></thead><tbody>${rows}</tbody></table>
+       <p class="pf-muted" style="margin-top:var(--space-sm)">Calendario: <b>${esc(SCHEDULE_LABEL[schedule.status])}</b>. ${bracket ? 'Il tabellone è generato dai partecipanti iscritti nel tab <b>Calendario</b>.' : 'Composizione gironi nel tab <b>Gironi</b>, formato finali nel tab <b>Calendario</b>.'}</p>`
     : `<div class="pf-muted">Nessuna categoria.</div>`
   return shell(event, activeTab, `<div class="pf-card"><h2 class="pf-h3">Categorie</h2>${body}</div>`)
 }
