@@ -138,6 +138,13 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-esite-sponsor__logo { max-height: 40px; max-width: 140px; object-fit: contain; display: block; }
 .pf-esite-foot { padding: 28px 0; color: var(--color-text-soft); }
 
+/* Segmented control + tie-break options (E4 sport editor). */
+.pf-seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--color-border-strong); border-radius: 9px; overflow: hidden; }
+.pf-segopt { padding: 8px 14px; font-size: 13px; font-weight: 700; color: var(--color-text-soft); cursor: pointer; border-right: 1px solid var(--color-border-strong); }
+.pf-segopt:last-child { border-right: 0; }
+.pf-segopt.on { background: var(--color-action-primary); color: #fff; }
+.pf-tbopt { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--color-border-strong); border-radius: 8px; font-size: 14px; }
+
 /* E4 admin plan badges. */
 .pf-plan--pro { background: #eaf1ff; color: #0b5fff; }
 .pf-plan--business { background: #efe9ff; color: #6d28d9; }

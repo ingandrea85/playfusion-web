@@ -85,6 +85,7 @@ export class DataStack extends Stack {
     this.tables['o7-tie-overrides'] = table('o7-tie-overrides', 'sportEventId');
     this.tables['o7-resources'] = table('o7-resources', 'sportEventId'); // S17
     this.tables['o7-finals-formats'] = table('o7-finals-formats', 'formatId'); // SP1: global custom finals formats
+    this.tables['o3-sports'] = table('o3-sports', 'sportId'); // Epic #143: global sport catalog
 
     // O1 organization (S18): per-tenant brand identity (presentation metadata), keyed by org.
     this.tables['o1-organizations'] = table('o1-organizations', 'organizationId');

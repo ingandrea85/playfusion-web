@@ -55,7 +55,7 @@ const BCS: BcSpec[] = [
   // (removing them here + in data-stack in one deploy fails with "Cannot delete export … in use").
   // A follow-up two-phase cleanup drops the grants first, then the tables.
   { key: 'o2-identity-access', route: 'o2', tables: ['o2-identities', 'o2-members', 'o2-invitations'] },
-  { key: 'o3-sport-events', route: 'o3', tables: ['o3-events'] },
+  { key: 'o3-sport-events', route: 'o3', tables: ['o3-events', 'o3-sports'] },
   { key: 'o4-participant-management', route: 'o4', tables: ['o4-participants'] },
   {
     key: 'o5-registration',
