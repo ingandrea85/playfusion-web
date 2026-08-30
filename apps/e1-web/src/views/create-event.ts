@@ -1,34 +1,23 @@
 import { renderOrganizerTopbar, esc } from '@playfusion/app-shell'
-import type { CreateEventInput, TieBreakCriterion } from '@playfusion/rest-client'
+import type { CreateEventInput, SportProfile } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
-import { ALL_CRITERIA, defaultTieBreak, criterionLabel } from './tiebreak.js'
 
-/** Chip markup for the category list — factored out so both renderCreateEvent (initial
- *  render, node-testable) and mount's redraw() (after add/remove) share one template. */
+/** Chip markup for the category list — shared by the initial render and mount's redraw(). */
 export function renderCatChips(categorie: string[]): string {
   return categorie.map((c, i) =>
     `<li class="pf-cat"><span class="pf-cat__label">${esc(c)}</span><button type="button" class="pf-btn pf-btn--ghost" data-cat-remove="${i}">✕</button></li>`).join('')
 }
 
-/** Tie-break editor markup: a fixed "Punti" row first, then every criterion (active ones
- *  first in policy order) with a toggle checkbox and ↑/↓ reorder controls. Shared by the
- *  initial render and mount's redraw so the two never drift. */
-export function renderTieBreakEditor(ordered: TieBreakCriterion[], enabled: Set<TieBreakCriterion>): string {
-  return `<ol class="pf-tblist">
-    <li class="pf-tbrow pf-tbrow--fixed"><span class="pf-mono">1.</span> Punti <span class="pf-muted">(sempre, bloccato)</span></li>
-    ${ordered.map((c, i) => `<li class="pf-tbrow">
-      <label><input type="checkbox" data-c="${c}" ${enabled.has(c) ? 'checked' : ''}/> ${esc(criterionLabel(c))}</label>
-      <span class="pf-tbmove">
-        <button type="button" class="pf-btn pf-btn--ghost" data-up="${i}" ${i === 0 ? 'disabled' : ''}>↑</button>
-        <button type="button" class="pf-btn pf-btn--ghost" data-down="${i}" ${i === ordered.length - 1 ? 'disabled' : ''}>↓</button>
-      </span>
-    </li>`).join('')}
-  </ol>`
+const FORMAT_LABEL: Record<NonNullable<CreateEventInput['format']>, string> = {
+  'groups': 'Solo gironi',
+  'groups+bracket': 'Gironi + Tabellone',
+  'bracket': 'Solo tabellone',
 }
 
-export function renderCreateEvent(categorie: string[] = []): string {
-  const policy = defaultTieBreak('')
-  const ordered = [...policy, ...ALL_CRITERIA.filter(c => !policy.includes(c))]
+export function renderCreateEvent(categorie: string[] = [], sports: SportProfile[] = []): string {
+  const sportOpts = sports.map((s) => `<option value="${esc(s.id)}" data-part="${s.participants}">${esc(s.name)}</option>`).join('')
+  const formatOpts = (Object.keys(FORMAT_LABEL) as (keyof typeof FORMAT_LABEL)[])
+    .map((k) => `<option value="${k}"${k === 'groups+bracket' ? ' selected' : ''}>${FORMAT_LABEL[k]}</option>`).join('')
   return `${renderOrganizerTopbar('dashboard')}
     <main class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">Nuovo</div><h1>Crea evento</h1></div>
@@ -41,7 +30,19 @@ export function renderCreateEvent(categorie: string[] = []): string {
           </select>
         </div>
         <div class="pf-field"><label>Nome evento</label><input name="name" placeholder="es. Torneo Estivo Memorial" /></div>
-        <div class="pf-field"><label>Sport</label><input name="sport" required placeholder="es. Calcio a 5" /></div>
+        <div class="pf-field"><label>Sport</label>
+          <select name="sportId" id="sportId" required>${sports.length ? sportOpts : '<option value="" disabled selected>Nessuno sport in catalogo</option>'}</select>
+          <p class="pf-muted" style="font-size:13px;margin:6px 0 0">Punteggio, punti e criteri di spareggio vengono dal profilo sport.</p>
+        </div>
+        <div class="pf-field" id="part-field" hidden><label>Tipo partecipante</label>
+          <div class="pf-seg">
+            <label class="pf-segopt on"><input type="radio" name="participantType" value="team" checked hidden/>Squadra</label>
+            <label class="pf-segopt"><input type="radio" name="participantType" value="individual" hidden/>Individuale</label>
+          </div>
+        </div>
+        <div class="pf-field"><label>Formato dell'evento</label>
+          <select name="format">${formatOpts}</select>
+        </div>
         <div class="pf-field"><label>Luogo</label><input name="location" placeholder="es. Centro Sportivo Comunale" /></div>
         <div class="pf-field"><label>Categorie</label>
           <div class="pf-row"><input id="cat" placeholder="es. U10" /><button type="button" class="pf-btn" data-cat-add>Aggiungi</button></div>
@@ -52,19 +53,12 @@ export function renderCreateEvent(categorie: string[] = []): string {
           <div class="pf-field" style="width:120px"><label>Ora</label><input type="time" name="startTime" /></div>
         </div>
         <div class="pf-field"><label>Fine</label><input type="date" name="to" required /></div>
-        <div class="pf-field">
-          <label>Criteri di spareggio (i punti valgono sempre per primi)</label>
-          <div id="tiebreak">${renderTieBreakEditor(ordered, new Set(policy))}</div>
-        </div>
         <button class="pf-btn pf-btn--primary pf-btn--lg" type="submit" data-create>Crea evento</button>
       </form>
     </main>`
 }
 
-/** S20 Free plan cap: a FREE org may keep only 1 event. When the cap is hit, create-event shows a
- *  block with an upgrade link instead of the form. NOTE: the spec counts only ACTIVE (non-DONE)
- *  events; computing per-event phase needs match data, so this slice caps on total events for FREE
- *  and leaves the active-only refinement as a follow-up. */
+/** S20 Free plan cap: a FREE org may keep only 1 event → block with an upgrade link. */
 export function renderCapBlocked(): string {
   return `${renderOrganizerTopbar('dashboard')}
     <main class="pf-container pf-container--narrow">
@@ -80,53 +74,36 @@ export function renderCapBlocked(): string {
     </main>`
 }
 
-export interface CreateEventGate { capReached: boolean }
+export interface CreateEventGate { capReached: boolean; sports: SportProfile[] }
 
-/** Create-event is stateful (category list + tie-break policy), so mount keeps local state
- *  and re-renders in place; submit builds CreateEventInput and calls o3.createEvent. */
 export const createEventScreen: Screen<CreateEventGate> = {
   load: async (ctx) => {
-    // T1: the active-event cap comes from the org's entitlements (computed once at boot).
-    const events = await ctx.client.o3.listEvents().catch(() => [] as unknown[])
+    const [events, sports] = await Promise.all([
+      ctx.client.o3.listEvents().catch(() => [] as unknown[]),
+      ctx.client.o3.listSports().catch(() => [] as SportProfile[]),
+    ])
     const max = ctx.entitlements.maxActiveEvents
-    return { capReached: max !== null && events.length >= max }
+    return { capReached: max !== null && events.length >= max, sports }
   },
-  render: (data) => (data.capReached ? renderCapBlocked() : renderCreateEvent([])),
+  render: (data) => (data.capReached ? renderCapBlocked() : renderCreateEvent([], data.sports)),
   mount(root, ctx: ViewCtx, data) {
     if (data.capReached) return
     const categorie: string[] = []
     const cats = root.querySelector('#cats')!
     const catInput = root.querySelector<HTMLInputElement>('#cat')!
-    const sportInput = root.querySelector<HTMLInputElement>('[name=sport]')!
-    const tbHost = root.querySelector('#tiebreak')!
+    const sportSel = root.querySelector<HTMLSelectElement>('#sportId')!
+    const partField = root.querySelector<HTMLElement>('#part-field')!
     const err = root.querySelector('#err')!
 
-    // Tie-break working state: an ordered view of all criteria (active first) + the active set.
-    let policy = defaultTieBreak(sportInput.value)
-    let enabled = new Set<TieBreakCriterion>(policy)
-    let ordered: TieBreakCriterion[] = [...policy, ...ALL_CRITERIA.filter(c => !policy.includes(c))]
-    const collectTieBreak = (): TieBreakCriterion[] => ordered.filter(c => enabled.has(c))
-
-    const drawTieBreak = () => {
-      tbHost.innerHTML = renderTieBreakEditor(ordered, enabled)
-      tbHost.querySelectorAll<HTMLInputElement>('input[type=checkbox]').forEach(cb =>
-        cb.addEventListener('change', () => {
-          const c = cb.dataset.c as TieBreakCriterion; if (cb.checked) enabled.add(c); else enabled.delete(c)
-        }))
-      tbHost.querySelectorAll<HTMLButtonElement>('button[data-up]').forEach(b =>
-        b.addEventListener('click', () => { const i = Number(b.dataset.up); [ordered[i - 1], ordered[i]] = [ordered[i], ordered[i - 1]]; drawTieBreak() }))
-      tbHost.querySelectorAll<HTMLButtonElement>('button[data-down]').forEach(b =>
-        b.addEventListener('click', () => { const i = Number(b.dataset.down); [ordered[i + 1], ordered[i]] = [ordered[i], ordered[i + 1]]; drawTieBreak() }))
+    // Show the participant-type choice only when the selected sport allows both.
+    const syncPart = () => {
+      const opt = sportSel.selectedOptions[0]
+      partField.hidden = (opt?.dataset.part ?? '') !== 'both'
     }
-    drawTieBreak()
-
-    // Changing the sport resets the policy to that sport's default (matches the mockup).
-    sportInput.addEventListener('change', () => {
-      policy = defaultTieBreak(sportInput.value)
-      enabled = new Set(policy)
-      ordered = [...policy, ...ALL_CRITERIA.filter(c => !policy.includes(c))]
-      drawTieBreak()
-    })
+    sportSel.addEventListener('change', syncPart); syncPart()
+    partField.querySelectorAll<HTMLInputElement>('input[name="participantType"]').forEach((r) =>
+      r.addEventListener('change', () => partField.querySelectorAll('.pf-segopt').forEach((o) =>
+        o.classList.toggle('on', (o.querySelector('input') as HTMLInputElement).checked))))
 
     const redraw = () => { cats.innerHTML = renderCatChips(categorie) }
     root.querySelector('[data-cat-add]')!.addEventListener('click', () => {
@@ -139,20 +116,22 @@ export const createEventScreen: Screen<CreateEventGate> = {
     root.querySelector('#form')!.addEventListener('submit', async (e) => {
       e.preventDefault()
       const f = e.target as HTMLFormElement
-      const data = new FormData(f)
-      const trimmed = (k: string) => String(data.get(k) ?? '').trim()
+      const fd = new FormData(f)
+      const trimmed = (k: string) => String(fd.get(k) ?? '').trim()
+      const sportId = trimmed('sportId')
       const input: CreateEventInput = {
-        sport: trimmed('sport'),
+        sportId,
         categorie: [...categorie],
-        dates: { from: String(data.get('from') ?? ''), to: String(data.get('to') ?? '') },
-        playbook: (String(data.get('playbook') ?? 'PB-1') as CreateEventInput['playbook']),
-        tieBreak: collectTieBreak(),
+        dates: { from: String(fd.get('from') ?? ''), to: String(fd.get('to') ?? '') },
+        format: (String(fd.get('format') ?? 'groups+bracket') as CreateEventInput['format']),
+        playbook: (String(fd.get('playbook') ?? 'PB-1') as CreateEventInput['playbook']),
       }
+      if (!partField.hidden) input.participantType = (String(fd.get('participantType') ?? 'team') as CreateEventInput['participantType'])
       const name = trimmed('name'); if (name) input.name = name
       const location = trimmed('location'); if (location) input.location = location
       const startTime = trimmed('startTime'); if (startTime) input.startTime = startTime
-      if (!input.sport || !input.categorie.length || !input.dates.from || !input.dates.to) {
-        err.innerHTML = inlineError('Compila sport, almeno una categoria e le date.'); return
+      if (!sportId || !input.categorie.length || !input.dates.from || !input.dates.to) {
+        err.innerHTML = inlineError('Scegli lo sport, almeno una categoria e le date.'); return
       }
       const btn = f.querySelector<HTMLButtonElement>('[data-create]')!; btn.disabled = true
       try {

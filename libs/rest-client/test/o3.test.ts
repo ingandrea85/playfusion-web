@@ -23,20 +23,20 @@ describe('o3 api', () => {
   it('createEvent POSTs /o3/events with the body', async () => {
     const fetchMock = vi.fn().mockResolvedValue(res({ sportEventId: 'new', status: 'Published' }, 201))
     const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
-    await c.o3.createEvent({ sport: 'calcio', categorie: ['U10'], dates: { from: 'a', to: 'b' } })
+    await c.o3.createEvent({ sportId: 's-calcio', categorie: ['U10'], dates: { from: 'a', to: 'b' } })
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('https://api/prod/o3/events')
     expect(init.method).toBe('POST')
-    expect(JSON.parse(init.body)).toEqual({ sport: 'calcio', categorie: ['U10'], dates: { from: 'a', to: 'b' } })
+    expect(JSON.parse(init.body)).toEqual({ sportId: 's-calcio', categorie: ['U10'], dates: { from: 'a', to: 'b' } })
   })
 
-  it('createEvent POSTs the full competition config when provided', async () => {
+  it('createEvent POSTs the full config (sport + participant + format) when provided', async () => {
     const fetchMock = vi.fn().mockResolvedValue(res({ sportEventId: 'new', status: 'Published' }, 201))
     const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
     const input = {
-      sport: 'Calcio', categorie: ['U10'], dates: { from: 'a', to: 'b' },
-      name: 'Torneo', location: 'Rivalta', startTime: '09:00',
-      tieBreak: ['HEAD_TO_HEAD' as const], playbook: 'PB-2' as const,
+      sportId: 's-tennis', participantType: 'individual' as const, format: 'bracket' as const,
+      categorie: ['U10'], dates: { from: 'a', to: 'b' },
+      name: 'Torneo', location: 'Rivalta', startTime: '09:00', playbook: 'PB-2' as const,
     }
     await c.o3.createEvent(input)
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(input)

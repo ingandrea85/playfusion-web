@@ -35,7 +35,12 @@ const tieBreakCriterion = z.enum(['HEAD_TO_HEAD', 'GOAL_DIFFERENCE', 'GOALS_FOR'
 // S6.1: competition config is added additively — dates stay start/end date, the rest is
 // optional (pre-S6 clients keep working) and `playbook` defaults to PB-1.
 export const createEventBody = z.object({
-  sport: z.string(),
+  // Epic #143: pick a sport from the catalog (the profile is snapshotted server-side). `sport`
+  // (free text) stays accepted for back-compat with pre-#143 clients.
+  sportId: z.string().optional(),
+  sport: z.string().optional(),
+  participantType: z.enum(['team', 'individual']).optional(),
+  format: z.enum(['groups', 'groups+bracket', 'bracket']).optional(),
   categorie: z.array(z.string()),
   dates: z.object({ from: z.string(), to: z.string() }),
   name: z.string().optional(),
@@ -44,6 +49,12 @@ export const createEventBody = z.object({
   tieBreak: z.array(tieBreakCriterion).optional(),
   playbook: z.enum(['PB-1', 'PB-2']).default('PB-1'),
 });
+
+// Map the generic sport tie-breaks to the legacy event criteria, so the current (S3-pending)
+// standings honour the sport's order until the standings engine is made fully parametric.
+const LEGACY_TB: Record<string, 'HEAD_TO_HEAD' | 'GOAL_DIFFERENCE' | 'GOALS_FOR'> = {
+  HEAD_TO_HEAD: 'HEAD_TO_HEAD', SCORE_DIFFERENCE: 'GOAL_DIFFERENCE', SCORE_FOR: 'GOALS_FOR',
+};
 
 // S2.4: creating an event is an organizer mutation.
 const auth0cfg = auth0ConfigFromEnv();
@@ -55,8 +66,27 @@ app.post('/events', organizer, async (c) => {
   const b = createEventBody.parse(await c.req.json());
   const sportEventId = randomUUID();
   const organizationId = orgOf(c);
-  await db.send(new PutCommand({ TableName: resourceName('o3-events'), Item: { sportEventId, organizationId, ...b, status: 'Published' } }));
-  await publisher.publish('EventPublished', { sportEventId, sport: b.sport, categorie: b.categorie, dates: b.dates, playbook: b.playbook }, organizationId);
+  const { sportId, sport, participantType, format, tieBreak, ...rest } = b;
+
+  // Epic #143: resolve the chosen sport → snapshot its profile onto the event, derive participant
+  // type + format + display name. A legacy body (free-text `sport`, no sportId) is stored as-is.
+  const extra: Record<string, unknown> = {};
+  if (sportId) {
+    const profile = await getSport({ repo: sports })(sportId); // 404 if unknown
+    const pt = profile.participants === 'both' ? (participantType ?? 'team') : profile.participants;
+    extra.sport = profile.name;
+    extra.sportProfile = { sportId: profile.id, name: profile.name, scoreLabel: profile.scoreLabel, points: profile.points, tieBreak: profile.tieBreak };
+    extra.participantType = pt;
+    extra.format = format ?? 'groups+bracket';
+    extra.tieBreak = profile.tieBreak.map((t) => LEGACY_TB[t]).filter(Boolean); // legacy standings bridge
+  } else {
+    if (sport) extra.sport = sport;
+    if (tieBreak) extra.tieBreak = tieBreak;
+    if (format) extra.format = format;
+  }
+
+  await db.send(new PutCommand({ TableName: resourceName('o3-events'), Item: { sportEventId, organizationId, ...rest, ...extra, status: 'Published' } }));
+  await publisher.publish('EventPublished', { sportEventId, sport: extra.sport ?? sport, categorie: b.categorie, dates: b.dates, playbook: b.playbook }, organizationId);
   return c.json({ sportEventId, status: 'Published' }, 201);
 });
 

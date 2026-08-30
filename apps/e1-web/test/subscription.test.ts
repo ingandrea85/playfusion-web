@@ -44,7 +44,7 @@ describe('subscription mount', () => {
 
 describe('create-event Free cap (from entitlements)', () => {
   const capCtx = (plan: 'FREE' | 'PRO', events: unknown[]) =>
-    ({ client: { o3: { listEvents: vi.fn().mockResolvedValue(events) } }, orgId: 'org-1', entitlements: entitlements(plan) }) as any
+    ({ client: { o3: { listEvents: vi.fn().mockResolvedValue(events), listSports: vi.fn().mockResolvedValue([]) } }, orgId: 'org-1', entitlements: entitlements(plan) }) as any
   it('caps a FREE org that already has an event', async () => {
     const data = await createEventScreen.load(capCtx('FREE', [{ sportEventId: 'e1' }]), {})
     expect(data.capReached).toBe(true)
