@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateFormat, compileFormat, bracketFromParticipants, type CustomFinalsFormat } from '../src/index.js';
+import { validateFormat, compileFormat, bracketFromParticipants, buildFinals, groupKnockout, type CustomFinalsFormat, type FinalGroupInput } from '../src/index.js';
 
 const fmt = (over: Partial<CustomFinalsFormat> = {}): CustomFinalsFormat => ({
   id: 'f1', name: 'Semi + finale + 3º', seeds: 4, createdAt: 't',
@@ -66,5 +66,31 @@ describe('bracketFromParticipants + 3rd place (SP-A2)', () => {
     expect(d.filter((x) => x.round === 'SF')).toHaveLength(2);
     expect(d.filter((x) => x.round === 'F')).toHaveLength(1);
     expect(d.filter((x) => x.slot === '3P')).toHaveLength(1);
+  });
+})
+
+
+describe('groupKnockout (SP-A3): crossed group qualifiers + seeding', () => {
+  const gr = (labels) => labels.map((l) => ({ label: l, size: 4 }));
+  it('2 groups × 2 qualifiers → classic cross (1ºA-2ºB, 1ºB-2ºA) + final', () => {
+    const d = groupKnockout(gr(['Girone A', 'Girone B']), { qualifiersPerGroup: 2 });
+    const sf = d.filter((x) => x.round === 'SF').map((x) => [x.home, x.away]);
+    expect(sf).toEqual([['1ª Girone A', '2ª Girone B'], ['1ª Girone B', '2ª Girone A']]);
+    expect(d.find((x) => x.round === 'F')).toMatchObject({ home: 'Vincente SF1', away: 'Vincente SF2', placementFrom: 1, placementTo: 2 });
+  });
+  it('4 groups × 1 qualifier → semifinals of group winners', () => {
+    const d = groupKnockout(gr(['Girone A', 'Girone B', 'Girone C', 'Girone D']), { qualifiersPerGroup: 1 });
+    expect(d.filter((x) => x.round === 'SF')).toHaveLength(2);
+    // group winners are the seeds; top seed (1ºA) meets the lowest (1ºD) side of the draw
+    expect(d.filter((x) => x.round === 'SF').flatMap((x) => [x.home, x.away]).sort())
+      .toEqual(['1ª Girone A', '1ª Girone B', '1ª Girone C', '1ª Girone D']);
+  });
+  it('honours thirdPlace', () => {
+    const d = groupKnockout(gr(['Girone A', 'Girone B']), { qualifiersPerGroup: 2, thirdPlace: true });
+    expect(d.find((x) => x.slot === '3P')).toMatchObject({ placementFrom: 3, placementTo: 4 });
+  });
+  it('buildFinals dispatches GROUP_KNOCKOUT', () => {
+    const d = buildFinals(gr(['Girone A', 'Girone B']), 'GROUP_KNOCKOUT', { qualifiersPerGroup: 2 });
+    expect(d.some((x) => x.home === '1ª Girone A')).toBe(true);
   });
 })

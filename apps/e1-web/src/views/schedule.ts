@@ -5,8 +5,10 @@ const FINALS_TYPE_LABEL: Record<FinalsType, string> = {
   PLACEMENT: 'Tabellone eliminazione (per fascia)',
   SINGLE_GROUP_CROSSOVER: 'Girone unico · coppie (1ª-2ª, 3ª-4ª…)',
   SPLIT_GROUP_FINALS: 'Gironi + girone finale',
+  GROUP_KNOCKOUT: 'Tabellone da gironi (incroci + teste di serie)',
+  FINAL_ROUND_ROBIN: 'Girone all\'italiana finale',
 }
-const FINALS_TYPES: FinalsType[] = ['PLACEMENT', 'SINGLE_GROUP_CROSSOVER', 'SPLIT_GROUP_FINALS']
+const FINALS_TYPES: FinalsType[] = ['PLACEMENT', 'SINGLE_GROUP_CROSSOVER', 'SPLIT_GROUP_FINALS', 'GROUP_KNOCKOUT', 'FINAL_ROUND_ROBIN']
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
 
@@ -48,7 +50,8 @@ function playCard(cc: CategorySchedule, locked: boolean, formats: CustomFinalsFo
         ${FINALS_TYPES.map((t) => `<option value="${t}" ${cc.finalsType === t && !cc.finalsFormatId ? 'selected' : ''}>${esc(FINALS_TYPE_LABEL[t])}</option>`).join('')}
         ${formats.length ? `<optgroup label="Personalizzati">${formats.map((f) => `<option value="format:${esc(f.id)}" ${cc.finalsFormatId === f.id ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</optgroup>` : ''}
       </select></div>
-      <div class="pf-field" style="margin-bottom:0"><label>Squadre al tabellone</label><input class="cfg-finalsTeamsToBracket" type="number" min="2" step="2" value="${cc.finalsTeamsToBracket ?? ''}" placeholder="solo Gironi + girone finale" ${dis} /></div>
+      <div class="pf-field" style="margin-bottom:0"><label>Squadre al tabellone</label><input class="cfg-finalsTeamsToBracket" type="number" min="2" step="2" value="${cc.finalsTeamsToBracket ?? ''}" placeholder="Gironi + girone finale" ${dis} /></div>
+      <div class="pf-field" style="margin-bottom:0"><label>Qualificati per girone</label><input class="cfg-qualPerGroup" type="number" min="1" max="4" value="${cc.finalsQualifiersPerGroup ?? ''}" placeholder="Tabellone da gironi" ${dis} /></div>
     </div>
     ${thirdPlace}`
   return `<div class="pf-card js-playcard"${cat ? ` data-cat="${esc(cat)}"` : ''} style="background:var(--color-surface-sunken)">
@@ -181,6 +184,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
       const finalsFormatId = finalsSel.startsWith('format:') ? finalsSel.slice('format:'.length) : undefined
       const finalsType = (!finalsFormatId && finalsSel ? finalsSel : undefined) as FinalsType | undefined
       const bracket = Number(val('.cfg-finalsTeamsToBracket'))
+      const qualPerGroup = Number(val('.cfg-qualPerGroup'))
       const thirdPlace = el.querySelector<HTMLInputElement>('.cfg-thirdplace')?.checked
       return {
         fields: textToFields(val('.cfg-fields')),
@@ -191,6 +195,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
         ...(finalsFormatId ? { finalsFormatId } : {}),
         ...(finalsType ? { finalsType, finalsEnabled: true } : {}),
         ...(Number.isFinite(bracket) && bracket >= 2 ? { finalsTeamsToBracket: Math.floor(bracket) } : {}),
+        ...(Number.isFinite(qualPerGroup) && qualPerGroup >= 1 ? { finalsQualifiersPerGroup: Math.floor(qualPerGroup) } : {}),
         ...(thirdPlace ? { finalsThirdPlace: true } : {}),
       }
     }

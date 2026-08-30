@@ -49,7 +49,7 @@ function buildFinalMatches(
       if (format.seeds > totalTeams) throw new DomainError('FINALS_SEEDS_EXCEED_TEAMS', `format "${format.name}" needs ${format.seeds} qualifiers but ${cat.id} has ${totalTeams}`, 422);
       draws = compileFormat(format);
     } else if (cc.finalsType && cc.finalsEnabled !== false) {
-      draws = buildFinals(cat.groups.map((g) => ({ label: g.label, size: g.teams.length })), cc.finalsType, { finalsTeamsToBracket: cc.finalsTeamsToBracket });
+      draws = buildFinals(cat.groups.map((g) => ({ label: g.label, size: g.teams.length })), cc.finalsType, { finalsTeamsToBracket: cc.finalsTeamsToBracket, qualifiersPerGroup: cc.finalsQualifiersPerGroup, thirdPlace: cc.finalsThirdPlace });
     } else {
       continue;
     }

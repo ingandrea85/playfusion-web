@@ -10,6 +10,8 @@ const FINALS_LABEL: Record<FinalsType, string> = {
   PLACEMENT: 'Tabellone eliminazione',
   SINGLE_GROUP_CROSSOVER: 'Girone unico · coppie',
   SPLIT_GROUP_FINALS: 'Gironi + girone finale',
+  GROUP_KNOCKOUT: 'Tabellone da gironi (incroci)',
+  FINAL_ROUND_ROBIN: 'Girone all\'italiana finale',
 }
 const SCHEDULE_LABEL: Record<ScheduleView['status'], string> = {
   NONE: 'Da generare', GENERATED: 'Generato', APPROVED: 'Approvato', PUBLISHED: 'Pubblicato',

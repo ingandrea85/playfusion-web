@@ -1,8 +1,9 @@
 // Shared, pure logic for finals brackets — imported by o7 (backend generate) AND E1/E3 (editor +
 // live formula preview), so there is ONE implementation of the built-in generators + validate/compile.
 
-/** Built-in finals shapes. (Epic #143 S13 realigned these to Playfusion 1 semantics.) */
-export type FinalsType = 'SINGLE_GROUP_CROSSOVER' | 'SPLIT_GROUP_FINALS' | 'PLACEMENT';
+/** Built-in finals shapes. (Epic #143 S13 realigned these to Playfusion 1 semantics; finali-formule
+ *  added GROUP_KNOCKOUT + FINAL_ROUND_ROBIN.) */
+export type FinalsType = 'SINGLE_GROUP_CROSSOVER' | 'SPLIT_GROUP_FINALS' | 'PLACEMENT' | 'GROUP_KNOCKOUT' | 'FINAL_ROUND_ROBIN';
 
 /** One structural bracket draw: label + round + slot + placeholder home/away + optional placement
  *  range. `home`/`away` are the placeholder tokens the on-read resolver understands
@@ -123,9 +124,12 @@ function splitGroupFinals(groups: FinalGroupInput[], bracket: number): FinalDraw
   return draws;
 }
 
-export function buildFinals(groups: FinalGroupInput[], finalsType: FinalsType, opts: { finalsTeamsToBracket?: number } = {}): FinalDraw[] {
+export interface BuildFinalsOpts { finalsTeamsToBracket?: number; qualifiersPerGroup?: number; thirdPlace?: boolean }
+
+export function buildFinals(groups: FinalGroupInput[], finalsType: FinalsType, opts: BuildFinalsOpts = {}): FinalDraw[] {
   if (finalsType === 'SINGLE_GROUP_CROSSOVER') return singleGroupCrossover(groups);
   if (finalsType === 'SPLIT_GROUP_FINALS') return splitGroupFinals(groups, Math.max(0, Math.floor(opts.finalsTeamsToBracket ?? 0)));
+  if (finalsType === 'GROUP_KNOCKOUT') return groupKnockout(groups, { qualifiersPerGroup: opts.qualifiersPerGroup, thirdPlace: opts.thirdPlace });
   return placement(groups);
 }
 
@@ -143,10 +147,11 @@ export function thirdPlaceDraw(semiSlots: string[], order: number): FinalDraw | 
 
 export interface KnockoutOpts { thirdPlace?: boolean }
 
-export function bracketFromParticipants(entrants: string[], opts: KnockoutOpts = {}): FinalDraw[] {
-  const n = entrants.length;
-  if (n < 2) return [];
-  let slots: (string | null)[] = [...entrants, ...Array(nextPow2(n) - n).fill(null)];
+/** Winners-only single elim over a fixed (already power-of-two) slot array; `null` = a bye (the paired
+ *  entrant advances with no match). Round 1 slots may be real names OR seed placeholders. Later rounds
+ *  carry `Vincente <slot>` links; the deciding final gets 1º/2º and (opt) a 3rd/4th final. */
+function knockoutFromSlots(slots0: (string | null)[], opts: KnockoutOpts): FinalDraw[] {
+  let slots = slots0;
   const draws: FinalDraw[] = [];
   const semiSlots: string[] = []; // the SF-round match slots (for the optional 3rd-place final)
   let roundSize = slots.length;
@@ -173,6 +178,41 @@ export function bracketFromParticipants(entrants: string[], opts: KnockoutOpts =
   }
   if (opts.thirdPlace) { const tp = thirdPlaceDraw(semiSlots, draws.length + 1); if (tp) draws.push(tp); }
   return draws;
+}
+
+export function bracketFromParticipants(entrants: string[], opts: KnockoutOpts = {}): FinalDraw[] {
+  const n = entrants.length;
+  if (n < 2) return [];
+  return knockoutFromSlots([...entrants, ...Array(nextPow2(n) - n).fill(null)], opts);
+}
+
+/** Standard bracket seed positions for a power-of-two draw: returns, for each bracket position (in
+ *  order), the seed number that occupies it (1 spread from 2, 1-4-2-3, …). Byes land on the top seeds
+ *  because their opponents (the highest, non-existent seed numbers) become `null`. */
+function seedSlots(size: number): number[] {
+  let cur: number[] = [1, 2];
+  while (cur.length < size) {
+    const s = cur.length * 2, nx: number[] = [];
+    for (const seedNo of cur) { nx.push(seedNo); nx.push(s + 1 - seedNo); }
+    cur = nx;
+  }
+  return cur;
+}
+
+export interface GroupKnockoutOpts extends KnockoutOpts { qualifiersPerGroup?: number }
+
+/** finali-formule SP-A3 — GROUP_KNOCKOUT: a seeded single-elim from group qualifiers. The top `Q` of
+ *  each group qualify; seeds are ordered group-winners-first (1ºA, 1ºB, … then 2ºA, 2ºB, …) then placed
+ *  with standard bracket seeding so winners are spread and cross groups (1ºA-2ºB…), with byes to the top
+ *  seeds. Entry-round home/away are `Nª Girone X` placeholders resolved on read from the standings. */
+export function groupKnockout(groups: FinalGroupInput[], opts: GroupKnockoutOpts = {}): FinalDraw[] {
+  const Q = Math.max(1, Math.floor(opts.qualifiersPerGroup ?? 1));
+  const quals: string[] = [];
+  for (let rank = 1; rank <= Q; rank++) for (const g of groups) quals.push(seed(rank, g.label));
+  if (quals.length < 2) return [];
+  const positions = seedSlots(nextPow2(quals.length));
+  const slots = positions.map((p) => (p <= quals.length ? quals[p - 1]! : null));
+  return knockoutFromSlots(slots, { thirdPlace: opts.thirdPlace });
 }
 
 export type SeedRef = { seed: number };

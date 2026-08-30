@@ -43,13 +43,14 @@ const orgOf = (c: any) => getIdentity(c)?.organizationId ?? c.req.header('x-orga
 // S7.1: match-format params + fields + the (uniform, until S8) group structure are the
 // generate input. All positive; legs defaults SINGLE, groupsCount defaults 1.
 // S13: finals format fields (per-category on byCategory, or top-level default). Optional everywhere.
-const finalsType = z.enum(['SINGLE_GROUP_CROSSOVER', 'SPLIT_GROUP_FINALS', 'PLACEMENT']);
+const finalsType = z.enum(['SINGLE_GROUP_CROSSOVER', 'SPLIT_GROUP_FINALS', 'PLACEMENT', 'GROUP_KNOCKOUT', 'FINAL_ROUND_ROBIN']);
 const finalsFields = {
   finalsType: finalsType.optional(),
   finalsEnabled: z.boolean().optional(),
   finalsTeamsToBracket: z.number().int().positive().optional(),
   finalsFormatId: z.string().optional(),
   finalsThirdPlace: z.boolean().optional(),
+  finalsQualifiersPerGroup: z.number().int().positive().optional(),
 };
 const categorySchedule = z.object({
   fields: z.array(z.string()),

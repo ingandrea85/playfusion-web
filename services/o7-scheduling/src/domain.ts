@@ -32,6 +32,8 @@ export interface CategorySchedule {
   /** finali-formule SP-A2: add a 3rd/4th-place final between the two semifinal losers. Applies to
    *  knockout brackets (solo tabellone + GROUP_KNOCKOUT). Default off. */
   finalsThirdPlace?: boolean;
+  /** finali-formule SP-A3: how many top teams of each group qualify to the GROUP_KNOCKOUT. Default 1. */
+  finalsQualifiersPerGroup?: number;
 }
 
 /** Fields + match-format params live on the Schedule (O7), never on the Event/Category.
@@ -59,6 +61,8 @@ export interface ScheduleConfig {
   finalsFormatId?: string;
   /** finali-formule SP-A2: default 3rd/4th-place final toggle. Per-category via byCategory. */
   finalsThirdPlace?: boolean;
+  /** finali-formule SP-A3: default GROUP_KNOCKOUT qualifiers-per-group. Per-category via byCategory. */
+  finalsQualifiersPerGroup?: number;
 }
 
 /** Resolve a category's playing config: its `byCategory` override if present, else the
@@ -69,6 +73,7 @@ export function categoryConfig(config: ScheduleConfig, categoria: string): Categ
     breakMinutes: config.breakMinutes, legs: config.legs,
     finalsType: config.finalsType, finalsEnabled: config.finalsEnabled, finalsTeamsToBracket: config.finalsTeamsToBracket,
     finalsFormatId: config.finalsFormatId, finalsThirdPlace: config.finalsThirdPlace,
+    finalsQualifiersPerGroup: config.finalsQualifiersPerGroup,
   };
 }
 
