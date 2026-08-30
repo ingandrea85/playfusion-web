@@ -1,36 +1,44 @@
-import { renderOrganizerTopbar, esc, renderBracket, type BracketMatch } from '@playfusion/app-shell'
+import { esc, renderBracket, type BracketMatch } from '@playfusion/app-shell'
 import { validateFormat, compileFormat, type CustomFinalsFormat, type FormatRound, type MatchRef } from '@playfusion/finals-format'
-import { inlineError, errorCard, type Screen, type ViewCtx } from '../view.js'
+import { inlineError, lockCard, notAuthorizedCard, type Screen, type ViewCtx } from '../view.js'
+import { renderOrgShell } from './org.js'
 
-const adminGate = (ctx: ViewCtx): string | null =>
-  ctx.isPlatformAdmin ? null : errorCard('Sezione riservata agli amministratori della piattaforma.')
+/** Owner + Pro gate for the org-scoped finals-format editor. Returns a gate card or null. */
+const gate = (ctx: ViewCtx): 'forbidden' | 'locked' | null =>
+  ctx.orgRole !== 'OWNER' ? 'forbidden' : !ctx.entitlements.hasFinalsFormats ? 'locked' : null
 
 // ---------- List ----------
-export function renderFormatsList(formats: CustomFinalsFormat[]): string {
-  const rows = formats.length
-    ? formats.map((f) => `<div class="pf-card pf-row" style="justify-content:space-between">
+export interface FinalsFormatsData { formats: CustomFinalsFormat[]; locked?: boolean; forbidden?: boolean }
+
+export function renderFormatsList(data: FinalsFormatsData): string {
+  if (data.forbidden) return renderOrgShell('finals-formats', notAuthorizedCard('Formati finali'))
+  if (data.locked) return renderOrgShell('finals-formats', lockCard('Formati finali'))
+  const rows = data.formats.length
+    ? data.formats.map((f) => `<div class="pf-card pf-row" style="justify-content:space-between">
         <div><b>${esc(f.name)}</b> <span class="pf-mono pf-muted">· ${f.seeds} seed · ${f.rounds.length} turni</span></div>
         <span class="pf-row" style="gap:var(--space-sm)">
-          <a class="pf-btn pf-btn--ghost" href="#/admin/finals-formats/${encodeURIComponent(f.id)}">Modifica</a>
+          <a class="pf-btn pf-btn--ghost" href="#/org/finals-formats/${encodeURIComponent(f.id)}">Modifica</a>
           <button class="pf-btn pf-btn--ghost" data-del="${esc(f.id)}">Elimina</button>
         </span></div>`).join('')
     : `<div class="pf-card pf-muted">Nessun formato personalizzato. Creane uno.</div>`
-  return `${renderOrganizerTopbar('dashboard')}
-    <main class="pf-container">
-      <div class="pf-row" style="margin-bottom:var(--space-lg)">
-        <div class="pf-pagehead" style="margin-bottom:0"><div class="pf-eyebrow">Admin</div><h1>Formati fase finale</h1></div>
-        <a class="pf-btn pf-btn--primary" href="#/admin/finals-formats/new">＋ Nuovo formato</a>
-      </div>
-      <div id="err"></div>
-      <div class="pf-stack">${rows}</div>
-    </main>`
+  return renderOrgShell('finals-formats', `
+    <div class="pf-row" style="margin-bottom:var(--space-lg)">
+      <div class="pf-pagehead" style="margin-bottom:0"><div class="pf-eyebrow">Organizzazione</div><h1>Formati fase finale</h1></div>
+      <a class="pf-btn pf-btn--primary" href="#/org/finals-formats/new">＋ Nuovo formato</a>
+    </div>
+    <div id="err"></div>
+    <div class="pf-stack">${rows}</div>`)
 }
 
-export const finalsFormatsScreen: Screen<CustomFinalsFormat[]> = {
-  load: (ctx) => ctx.client.o7.listFinalsFormats(),
-  render: (formats) => renderFormatsList(formats),
-  mount(root, ctx: ViewCtx) {
-    if (!ctx.isPlatformAdmin) { root.innerHTML = errorCard('Sezione riservata agli amministratori.'); return }
+export const finalsFormatsScreen: Screen<FinalsFormatsData> = {
+  load: async (ctx) => {
+    const g = gate(ctx)
+    if (g) return { formats: [], [g]: true }
+    return { formats: await ctx.client.o7.listFinalsFormats().catch(() => []) }
+  },
+  render: (data) => renderFormatsList(data),
+  mount(root, ctx: ViewCtx, data) {
+    if (data.forbidden || data.locked) return
     root.querySelectorAll<HTMLButtonElement>('[data-del]').forEach((b) => b.addEventListener('click', async () => {
       if (!confirm('Eliminare il formato?')) return
       try { await ctx.client.o7.deleteFinalsFormat(b.dataset.del!); ctx.refresh() }
@@ -40,7 +48,7 @@ export const finalsFormatsScreen: Screen<CustomFinalsFormat[]> = {
 }
 
 // ---------- Editor ----------
-export interface FormatEditorData { format: CustomFinalsFormat | null }
+export interface FormatEditorData { format: CustomFinalsFormat | null; locked?: boolean; forbidden?: boolean }
 
 const blankModel = (): CustomFinalsFormat => ({ id: '', name: '', seeds: 4, createdAt: '', rounds: [] })
 const refToValue = (r: MatchRef): string => ('seed' in r ? `seed:${r.seed}` : 'winnerOf' in r ? `win:${r.winnerOf}` : `lose:${r.loserOf}`)
@@ -54,10 +62,11 @@ export function previewMatches(m: CustomFinalsFormat): BracketMatch[] {
 }
 
 export function renderFormatEditor(data: FormatEditorData): string {
+  if (data.forbidden) return renderOrgShell('finals-formats', notAuthorizedCard('Formati finali'))
+  if (data.locked) return renderOrgShell('finals-formats', lockCard('Formati finali'))
   const m = data.format ?? blankModel()
-  return `${renderOrganizerTopbar('dashboard')}
-    <main class="pf-container">
-      <div class="pf-pagehead"><div class="pf-eyebrow">Admin</div><h1>${data.format ? 'Modifica formato' : 'Nuovo formato'}</h1></div>
+  return renderOrgShell('finals-formats', `
+      <div class="pf-pagehead"><div class="pf-eyebrow">Organizzazione</div><h1>${data.format ? 'Modifica formato' : 'Nuovo formato'}</h1></div>
       <div id="err"></div>
       <div class="pf-ff-grid">
         <div>
@@ -70,19 +79,22 @@ export function renderFormatEditor(data: FormatEditorData): string {
           <div id="ff-errors" style="margin-top:var(--space-md)"></div>
           <div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm);margin-top:var(--space-md)">
             <button class="pf-btn pf-btn--primary" id="ff-save">Salva</button>
-            <a class="pf-btn" href="#/admin/finals-formats">Annulla</a>
+            <a class="pf-btn" href="#/org/finals-formats">Annulla</a>
           </div>
         </div>
         <div class="pf-card"><div class="pf-eyebrow">Anteprima</div><div id="ff-preview" style="margin-top:var(--space-sm)"></div></div>
-      </div>
-    </main>`
+      </div>`)
 }
 
 export const finalsFormatEditorScreen: Screen<FormatEditorData> = {
-  load: async (ctx, p) => ({ format: p.id && p.id !== 'new' ? await ctx.client.o7.getFinalsFormat(p.id) : null }),
+  load: async (ctx, p) => {
+    const g = gate(ctx)
+    if (g) return { format: null, [g]: true }
+    return { format: p.id && p.id !== 'new' ? await ctx.client.o7.getFinalsFormat(p.id) : null }
+  },
   render: (data) => renderFormatEditor(data),
   mount(root, ctx: ViewCtx, data) {
-    const gate = adminGate(ctx); if (gate) { root.innerHTML = gate; return }
+    if (data.forbidden || data.locked) return
     const model: CustomFinalsFormat = data.format ? structuredClone(data.format) : blankModel()
     const q = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!
     const form = q('#ff-form'), preview = q('#ff-preview'), errs = q('#ff-errors')
@@ -145,7 +157,7 @@ export const finalsFormatEditorScreen: Screen<FormatEditorData> = {
       try {
         if (data.format) await ctx.client.o7.updateFinalsFormat(data.format.id, input)
         else await ctx.client.o7.saveFinalsFormat(input)
-        ctx.navigate('#/admin/finals-formats')
+        ctx.navigate('#/org/finals-formats')
       } catch { q('#err').innerHTML = inlineError('Salvataggio non riuscito (controlla il formato).') }
     })
 

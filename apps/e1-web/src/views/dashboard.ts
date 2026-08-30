@@ -25,11 +25,4 @@ export function renderDashboard(events: EventSummary[]): string {
 export const dashboardScreen: Screen<EventSummary[]> = {
   load: (ctx) => ctx.client.o3.listEvents(),
   render: renderDashboard,
-  mount(root, ctx) {
-    // Platform admins get a link to the global finals-format catalog (SP2).
-    if (ctx.isPlatformAdmin) {
-      root.querySelector('#dash-actions')?.insertAdjacentHTML('afterbegin',
-        '<a class="pf-btn" href="#/admin/finals-formats">Formati finali</a>')
-    }
-  },
 }
