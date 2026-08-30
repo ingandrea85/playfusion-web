@@ -49,7 +49,7 @@ function buildFinalMatches(
       if (format.seeds > totalTeams) throw new DomainError('FINALS_SEEDS_EXCEED_TEAMS', `format "${format.name}" needs ${format.seeds} qualifiers but ${cat.id} has ${totalTeams}`, 422);
       draws = compileFormat(format);
     } else if (cc.finalsType && cc.finalsEnabled !== false) {
-      draws = buildFinals(cat.groups.map((g) => ({ label: g.label, size: g.teams.length })), cc.finalsType, { finalsTeamsToBracket: cc.finalsTeamsToBracket });
+      draws = buildFinals(cat.groups.map((g) => ({ label: g.label, size: g.teams.length })), cc.finalsType, { finalsTeamsToBracket: cc.finalsTeamsToBracket, qualifiersPerGroup: cc.finalsQualifiersPerGroup, thirdPlace: cc.finalsThirdPlace });
     } else {
       continue;
     }
@@ -98,7 +98,7 @@ function buildBracketMatches(
       const sub = (label: string): string => { const m = SEED_ONLY.exec(label); return m ? (participants[Number(m[1]) - 1] ?? label) : label; };
       draws = compileFormat(format).map((d) => ({ ...d, home: sub(d.home), away: sub(d.away) }));
     } else {
-      draws = bracketFromParticipants(participants);
+      draws = bracketFromParticipants(participants, { thirdPlace: cc.finalsThirdPlace });
     }
     const fields = cc.fields.length ? cc.fields : ['Campo 1'];
     const slotMinutes = cc.periods * cc.periodMinutes + cc.breakMinutes;

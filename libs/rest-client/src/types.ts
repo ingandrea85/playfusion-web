@@ -2,7 +2,7 @@
 export type Playbook = 'PB-1' | 'PB-2'
 export type TieBreakCriterion = 'HEAD_TO_HEAD' | 'GOAL_DIFFERENCE' | 'GOALS_FOR'
 // S12: finals bracket shape (O6).
-export type FinalsType = 'SINGLE_GROUP_CROSSOVER' | 'SPLIT_GROUP_FINALS' | 'PLACEMENT'
+export type FinalsType = 'SINGLE_GROUP_CROSSOVER' | 'SPLIT_GROUP_FINALS' | 'PLACEMENT' | 'GROUP_KNOCKOUT' | 'FINAL_ROUND_ROBIN'
 export interface EventDetail {
   sportEventId: string
   // S18: the read model always populates this (the public portal resolves the tenant brand from
@@ -96,6 +96,8 @@ export interface CategorySchedule {
   finalsEnabled?: boolean
   finalsTeamsToBracket?: number
   finalsFormatId?: string
+  finalsThirdPlace?: boolean
+  finalsQualifiersPerGroup?: number
 }
 export interface ScheduleConfig {
   fields: string[]
@@ -112,6 +114,8 @@ export interface ScheduleConfig {
   finalsEnabled?: boolean
   finalsTeamsToBracket?: number
   finalsFormatId?: string
+  finalsThirdPlace?: boolean
+  finalsQualifiersPerGroup?: number
 }
 export interface ScheduleView {
   sportEventId: string

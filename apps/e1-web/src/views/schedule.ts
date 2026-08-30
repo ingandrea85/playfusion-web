@@ -1,12 +1,15 @@
-import { esc, renderCalendar, renderTabs, categoryKeys, renderStepper, wireSteppers, readStepper, copyToClipboard, displayStatus, matchStatusBadge, calendarGironeTabs, filterCalendarMatches, finalsPhaseTabs, FINALS_TAB } from '@playfusion/app-shell'
+import { esc, renderCalendar, renderTabs, categoryKeys, renderStepper, wireSteppers, readStepper, copyToClipboard, displayStatus, matchStatusBadge, calendarGironeTabs, filterCalendarMatches, finalsPhaseTabs, FINALS_TAB, renderBracket } from '@playfusion/app-shell'
 import type { CategorySchedule, CustomFinalsFormat, EventDetail, FinalsType, ScheduleConfig, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
+import { previewDraws, formatExplainer, type FormulaInput } from '@playfusion/finals-format'
 
 const FINALS_TYPE_LABEL: Record<FinalsType, string> = {
   PLACEMENT: 'Tabellone eliminazione (per fascia)',
   SINGLE_GROUP_CROSSOVER: 'Girone unico · coppie (1ª-2ª, 3ª-4ª…)',
   SPLIT_GROUP_FINALS: 'Gironi + girone finale',
+  GROUP_KNOCKOUT: 'Tabellone da gironi (incroci + teste di serie)',
+  FINAL_ROUND_ROBIN: 'Girone all\'italiana finale',
 }
-const FINALS_TYPES: FinalsType[] = ['PLACEMENT', 'SINGLE_GROUP_CROSSOVER', 'SPLIT_GROUP_FINALS']
+const FINALS_TYPES: FinalsType[] = ['PLACEMENT', 'SINGLE_GROUP_CROSSOVER', 'SPLIT_GROUP_FINALS', 'GROUP_KNOCKOUT', 'FINAL_ROUND_ROBIN']
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
 
@@ -15,6 +18,7 @@ export interface ScheduleData {
   schedule: ScheduleView
   matches: ScheduledMatchView[]
   finalsFormats: CustomFinalsFormat[] // SP1: custom formats offered alongside the built-ins
+  teamsByCat: Record<string, number> // SP-B1: confirmed team/player count per category (for the formula preview)
 }
 
 const STATUS_LABEL: Record<ScheduleView['status'], string> = {
@@ -28,24 +32,49 @@ const defaultCat = (c: ScheduleConfig): CategorySchedule =>
      finalsType: c.finalsType, finalsEnabled: c.finalsEnabled, finalsTeamsToBracket: c.finalsTeamsToBracket, finalsFormatId: c.finalsFormatId })
 const textToFields = (s: string): string[] => s.split(',').map((f) => f.trim()).filter(Boolean)
 
+/** finali-formule SP-B1: the config card's live "formula" — an explainer sentence + the structural
+ *  bracket compiled from the current counts. Skipped for a custom finals format (its own editor
+ *  previews it). `count` = confirmed team/player count for the card's category; `groups` = groupsCount. */
+function formulaInput(cc: CategorySchedule, bracket: boolean, count: number, groups: number): FormulaInput {
+  if (bracket) return { solo: true, participants: count, thirdPlace: cc.finalsThirdPlace }
+  return {
+    finalsType: cc.finalsType, groups, participants: count,
+    qualifiersPerGroup: cc.finalsQualifiersPerGroup, finalsTeamsToBracket: cc.finalsTeamsToBracket, thirdPlace: cc.finalsThirdPlace,
+  }
+}
+function renderFormula(cc: CategorySchedule, bracket: boolean, count: number, groups: number): string {
+  if (cc.finalsFormatId) return `<div class="pf-formula"><p class="pf-muted">💡 Formato personalizzato — anteprima nell'editor dei formati.</p></div>`
+  const input = formulaInput(cc, bracket, count, groups)
+  const explain = `<p class="pf-formula__explain">💡 ${esc(formatExplainer(input))}</p>`
+  const draws = previewDraws(input)
+  const preview = draws.length ? renderBracket(draws.map((d) => ({ ...d, categoryId: 'preview' })), () => 'Anteprima') : ''
+  return `<div class="pf-formula"><div class="pf-formula__cap pf-mono">Formula</div>${explain}${preview}</div>`
+}
+
 /** One playing-config card (fields + match params + legs). `cat` present → per-category card
  *  tagged with data-cat; absent → the shared "same for all" card. Epic #143 (S4): a `bracket`
  *  (solo tabellone) event hides the group-only inputs — Andata/ritorno + the finals-format row
- *  (its bracket is auto-seeded from the participants, not from gironi). */
-function playCard(cc: CategorySchedule, locked: boolean, formats: CustomFinalsFormat[], cat?: string, bracket = false): string {
+ *  (its bracket is auto-seeded from the participants, not from gironi). SP-B1: appends the live formula. */
+function playCard(cc: CategorySchedule, locked: boolean, formats: CustomFinalsFormat[], cat: string | undefined, bracket: boolean, count: number, groups: number): string {
   const dis = locked ? 'disabled' : ''
   const legsField = bracket ? '' : `<div class="pf-field" style="margin-bottom:0"><label>Andata/ritorno</label><select class="cfg-legs" ${dis}>
         <option value="SINGLE" ${cc.legs === 'SINGLE' ? 'selected' : ''}>Solo andata</option>
         <option value="HOME_AWAY" ${cc.legs === 'HOME_AWAY' ? 'selected' : ''}>Andata e ritorno</option>
       </select></div>`
-  const finalsRow = bracket ? '' : `<div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
+  // finali-formule SP-A2: 3rd/4th-place toggle for knockout brackets.
+  const thirdPlace = `<label class="pf-switch cfg-thirdplace-w" style="margin-top:var(--space-sm)"><input type="checkbox" class="cfg-thirdplace" ${cc.finalsThirdPlace ? 'checked' : ''} ${dis} /> Includi finale 3º/4º posto</label>`
+  const finalsRow = bracket
+    ? thirdPlace // solo tabellone: the bracket auto-seeds from participants; only the 3rd-place option applies
+    : `<div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
       <div class="pf-field" style="margin-bottom:0"><label>Fase finale</label><select class="cfg-finalsType" ${dis}>
         <option value=""${!cc.finalsType && !cc.finalsFormatId ? ' selected' : ''}>Nessuna</option>
         ${FINALS_TYPES.map((t) => `<option value="${t}" ${cc.finalsType === t && !cc.finalsFormatId ? 'selected' : ''}>${esc(FINALS_TYPE_LABEL[t])}</option>`).join('')}
         ${formats.length ? `<optgroup label="Personalizzati">${formats.map((f) => `<option value="format:${esc(f.id)}" ${cc.finalsFormatId === f.id ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</optgroup>` : ''}
       </select></div>
-      <div class="pf-field" style="margin-bottom:0"><label>Squadre al tabellone</label><input class="cfg-finalsTeamsToBracket" type="number" min="2" step="2" value="${cc.finalsTeamsToBracket ?? ''}" placeholder="solo Gironi + girone finale" ${dis} /></div>
-    </div>`
+      <div class="pf-field" style="margin-bottom:0"><label>Squadre al tabellone</label><input class="cfg-finalsTeamsToBracket" type="number" min="2" step="2" value="${cc.finalsTeamsToBracket ?? ''}" placeholder="Gironi + girone finale" ${dis} /></div>
+      <div class="pf-field" style="margin-bottom:0"><label>Qualificati per girone</label><input class="cfg-qualPerGroup" type="number" min="1" max="4" value="${cc.finalsQualifiersPerGroup ?? ''}" placeholder="Tabellone da gironi" ${dis} /></div>
+    </div>
+    ${thirdPlace}`
   return `<div class="pf-card js-playcard"${cat ? ` data-cat="${esc(cat)}"` : ''} style="background:var(--color-surface-sunken)">
     ${cat ? `<h3 class="pf-h4" style="margin-top:0">${esc(cat)}</h3>` : ''}
     <div class="pf-field"><label>Campi (separati da virgola)</label>
@@ -57,12 +86,17 @@ function playCard(cc: CategorySchedule, locked: boolean, formats: CustomFinalsFo
       ${legsField}
     </div>
     ${finalsRow}
+    <div class="js-formula">${renderFormula(cc, bracket, count, groups)}</div>
   </div>`
 }
 
-function renderConfigBody(mode: 'all' | 'per', config: ScheduleConfig, categorie: string[], locked: boolean, formats: CustomFinalsFormat[], bracket: boolean): string {
-  if (mode === 'all') return playCard(defaultCat(config), locked, formats, undefined, bracket)
-  return categorie.map((c) => playCard(config.byCategory?.[c] ?? defaultCat(config), locked, formats, c, bracket)).join('')
+/** A representative team count for the shared "same for all" card = the busiest category. */
+const repCount = (teamsByCat: Record<string, number>): number => Math.max(0, ...Object.values(teamsByCat))
+
+function renderConfigBody(mode: 'all' | 'per', config: ScheduleConfig, categorie: string[], locked: boolean, formats: CustomFinalsFormat[], bracket: boolean, teamsByCat: Record<string, number>): string {
+  const groups = config.groupsCount || 1
+  if (mode === 'all') return playCard(defaultCat(config), locked, formats, undefined, bracket, repCount(teamsByCat), groups)
+  return categorie.map((c) => playCard(config.byCategory?.[c] ?? defaultCat(config), locked, formats, c, bracket, teamsByCat[c] ?? 0, groups)).join('')
 }
 
 function globalCard(config: ScheduleConfig, locked: boolean, bracket: boolean): string {
@@ -78,14 +112,14 @@ function globalCard(config: ScheduleConfig, locked: boolean, bracket: boolean): 
     <p class="pf-muted" style="margin:var(--space-sm) 0 0">${hint}</p></div>`
 }
 
-function configSection(config: ScheduleConfig, categorie: string[], status: ScheduleView['status'], formats: CustomFinalsFormat[], bracket: boolean): string {
+function configSection(config: ScheduleConfig, categorie: string[], status: ScheduleView['status'], formats: CustomFinalsFormat[], bracket: boolean, teamsByCat: Record<string, number>): string {
   const locked = isLocked(status)
   const mode = config.byCategory ? 'per' : 'all'
   return `${globalCard(config, locked, bracket)}
     <div class="pf-card">
       <h2 class="pf-h3">Config di gioco</h2>
       <label class="pf-switch"><input type="checkbox" id="sameForAll" ${mode === 'all' ? 'checked' : ''} ${locked ? 'disabled' : ''} /> Stessa config di gioco per tutte le categorie</label>
-      <div id="cfgbody" style="margin-top:var(--space-md)">${renderConfigBody(mode, config, categorie, locked, formats, bracket)}</div>
+      <div id="cfgbody" style="margin-top:var(--space-md)">${renderConfigBody(mode, config, categorie, locked, formats, bracket, teamsByCat)}</div>
       ${locked
         ? '<p class="pf-muted" style="margin-top:var(--space-md)">Calendario approvato: configurazione bloccata.</p>'
         : '<button class="pf-btn pf-btn--primary" id="generate" style="margin-top:var(--space-md)">Genera calendario</button>'}
@@ -138,16 +172,20 @@ export function renderSchedule(data: ScheduleData): string {
   const calendar = schedule.status === 'NONE' ? '' : calendarCard(matches, categoryKeys(matches)[0] ?? '', 'ALL')
   const directors = schedule.status === 'NONE' ? '' : directorCard(matches)
   return workspaceShell(event, 'schedule',
-    `<div id="err"></div>${configSection(schedule.config, event.categorie, schedule.status, data.finalsFormats, bracket)}${actionsCard(schedule.status)}${calendar}${directors}`)
+    `<div id="err"></div>${configSection(schedule.config, event.categorie, schedule.status, data.finalsFormats, bracket, data.teamsByCat)}${actionsCard(schedule.status)}${calendar}${directors}`)
 }
 
 export const scheduleScreen: Screen<ScheduleData> = {
   load: async (ctx, p) => {
-    const [event, schedule, matches, finalsFormats] = await Promise.all([
+    const [event, schedule, matches, finalsFormats, confirmed] = await Promise.all([
       ctx.client.o3.getEvent(p.id), ctx.client.o7.getSchedule(p.id), ctx.client.o7.getMatches(p.id),
       ctx.client.o7.listFinalsFormats().catch(() => [] as CustomFinalsFormat[]),
+      ctx.client.o5.listRegistrations(p.id, 'Confirmed').catch(() => []),
     ])
-    return { event, schedule, matches, finalsFormats }
+    // SP-B1: confirmed team/player count per category — drives the formula preview's numbers.
+    const teamsByCat: Record<string, number> = {}
+    for (const c of event.categorie) teamsByCat[c] = confirmed.filter((r) => r.categoria === c).length
+    return { event, schedule, matches, finalsFormats, teamsByCat }
   },
   render: renderSchedule,
   mount(root, ctx: ViewCtx, data) {
@@ -162,10 +200,25 @@ export const scheduleScreen: Screen<ScheduleData> = {
 
     const categorie = data.event.categorie
     const bracket = data.event.format === 'bracket'
+    const groups = data.schedule.config.groupsCount || 1
     const cfgbody = root.querySelector('#cfgbody')!
     const sameForAll = root.querySelector<HTMLInputElement>('#sameForAll')
     const mode = (): 'all' | 'per' => (sameForAll?.checked ? 'all' : 'per')
-    sameForAll?.addEventListener('change', () => { cfgbody.innerHTML = renderConfigBody(mode(), data.schedule.config, categorie, false, data.finalsFormats, bracket) })
+
+    // SP-B1: recompute a card's live formula preview whenever any of its inputs change.
+    const wireFormula = () => {
+      cfgbody.querySelectorAll<HTMLElement>('.js-playcard').forEach((card) => {
+        const redraw = () => {
+          const holder = card.querySelector('.js-formula'); if (!holder) return
+          const cat = card.getAttribute('data-cat')
+          const count = cat ? (data.teamsByCat[cat] ?? 0) : repCount(data.teamsByCat)
+          holder.innerHTML = renderFormula(readCard(card), bracket, count, groups)
+        }
+        card.addEventListener('input', redraw)
+        card.addEventListener('change', redraw)
+      })
+    }
+    sameForAll?.addEventListener('change', () => { cfgbody.innerHTML = renderConfigBody(mode(), data.schedule.config, categorie, false, data.finalsFormats, bracket, data.teamsByCat); wireFormula() })
 
     const readCard = (el: Element): CategorySchedule => {
       const val = (s: string) => el.querySelector<HTMLInputElement>(s)?.value ?? ''
@@ -176,6 +229,8 @@ export const scheduleScreen: Screen<ScheduleData> = {
       const finalsFormatId = finalsSel.startsWith('format:') ? finalsSel.slice('format:'.length) : undefined
       const finalsType = (!finalsFormatId && finalsSel ? finalsSel : undefined) as FinalsType | undefined
       const bracket = Number(val('.cfg-finalsTeamsToBracket'))
+      const qualPerGroup = Number(val('.cfg-qualPerGroup'))
+      const thirdPlace = el.querySelector<HTMLInputElement>('.cfg-thirdplace')?.checked
       return {
         fields: textToFields(val('.cfg-fields')),
         periods: num('.cfg-periods', 2), periodMinutes: num('.cfg-periodMinutes', 20),
@@ -185,6 +240,8 @@ export const scheduleScreen: Screen<ScheduleData> = {
         ...(finalsFormatId ? { finalsFormatId } : {}),
         ...(finalsType ? { finalsType, finalsEnabled: true } : {}),
         ...(Number.isFinite(bracket) && bracket >= 2 ? { finalsTeamsToBracket: Math.floor(bracket) } : {}),
+        ...(Number.isFinite(qualPerGroup) && qualPerGroup >= 1 ? { finalsQualifiersPerGroup: Math.floor(qualPerGroup) } : {}),
+        ...(thirdPlace ? { finalsThirdPlace: true } : {}),
       }
     }
     const buildConfig = (): { config?: ScheduleConfig; error?: string } => {
@@ -220,6 +277,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
       try { await ctx.client.o7.generateSchedule(id, config); ctx.refresh() }
       catch { err.innerHTML = inlineError('Generazione non riuscita. Riprova.'); btn.disabled = false }
     })
+    wireFormula()
     wireStatus()
 
     function wireStatus() {

@@ -10,7 +10,7 @@ const event: EventDetail = {
 const cfg: ScheduleView['config'] = { fields: ['Campo A', 'Campo B'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', groupsCount: 1, legs: 'SINGLE' }
 const match: ScheduledMatchView = { id: 'sm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Girone A', day: '2026-08-29', time: '09:00', field: 'Campo A', home: 'A', away: 'B' }
 const data = (status: ScheduleView['status'], matches: ScheduledMatchView[] = [], config = cfg): ScheduleData =>
-  ({ event, schedule: { sportEventId: 'e1', organizationId: 'org', status, config }, matches, finalsFormats: [] })
+  ({ event, schedule: { sportEventId: 'e1', organizationId: 'org', status, config }, matches, finalsFormats: [], teamsByCat: { U10: 8, U12: 6 } })
 
 describe('schedule render', () => {
   it('shows the facility + play config and the Calendario tab, no calendar/actions when NONE', () => {
@@ -299,7 +299,7 @@ describe('schedule decree winner on drawn knockout', () => {
 describe('schedule config: solo tabellone (S4) hides group-only inputs', () => {
   const bracketData = (): ScheduleData => ({
     event: { ...event, format: 'bracket' },
-    schedule: { sportEventId: 'e1', organizationId: 'org', status: 'NONE', config: cfg }, matches: [], finalsFormats: [],
+    schedule: { sportEventId: 'e1', organizationId: 'org', status: 'NONE', config: cfg }, matches: [], finalsFormats: [], teamsByCat: { U10: 8, U12: 6 },
   })
   it('omits Andata/ritorno and the finals-format row for a bracket event', () => {
     const html = renderSchedule(bracketData())
@@ -310,6 +310,17 @@ describe('schedule config: solo tabellone (S4) hides group-only inputs', () => {
     expect(html).toContain('generato dai partecipanti')
     // match-timing inputs stay (they still schedule the bracket matches).
     expect(html).toContain('cfg-periods')
+  })
+  it('shows the live formula preview (explainer + bracket) for a bracket event (SP-B1)', () => {
+    const html = renderSchedule(bracketData())
+    expect(html).toContain('js-formula')
+    expect(html).toContain('Eliminazione diretta') // explainer
+    expect(html).toContain('Semifinali')            // bracket round from 8 participants
+  })
+  it('shows the 3º/4º toggle for a bracket event (SP-A2)', () => {
+    const html = renderSchedule(bracketData())
+    expect(html).toContain('cfg-thirdplace')
+    expect(html).toContain('finale 3º/4º posto')
   })
   it('keeps Andata/ritorno + finals config for a groups+bracket event', () => {
     const html = renderSchedule(data('NONE'))
