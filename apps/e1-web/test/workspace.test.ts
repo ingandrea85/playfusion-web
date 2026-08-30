@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { EventDetail } from '@playfusion/rest-client'
-import { renderWorkspace, renderCompetition, renderCategorie } from '../src/views/workspace'
+import { renderWorkspace, renderCategorie } from '../src/views/workspace'
 
 const full: EventDetail = {
   sportEventId: 'e1', sport: 'Calcio', categorie: ['U10', 'U12'],
@@ -34,18 +34,18 @@ describe('workspace Panoramica', () => {
     expect(html).toContain('Basket · U14')
   })
 
-  it('renders the competition and categorie tabs in the nav', () => {
+  it('has no separate Competizione tab (merged into Panoramica)', () => {
     const html = renderWorkspace(full, 'overview')
-    expect(html).toContain('/competition')
+    expect(html).not.toContain('/competition')
     expect(html).toContain('/categorie')
   })
-})
 
-describe('workspace Competition tab', () => {
-  it('renders the tie-break order and playbook', () => {
-    const html = renderCompetition(full)
-    expect(html).toContain('Differenza reti')
+  it('folds the competition config into Panoramica (playbook, tie-break, finals note)', () => {
+    const html = renderWorkspace(full, 'overview')
     expect(html).toContain('PB-2')
+    expect(html).toContain('Differenza reti')
+    expect(html).toContain('fase finale')
+    expect(html).toContain('Calendario')
   })
 })
 
@@ -69,9 +69,9 @@ describe('workspace Categorie tab (dashboard)', () => {
   })
 })
 
-describe('competition finals editor (S12)', () => {
-  it('points finals config to the Calendario tab (no event-level editor)', () => {
-    const html = renderCompetition(full)
+describe('finals config (S12)', () => {
+  it('Panoramica points finals config to the Calendario tab (no event-level editor)', () => {
+    const html = renderWorkspace(full, 'overview')
     expect(html).toContain('fase finale')
     expect(html).toContain('Calendario')
     expect(html).not.toContain('id="fc-type"') // the old event-level editor is gone

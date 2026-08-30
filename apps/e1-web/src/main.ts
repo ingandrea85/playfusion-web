@@ -10,7 +10,7 @@ import { setOrgNavOwner } from './views/org.js'
 import { orgSiteScreen } from './views/org-site.js'
 import { eventSiteScreen } from './views/event-site.js'
 import { createEventScreen } from './views/create-event.js'
-import { workspaceScreen, competitionScreen, categorieScreen } from './views/workspace.js'
+import { workspaceScreen, categorieScreen } from './views/workspace.js'
 import { gironiScreen } from './views/gironi.js'
 import { scheduleScreen } from './views/schedule.js'
 import { standingsScreen } from './views/standings.js'
@@ -82,7 +82,6 @@ async function boot() {
       .on('#/admin/finals-formats/:id', (p) => route(finalsFormatEditorScreen, p))
       .on('#/admin/finals-formats', () => route(finalsFormatsScreen, {}))
       .on('#/events/new', () => route(createEventScreen, {}))
-      .on('#/events/:id/competition', (p) => route(competitionScreen, p))
       .on('#/events/:id/categorie', (p) => route(categorieScreen, p))
       .on('#/events/:id/gironi', (p) => route(gironiScreen, p))
       .on('#/events/:id/schedule', (p) => route(scheduleScreen, p))
