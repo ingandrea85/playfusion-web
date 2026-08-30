@@ -214,7 +214,7 @@ export interface GroupStandingView { categoryId: string; groupLabel: string; row
 
 /** Standings tables, one per group (S10). Shared by the E1 Classifiche tab and the E3 public
  *  standings — read-only in both. Rows are pre-sorted by the caller (o7 standings engine). */
-export function renderStandings(groups: GroupStandingView[], catName: (id: string) => string): string {
+export function renderStandings(groups: GroupStandingView[], catName: (id: string) => string, participantLabel = 'Squadra'): string {
   if (!groups.length) return `<p class="pf-muted">Nessuna classifica: genera il calendario e inserisci i risultati.</p>`
   return groups.map((g) => {
     const rows = g.rows.map((r, i) => `<tr>
@@ -225,7 +225,7 @@ export function renderStandings(groups: GroupStandingView[], catName: (id: strin
     return `<div class="pf-standings">
       <div class="pf-calday__head pf-mono">${esc(catName(g.categoryId))} · ${esc(g.groupLabel)}</div>
       <table class="pf-table"><thead><tr>
-        <th>#</th><th>Squadra</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>Pti</th>
+        <th>#</th><th>${esc(participantLabel)}</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>Pti</th>
       </tr></thead><tbody>${rows}</tbody></table>
     </div>`
   }).join('')

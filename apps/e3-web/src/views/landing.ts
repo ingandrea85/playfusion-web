@@ -1,5 +1,5 @@
 import type { EventDetail, RegistrationWindowView, ResolvedEventSite } from '@playfusion/rest-client'
-import { hasSiteContent } from '@playfusion/rest-client'
+import { hasSiteContent, eventLabels } from '@playfusion/rest-client'
 import { renderPublicTopbar, esc } from '@playfusion/app-shell'
 
 export { renderParticipants, wireParticipants } from './participants.js'
@@ -22,14 +22,14 @@ function navButtons(event: EventDetail, published: boolean): string {
     ${standingsCta}
     ${bracketCta}
     <a class="pf-btn pf-btn--ghost" href="#/events/${id}/avvisi">Avvisi →</a>
-    <a class="pf-btn pf-btn--ghost" href="#/events/${id}/participants">Squadre iscritte →</a>`
+    <a class="pf-btn pf-btn--ghost" href="#/events/${id}/participants">${esc(eventLabels(event).participantPlural)} iscritt${event.participantType === 'individual' ? 'i' : 'e'} →</a>`
 }
 
 /** Basic landing (unchanged): hero + category chips + nav buttons + enrollment hint. Used when the
  *  organizer hasn't authored an event site (or is on the Free plan). */
 function renderBasicLanding(event: EventDetail, window: RegistrationWindowView, published: boolean): string {
   const enrollHint = window.state === 'Open'
-    ? `<p class="pf-muted" style="margin-top:var(--space-md)">Per iscrivere una squadra usa il link ricevuto dall'organizzatore.</p>`
+    ? `<p class="pf-muted" style="margin-top:var(--space-md)">Per iscrivere ${event.participantType === 'individual' ? 'un giocatore' : 'una squadra'} usa il link ricevuto dall'organizzatore.</p>`
     : ''
   return `${renderPublicTopbar()}
     <section class="pf-hero"><div class="pf-hero__inner">

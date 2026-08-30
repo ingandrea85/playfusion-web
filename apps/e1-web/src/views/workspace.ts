@@ -1,4 +1,5 @@
 import type { CategoryFinalStanding, EventDetail, Playbook, FinalsType, GironiMap, RegistrationView, RegistrationWindowView, ScheduledMatchView, ScheduleView } from '@playfusion/rest-client'
+import { eventLabels } from '@playfusion/rest-client'
 import { renderOrganizerWorkspace, esc, type WorkspaceTab } from '@playfusion/app-shell'
 import type { Screen } from '../view.js'
 import { criterionLabel } from './tiebreak.js'
@@ -65,7 +66,8 @@ const row = (label: string, value: string): string =>
 
 /** Read-only tie-break policy display: active criteria in order, points implied first. */
 function tieBreakList(event: EventDetail): string {
-  const items = (event.tieBreak ?? []).map((c, i) => `<li>${i + 2}. ${esc(criterionLabel(c))}</li>`).join('')
+  const score = event.sportProfile?.scoreLabel || 'Reti'
+  const items = (event.tieBreak ?? []).map((c, i) => `<li>${i + 2}. ${esc(criterionLabel(c, score))}</li>`).join('')
   return `<ol class="pf-tbview"><li>1. Punti</li>${items}</ol>`
 }
 
@@ -154,7 +156,7 @@ export function renderCategorie(data: CategorieData, activeTab = 'categorie'): s
     <td>${esc(c)}</td><td>${teams(c)}</td><td>${groups(c) || '<span class="pf-muted">—</span>'}</td><td>${finals(c)}</td>
   </tr>`).join('')
   const body = event.categorie.length
-    ? `<table class="pf-table"><thead><tr><th>Categoria</th><th>Squadre</th><th>Gironi</th><th>Formato finali</th></tr></thead><tbody>${rows}</tbody></table>
+    ? `<table class="pf-table"><thead><tr><th>Categoria</th><th>${esc(eventLabels(event).participantPlural)}</th><th>Gironi</th><th>Formato finali</th></tr></thead><tbody>${rows}</tbody></table>
        <p class="pf-muted" style="margin-top:var(--space-sm)">Calendario: <b>${esc(SCHEDULE_LABEL[schedule.status])}</b>. Composizione gironi nel tab <b>Gironi</b>, formato finali nel tab <b>Calendario</b>.</p>`
     : `<div class="pf-muted">Nessuna categoria.</div>`
   return shell(event, activeTab, `<div class="pf-card"><h2 class="pf-h3">Categorie</h2>${body}</div>`)
