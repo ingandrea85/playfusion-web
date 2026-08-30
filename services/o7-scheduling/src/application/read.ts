@@ -22,9 +22,12 @@ const sameSet = (a: string[], b: string[]): boolean => a.length === b.length && 
  *  S11 tie-break policy + manual overrides, reporting `unresolved` sets and surfacing an override's
  *  audit only while it resolves a real tie. */
 async function rankedStandings(all: ScheduledMatch[], deps: ReadDeps, sportEventId: string): Promise<GroupStanding[]> {
-  const base = computeStandings(all);
   const event = deps.events ? await deps.events.get(sportEventId) : undefined;
-  const policy = event?.tieBreak?.length ? event.tieBreak : defaultTieBreak(event?.sport);
+  // Epic #143: points + tie-break come from the event's sport profile snapshot; legacy events
+  // (no snapshot) keep football 3/1/0 + their configured/default tie-break.
+  const base = computeStandings(all, event?.sportProfile?.points);
+  const policy = event?.sportProfile?.tieBreak?.length ? event.sportProfile.tieBreak
+    : event?.tieBreak?.length ? event.tieBreak : defaultTieBreak(event?.sport);
   const overrides = deps.overrides ? await deps.overrides.list(sportEventId) : [];
 
   return base.map((g) => {

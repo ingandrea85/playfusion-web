@@ -17,6 +17,15 @@ test('test_rank_pointsPrimary_noTie', () => {
   expect(unresolved).toEqual([]);
 });
 
+test('test_rank_genericCriteria (SCORE_DIFFERENCE ≡ GD; WINS)', () => {
+  // Two teams level on points: SCORE_DIFFERENCE ranks like GOAL_DIFFERENCE.
+  const rows = [row('B', 3, 1, 3), row('C', 3, 5, 2)];
+  expect(rankStanding(rows, [], ['SCORE_DIFFERENCE']).rows.map((r) => r.team)).toEqual(['C', 'B']); // C +3 GD
+  // WINS breaks a tie by number of wins.
+  const w = [{ ...row('X', 3, 2, 2), won: 1 }, { ...row('Y', 3, 2, 2), won: 2 }];
+  expect(rankStanding(w, [], ['WINS']).rows.map((r) => r.team)).toEqual(['Y', 'X']);
+});
+
 test('test_rank_headToHead_twoTeams', () => {
   // A and B identical on points/GD/GF overall; only the direct match (A beat B) separates them.
   const rows = [row('A', 4, 3, 3), row('B', 4, 3, 3)];

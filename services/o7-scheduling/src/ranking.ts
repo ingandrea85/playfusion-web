@@ -54,16 +54,19 @@ function headToHeadTuple(group: StandingRow[], matches: ScheduledMatch[]): (r: S
   return (r) => { const s = mini.get(r.team)!; return [s.pts, s.gf - s.ga, s.gf]; };
 }
 
-function tupleFor(crit: TieBreakCriterion, group: StandingRow[], matches: ScheduledMatch[]): (r: StandingRow) => number[] {
-  if (crit === 'GOAL_DIFFERENCE') return (r) => [r.goalsFor - r.goalsAgainst];
-  if (crit === 'GOALS_FOR') return (r) => [r.goalsFor];
+// Accepts the legacy football criteria AND the generic sport-agnostic ones (Epic #143):
+// SCORE_DIFFERENCE ≡ GOAL_DIFFERENCE, SCORE_FOR ≡ GOALS_FOR, plus WINS.
+function tupleFor(crit: string, group: StandingRow[], matches: ScheduledMatch[]): (r: StandingRow) => number[] {
+  if (crit === 'GOAL_DIFFERENCE' || crit === 'SCORE_DIFFERENCE') return (r) => [r.goalsFor - r.goalsAgainst];
+  if (crit === 'GOALS_FOR' || crit === 'SCORE_FOR') return (r) => [r.goalsFor];
+  if (crit === 'WINS') return (r) => [r.won];
   return headToHeadTuple(group, matches);
 }
 
 export function rankStanding(
   rows: StandingRow[],
   matches: ScheduledMatch[],
-  policy: TieBreakCriterion[],
+  policy: readonly string[],
   overrides: string[][] = [],
 ): RankResult {
   const unresolved: string[][] = [];

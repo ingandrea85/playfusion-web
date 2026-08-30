@@ -34,6 +34,16 @@ export interface SportEvent {
   // no longer part of the event.
   /** Event Site (Pro): per-event overrides of the public website (resolved against org defaults). */
   site?: EventSite;
+  /** Epic #143: the sport profile snapshot + participant type + format chosen at creation. */
+  sportProfile?: EventSportSnapshot;
+  participantType?: 'team' | 'individual';
+  format?: 'groups' | 'groups+bracket' | 'bracket';
+}
+
+export interface EventSportSnapshot {
+  sportId: string; name: string; scoreLabel: string;
+  points: { win: number; draw: number | null; loss: number };
+  tieBreak: string[];
 }
 
 // Event Site — per-event overrides. All fields optional; the editor sends the whole object each save.

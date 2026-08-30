@@ -9,7 +9,13 @@ function emptyRow(team: string): StandingRow {
  *  (FINISHED — S26; or legacy played) are aggregated with 3/1/0. LIVE/SCHEDULED/CANCELLED do
  *  not move the table. Rows sorted points → goal-difference → goals-for → team name (asc).
  *  Deterministic. The configurable tie-break policy (S6 tieBreak) is applied in S11. */
-export function computeStandings(matches: ScheduledMatch[]): GroupStanding[] {
+/** Points policy: how a win/draw/loss score. Defaults to football 3/1/0. `draw: null` = no draws
+ *  (a level result — anomalous for such sports — awards 0). Epic #143: passed from the event's sport. */
+export interface PointsPolicy { win: number; draw: number | null; loss: number }
+const FOOTBALL: PointsPolicy = { win: 3, draw: 1, loss: 0 };
+
+export function computeStandings(matches: ScheduledMatch[], points: PointsPolicy = FOOTBALL): GroupStanding[] {
+  const drawPts = points.draw ?? 0;
   const groups = new Map<string, { categoryId: string; groupLabel: string; rows: Map<string, StandingRow> }>();
   const groupOf = (m: ScheduledMatch) => {
     const key = `${m.categoryId}||${m.groupLabel}`;
@@ -34,9 +40,9 @@ export function computeStandings(matches: ScheduledMatch[]): GroupStanding[] {
     home.played++; away.played++;
     home.goalsFor += hs; home.goalsAgainst += as;
     away.goalsFor += as; away.goalsAgainst += hs;
-    if (hs > as) { home.won++; home.points += 3; away.lost++; }
-    else if (hs < as) { away.won++; away.points += 3; home.lost++; }
-    else { home.drawn++; away.drawn++; home.points += 1; away.points += 1; }
+    if (hs > as) { home.won++; home.points += points.win; away.lost++; away.points += points.loss; }
+    else if (hs < as) { away.won++; away.points += points.win; home.lost++; home.points += points.loss; }
+    else { home.drawn++; away.drawn++; home.points += drawPts; away.points += drawPts; }
   }
 
   return [...groups.values()].map((g) => {

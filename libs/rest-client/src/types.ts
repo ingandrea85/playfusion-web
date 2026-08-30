@@ -20,16 +20,28 @@ export interface EventDetail {
   // Finals format is per-category on the ScheduleConfig (Calendario tab), not on the event.
   // Event Site: per-event overrides of the public event website (resolved against org defaults).
   site?: EventSite
+  // Epic #143: the sport profile snapshot chosen at creation + the event's participant type + format.
+  sportProfile?: EventSportSnapshot
+  participantType?: ParticipantType
+  format?: EventFormat
 }
+
+export type ParticipantType = 'team' | 'individual'
+export type EventFormat = 'groups' | 'groups+bracket' | 'bracket'
+/** Frozen copy of the chosen SportProfile, stored on the event so the engine/UI read it locally. */
+export interface EventSportSnapshot { sportId: string; name: string; scoreLabel: string; points: SportPoints; tieBreak: SportTieBreak[] }
 export type EventSummary = EventDetail
 export interface CreateEventInput {
-  sport: string
+  // Epic #143: the chosen sport from the catalog (drives the profile snapshot server-side).
+  sportId: string
+  // Required only when the sport allows both; otherwise derived from the sport.
+  participantType?: ParticipantType
+  format?: EventFormat
   categorie: string[]
   dates: { from: string; to: string }
   name?: string
   location?: string
   startTime?: string
-  tieBreak?: TieBreakCriterion[]
   playbook?: Playbook
 }
 export interface CreateEventResult { sportEventId: string; status: 'Published' }
