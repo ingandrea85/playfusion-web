@@ -311,6 +311,11 @@ describe('schedule config: solo tabellone (S4) hides group-only inputs', () => {
     // match-timing inputs stay (they still schedule the bracket matches).
     expect(html).toContain('cfg-periods')
   })
+  it('shows the 3º/4º toggle for a bracket event (SP-A2)', () => {
+    const html = renderSchedule(bracketData())
+    expect(html).toContain('cfg-thirdplace')
+    expect(html).toContain('finale 3º/4º posto')
+  })
   it('keeps Andata/ritorno + finals config for a groups+bracket event', () => {
     const html = renderSchedule(data('NONE'))
     expect(html).toContain('cfg-legs')

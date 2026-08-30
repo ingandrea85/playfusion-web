@@ -98,7 +98,7 @@ function buildBracketMatches(
       const sub = (label: string): string => { const m = SEED_ONLY.exec(label); return m ? (participants[Number(m[1]) - 1] ?? label) : label; };
       draws = compileFormat(format).map((d) => ({ ...d, home: sub(d.home), away: sub(d.away) }));
     } else {
-      draws = bracketFromParticipants(participants);
+      draws = bracketFromParticipants(participants, { thirdPlace: cc.finalsThirdPlace });
     }
     const fields = cc.fields.length ? cc.fields : ['Campo 1'];
     const slotMinutes = cc.periods * cc.periodMinutes + cc.breakMinutes;

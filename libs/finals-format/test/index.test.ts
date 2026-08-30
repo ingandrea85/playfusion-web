@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateFormat, compileFormat, type CustomFinalsFormat } from '../src/index.js';
+import { validateFormat, compileFormat, bracketFromParticipants, type CustomFinalsFormat } from '../src/index.js';
 
 const fmt = (over: Partial<CustomFinalsFormat> = {}): CustomFinalsFormat => ({
   id: 'f1', name: 'Semi + finale + 3º', seeds: 4, createdAt: 't',
@@ -45,3 +45,26 @@ describe('compileFormat', () => {
     expect(draws.map((d) => d.order)).toEqual([1, 2, 3, 4]);
   });
 });
+
+describe('bracketFromParticipants + 3rd place (SP-A2)', () => {
+  it('no 3rd-place match by default', () => {
+    const d = bracketFromParticipants(['A', 'B', 'C', 'D']);
+    expect(d.some((x) => x.slot === '3P')).toBe(false);
+  });
+  it('adds a 3rd/4th final between the two semifinal losers when enabled', () => {
+    const d = bracketFromParticipants(['A', 'B', 'C', 'D'], { thirdPlace: true });
+    const tp = d.find((x) => x.slot === '3P')!;
+    expect(tp).toMatchObject({ home: 'Perdente SF1', away: 'Perdente SF2', placementFrom: 3, placementTo: 4, round: 'Finale 3º/4º' });
+  });
+  it('skips the 3rd-place final when there is only one semifinal (byes)', () => {
+    const d = bracketFromParticipants(['A', 'B', 'C'], { thirdPlace: true }); // size 4, one bye → 1 SF
+    expect(d.some((x) => x.slot === '3P')).toBe(false);
+  });
+  it('8 players with 3rd place: quarters, semis, final + bronze', () => {
+    const d = bracketFromParticipants(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], { thirdPlace: true });
+    expect(d.filter((x) => x.round === 'QF')).toHaveLength(4);
+    expect(d.filter((x) => x.round === 'SF')).toHaveLength(2);
+    expect(d.filter((x) => x.round === 'F')).toHaveLength(1);
+    expect(d.filter((x) => x.slot === '3P')).toHaveLength(1);
+  });
+})

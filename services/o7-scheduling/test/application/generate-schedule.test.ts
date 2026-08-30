@@ -225,3 +225,14 @@ test('test_generate_bracketFormat_standingsEmpty', async () => {
   const standings = await listStandings(matches, { events })('evt-b2');
   expect(standings).toEqual([]); // bracket events have no group standings
 });
+
+test('test_generate_bracketFormat_thirdPlace_addsBronzeFinal', async () => {
+  events = new FakeEventSource({ 'evt-tp': { sportEventId: 'evt-tp', dates: { from: '2026-09-01', to: '2026-09-01' }, categorie: ['C'], format: 'bracket' } });
+  teams = new FakeTeamSource({ 'evt-tp': { C: ['A', 'B', 'C', 'D'] } });
+  await generateSchedule(deps())({ sportEventId: 'evt-tp', organizationId: 'org-1', config: { ...config, finalsThirdPlace: true } });
+  const all = await matches.list('evt-tp');
+  const bronze = all.find((m) => m.slot === '3P')!;
+  expect(bronze).toMatchObject({ home: 'Perdente SF1', away: 'Perdente SF2', placementFrom: 3, placementTo: 4 });
+  // 4 players: 2 SF + final + bronze = 4 matches.
+  expect(all).toHaveLength(4);
+});

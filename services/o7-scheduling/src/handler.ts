@@ -48,6 +48,8 @@ const finalsFields = {
   finalsType: finalsType.optional(),
   finalsEnabled: z.boolean().optional(),
   finalsTeamsToBracket: z.number().int().positive().optional(),
+  finalsFormatId: z.string().optional(),
+  finalsThirdPlace: z.boolean().optional(),
 };
 const categorySchedule = z.object({
   fields: z.array(z.string()),

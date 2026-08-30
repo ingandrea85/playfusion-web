@@ -38,14 +38,19 @@ function playCard(cc: CategorySchedule, locked: boolean, formats: CustomFinalsFo
         <option value="SINGLE" ${cc.legs === 'SINGLE' ? 'selected' : ''}>Solo andata</option>
         <option value="HOME_AWAY" ${cc.legs === 'HOME_AWAY' ? 'selected' : ''}>Andata e ritorno</option>
       </select></div>`
-  const finalsRow = bracket ? '' : `<div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
+  // finali-formule SP-A2: 3rd/4th-place toggle for knockout brackets.
+  const thirdPlace = `<label class="pf-switch cfg-thirdplace-w" style="margin-top:var(--space-sm)"><input type="checkbox" class="cfg-thirdplace" ${cc.finalsThirdPlace ? 'checked' : ''} ${dis} /> Includi finale 3º/4º posto</label>`
+  const finalsRow = bracket
+    ? thirdPlace // solo tabellone: the bracket auto-seeds from participants; only the 3rd-place option applies
+    : `<div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
       <div class="pf-field" style="margin-bottom:0"><label>Fase finale</label><select class="cfg-finalsType" ${dis}>
         <option value=""${!cc.finalsType && !cc.finalsFormatId ? ' selected' : ''}>Nessuna</option>
         ${FINALS_TYPES.map((t) => `<option value="${t}" ${cc.finalsType === t && !cc.finalsFormatId ? 'selected' : ''}>${esc(FINALS_TYPE_LABEL[t])}</option>`).join('')}
         ${formats.length ? `<optgroup label="Personalizzati">${formats.map((f) => `<option value="format:${esc(f.id)}" ${cc.finalsFormatId === f.id ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</optgroup>` : ''}
       </select></div>
       <div class="pf-field" style="margin-bottom:0"><label>Squadre al tabellone</label><input class="cfg-finalsTeamsToBracket" type="number" min="2" step="2" value="${cc.finalsTeamsToBracket ?? ''}" placeholder="solo Gironi + girone finale" ${dis} /></div>
-    </div>`
+    </div>
+    ${thirdPlace}`
   return `<div class="pf-card js-playcard"${cat ? ` data-cat="${esc(cat)}"` : ''} style="background:var(--color-surface-sunken)">
     ${cat ? `<h3 class="pf-h4" style="margin-top:0">${esc(cat)}</h3>` : ''}
     <div class="pf-field"><label>Campi (separati da virgola)</label>
@@ -176,6 +181,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
       const finalsFormatId = finalsSel.startsWith('format:') ? finalsSel.slice('format:'.length) : undefined
       const finalsType = (!finalsFormatId && finalsSel ? finalsSel : undefined) as FinalsType | undefined
       const bracket = Number(val('.cfg-finalsTeamsToBracket'))
+      const thirdPlace = el.querySelector<HTMLInputElement>('.cfg-thirdplace')?.checked
       return {
         fields: textToFields(val('.cfg-fields')),
         periods: num('.cfg-periods', 2), periodMinutes: num('.cfg-periodMinutes', 20),
@@ -185,6 +191,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
         ...(finalsFormatId ? { finalsFormatId } : {}),
         ...(finalsType ? { finalsType, finalsEnabled: true } : {}),
         ...(Number.isFinite(bracket) && bracket >= 2 ? { finalsTeamsToBracket: Math.floor(bracket) } : {}),
+        ...(thirdPlace ? { finalsThirdPlace: true } : {}),
       }
     }
     const buildConfig = (): { config?: ScheduleConfig; error?: string } => {

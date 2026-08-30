@@ -133,11 +133,22 @@ export function buildFinals(groups: FinalGroupInput[], finalsType: FinalsType, o
  *  from an ordered participant list (no gironi, no standings). Round 1 carries the real participant
  *  names; every later round carries `Vincente <slot>` links resolved on read. A non-power-of-2 field
  *  is padded with byes: a lone entrant advances with no match. The deciding final carries 1º/2º. */
-export function bracketFromParticipants(entrants: string[]): FinalDraw[] {
+/** A 3rd-place final (Epic finali-formule SP-A2): the two semifinal losers play for the bronze.
+ *  Only meaningful when the bracket has exactly two semifinals (`semiSlots.length === 2`). */
+export function thirdPlaceDraw(semiSlots: string[], order: number): FinalDraw | null {
+  if (semiSlots.length !== 2) return null;
+  return { bracketLabel: 'Finale 3º/4º', round: 'Finale 3º/4º', order, slot: '3P',
+    home: lose(semiSlots[0]!), away: lose(semiSlots[1]!), phase: 'FINAL', placementFrom: 3, placementTo: 4 };
+}
+
+export interface KnockoutOpts { thirdPlace?: boolean }
+
+export function bracketFromParticipants(entrants: string[], opts: KnockoutOpts = {}): FinalDraw[] {
   const n = entrants.length;
   if (n < 2) return [];
   let slots: (string | null)[] = [...entrants, ...Array(nextPow2(n) - n).fill(null)];
   const draws: FinalDraw[] = [];
+  const semiSlots: string[] = []; // the SF-round match slots (for the optional 3rd-place final)
   let roundSize = slots.length;
   while (roundSize >= 2) {
     const code = codeLabel(roundSize);
@@ -147,6 +158,7 @@ export function bracketFromParticipants(entrants: string[]): FinalDraw[] {
       const a = slots[i]!, b = slots[i + 1]!;
       if (a != null && b != null) {
         const slot = `${code}${++k}`;
+        if (roundSize === 4) semiSlots.push(slot);
         draws.push({
           bracketLabel: 'Tabellone', round: code, order: k, slot, home: a, away: b, phase: 'FINAL',
           ...(roundSize === 2 ? { placementFrom: 1, placementTo: 2 } : {}),
@@ -159,6 +171,7 @@ export function bracketFromParticipants(entrants: string[]): FinalDraw[] {
     slots = next;
     roundSize = next.length;
   }
+  if (opts.thirdPlace) { const tp = thirdPlaceDraw(semiSlots, draws.length + 1); if (tp) draws.push(tp); }
   return draws;
 }
 

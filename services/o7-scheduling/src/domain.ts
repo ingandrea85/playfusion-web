@@ -29,6 +29,9 @@ export interface CategorySchedule {
   /** SP1: a custom finals format id (from the global catalog). When set, it OVERRIDES `finalsType`
    *  for this category — generate compiles the format's bracket instead of a built-in. */
   finalsFormatId?: string;
+  /** finali-formule SP-A2: add a 3rd/4th-place final between the two semifinal losers. Applies to
+   *  knockout brackets (solo tabellone + GROUP_KNOCKOUT). Default off. */
+  finalsThirdPlace?: boolean;
 }
 
 /** Fields + match-format params live on the Schedule (O7), never on the Event/Category.
@@ -54,6 +57,8 @@ export interface ScheduleConfig {
   finalsTeamsToBracket?: number;
   /** SP1: default custom finals format id (overrides finalsType). Per-category via byCategory. */
   finalsFormatId?: string;
+  /** finali-formule SP-A2: default 3rd/4th-place final toggle. Per-category via byCategory. */
+  finalsThirdPlace?: boolean;
 }
 
 /** Resolve a category's playing config: its `byCategory` override if present, else the
@@ -63,7 +68,7 @@ export function categoryConfig(config: ScheduleConfig, categoria: string): Categ
     fields: config.fields, periods: config.periods, periodMinutes: config.periodMinutes,
     breakMinutes: config.breakMinutes, legs: config.legs,
     finalsType: config.finalsType, finalsEnabled: config.finalsEnabled, finalsTeamsToBracket: config.finalsTeamsToBracket,
-    finalsFormatId: config.finalsFormatId,
+    finalsFormatId: config.finalsFormatId, finalsThirdPlace: config.finalsThirdPlace,
   };
 }
 
