@@ -45,6 +45,9 @@ export interface EventView {
    *  per-category — no longer read from the event.) */
   sport?: string;
   tieBreak?: TieBreakCriterion[];
+  /** Epic #143: the event's sport profile snapshot — the points policy + generic tie-break order
+   *  that parameterise the standings (falls back to Calcio 3/1/0 + the legacy tieBreak when absent). */
+  sportProfile?: { points: { win: number; draw: number | null; loss: number }; tieBreak: string[] };
 }
 export interface EventSource {
   get(sportEventId: string): Promise<EventView | undefined>;

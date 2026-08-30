@@ -22,6 +22,17 @@ test('test_computeStandings_pointsAndOrder', () => {
   expect(rows[2]).toMatchObject({ team: 'B', points: 1, goalDiff: -2 });
 });
 
+test('test_computeStandings_honoursTheSportPointsPolicy (basket 2/-/0)', () => {
+  // No-draw sport: win=2, loss=0. A beats B 78-65, A beats C, B beats C → A 4, B 2, C 0.
+  const s = computeStandings([
+    mk('U10', 'Girone A', 'A', 'B', 78, 65),
+    mk('U10', 'Girone A', 'A', 'C', 80, 70),
+    mk('U10', 'Girone A', 'B', 'C', 60, 55),
+  ], { win: 2, draw: null, loss: 0 });
+  const rows = s[0]!.rows;
+  expect(rows.map((r) => [r.team, r.points])).toEqual([['A', 4], ['B', 2], ['C', 0]]);
+});
+
 test('test_computeStandings_excludesNotPlayedButKeepsTheTeamRow', () => {
   const s = computeStandings([mk('U10', 'Girone A', 'A', 'B')]); // not played
   expect(s[0]!.rows.map((r) => r.team).sort()).toEqual(['A', 'B']);
