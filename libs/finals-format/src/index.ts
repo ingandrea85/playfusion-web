@@ -295,6 +295,73 @@ export function validateFormat(f: Pick<CustomFinalsFormat, 'name' | 'seeds' | 'r
   return errors;
 }
 
+// ---- finali-formule SP-B1/B2: the "formula" preview (explainer text + structural draws) ----
+
+/** Human round name for a knockout round of `n` entrants (n a power of 2). */
+const roundName = (n: number): string =>
+  ({ 2: 'Finale', 4: 'Semifinali', 8: 'Quarti', 16: 'Ottavi', 32: 'Sedicesimi' } as Record<number, string>)[n] ?? `${n}-esimi`;
+/** The chain of round names for `n` entrants: Quarti · Semifinali · Finale (padded to a power of 2). */
+function roundChain(n: number): string[] {
+  const out: string[] = [];
+  for (let s = nextPow2(Math.max(2, n)); s >= 2; s /= 2) out.push(roundName(s));
+  return out;
+}
+const seqLabels = (n: number): string[] => Array.from({ length: Math.max(0, Math.floor(n)) }, (_, i) => `${i + 1}`);
+const groupLetter = (i: number): string => String.fromCharCode(65 + i);
+const syntheticGroups = (g: number, size: number): FinalGroupInput[] =>
+  Array.from({ length: Math.max(0, Math.floor(g)) }, (_, i) => ({ label: `Girone ${groupLetter(i)}`, size: Math.max(1, Math.floor(size)) }));
+
+/** The knobs a caller (E1/E3) feeds the formula preview: the chosen structure + the current counts. */
+export interface FormulaInput {
+  finalsType?: FinalsType;
+  solo?: boolean;                // solo tabellone (bracket format): seed straight from the participants
+  participants?: number;         // teams/players in the category (solo count, or total for group sizing)
+  groups?: number;               // number of groups
+  qualifiersPerGroup?: number;   // GROUP_KNOCKOUT
+  finalsTeamsToBracket?: number; // SPLIT_GROUP_FINALS / FINAL_ROUND_ROBIN size
+  thirdPlace?: boolean;
+}
+
+/** Compile the chosen formula into structural draws for the current counts (placeholder home/away, no
+ *  real names). Empty when there's nothing to draw yet (too few teams / no format chosen). */
+export function previewDraws(input: FormulaInput): FinalDraw[] {
+  if (input.solo) return bracketFromParticipants(seqLabels(input.participants ?? 0), { thirdPlace: input.thirdPlace });
+  if (!input.finalsType) return [];
+  const g = Math.max(0, Math.floor(input.groups ?? 0));
+  const size = g ? Math.max(2, Math.round((input.participants ?? g * 4) / g)) : 4;
+  return buildFinals(syntheticGroups(g || 2, size), input.finalsType, {
+    finalsTeamsToBracket: input.finalsTeamsToBracket, qualifiersPerGroup: input.qualifiersPerGroup, thirdPlace: input.thirdPlace,
+  });
+}
+
+/** A one-line, human explanation of the chosen formula, calibrated on the current counts. */
+export function formatExplainer(input: FormulaInput): string {
+  if (input.solo) {
+    const n = Math.floor(input.participants ?? 0);
+    if (n < 2) return 'Aggiungi almeno 2 iscritti per generare il tabellone.';
+    const byes = nextPow2(n) - n;
+    return `Eliminazione diretta: ${n} iscritti → ${roundChain(n).join(' · ')}. Chi perde esce${input.thirdPlace ? ', più finale 3º/4º' : ''}${byes ? `. ${byes} bye per le teste di serie` : ''}.`;
+  }
+  switch (input.finalsType) {
+    case 'GROUP_KNOCKOUT': {
+      const q = Math.max(1, Math.floor(input.qualifiersPerGroup ?? 1)), tot = Math.max(0, Math.floor(input.groups ?? 0)) * q;
+      return `Tabellone da ${input.groups ?? 0} gironi: passano i primi ${q} di ogni girone (${tot} qualificati), incrociati con teste di serie → ${roundChain(tot).join(' · ')}${input.thirdPlace ? '. Finale 3º/4º inclusa' : ''}.`;
+    }
+    case 'FINAL_ROUND_ROBIN': {
+      const n = Math.max(2, Math.floor(input.finalsTeamsToBracket ?? input.groups ?? 2)), pairs = (n * (n - 1)) / 2;
+      return `Girone all'italiana finale: i migliori ${n} si affrontano tutti-contro-tutti (${pairs} partite). Vince chi fa più punti — nessuna eliminazione.`;
+    }
+    case 'PLACEMENT':
+      return 'Tabellone per fascia: i pari-posizione dei gironi si sfidano a eliminazione; ogni squadra ottiene un piazzamento finale.';
+    case 'SINGLE_GROUP_CROSSOVER':
+      return 'Girone unico: coppie consecutive in classifica (1ª-2ª, 3ª-4ª…) decidono le posizioni.';
+    case 'SPLIT_GROUP_FINALS':
+      return `I primi ${input.finalsTeamsToBracket ?? 0} vanno al tabellone a eliminazione, gli altri a un girone finale.`;
+    default:
+      return 'Nessuna fase finale configurata.';
+  }
+}
+
 const refToPlaceholder = (r: MatchRef): string =>
   isSeed(r) ? `Seed ${r.seed}` : isWinner(r) ? `Vincente ${r.winnerOf}` : `Perdente ${(r as LoserRef).loserOf}`;
 
