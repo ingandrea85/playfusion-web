@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import type { EventDetail, ScheduledMatchView } from '@playfusion/rest-client'
 import { renderFinalsView, finalsScreen } from '../src/views/finals'
-import { competitionScreen } from '../src/views/workspace'
+import { renderWorkspace } from '../src/views/workspace'
 
 const event: EventDetail = { sportEventId: 'e1', sport: 'Calcio', categorie: ['U10'], dates: { from: 'a', to: 'b' }, status: 'Published', playbook: 'PB-1' }
 const fin = (over: Partial<ScheduledMatchView>): ScheduledMatchView =>
@@ -27,10 +27,9 @@ describe('e1 finals view (S12)', () => {
   })
 })
 
-describe('e1 competition has no event-level finals editor (S13, moved to Calendario)', () => {
-  it('competitionScreen has no mount and renders no finals editor', () => {
-    expect(competitionScreen.mount).toBeUndefined()
-    expect(competitionScreen.render(event)).not.toContain('id="fc-type"')
+describe('e1 has no event-level finals editor (S13, moved to Calendario)', () => {
+  it('Panoramica renders no finals editor', () => {
+    expect(renderWorkspace(event, 'overview')).not.toContain('id="fc-type"')
   })
 })
 

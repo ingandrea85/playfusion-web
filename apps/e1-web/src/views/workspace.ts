@@ -18,7 +18,6 @@ export const workspaceTabs = (id: string): WorkspaceTab[] => {
   const e = encodeURIComponent(id)
   return [
     { key: 'overview', label: 'Panoramica', href: `#/events/${e}` },
-    { key: 'competition', label: 'Competizione', href: `#/events/${e}/competition` },
     { key: 'categorie', label: 'Categorie', href: `#/events/${e}/categorie` },
     { key: 'gironi', label: 'Gironi', href: `#/events/${e}/gironi` },
     { key: 'schedule', label: 'Calendario', href: `#/events/${e}/schedule` },
@@ -126,25 +125,15 @@ export function dashboardBand(data: OverviewData): { phase: EventPhase; html: st
   return { phase, html: `<section class="pf-dashband">${cards}</section>` }
 }
 
+/** Panoramica = the merged overview + competition config (the two tabs were unified). */
 export function renderWorkspace(event: EventDetail, activeTab: string, overview?: OverviewData): string {
   const band = overview ? dashboardBand(overview) : null
   return shell(event, activeTab, `${band?.html ?? ''}${configCard(event)}
     <div class="pf-card">
       <h2 class="pf-h3">Criteri di spareggio</h2>
       ${tieBreakList(event)}
+      <p class="pf-muted" style="margin-top:var(--space-sm)">La modifica dei criteri avviene alla creazione dell'evento. La <b>fase finale</b> si configura per categoria nel tab <b>Calendario</b>.</p>
     </div>`, band?.phase)
-}
-
-export function renderCompetition(event: EventDetail, activeTab = 'competition'): string {
-  return shell(event, activeTab, `<div class="pf-card">
-    <h2 class="pf-h3">Configurazione competizione</h2>
-    <dl class="pf-deflist">
-      ${row('Playbook', `<span class="pf-badge">${esc(PLAYBOOK_LABEL[event.playbook])}</span>`)}
-    </dl>
-    <h3 class="pf-h4">Criteri di spareggio</h3>
-    ${tieBreakList(event)}
-    <p class="pf-muted">La modifica dei criteri avviene alla creazione dell'evento. La <b>fase finale</b> si configura per categoria nel tab <b>Calendario</b>.</p>
-  </div>`)
 }
 
 /** S13: Categorie is a per-category dashboard — confirmed teams, gironi, finals format — plus the
@@ -182,11 +171,6 @@ export const workspaceScreen: Screen<{ event: EventDetail; overview: OverviewDat
     return { event, overview: { matches, window, finalStandings } }
   },
   render: ({ event, overview }) => renderWorkspace(event, 'overview', overview),
-}
-
-export const competitionScreen: Screen<EventDetail> = {
-  load: (ctx, p) => ctx.client.o3.getEvent(p.id),
-  render: (e) => renderCompetition(e),
 }
 
 export const categorieScreen: Screen<CategorieData> = {

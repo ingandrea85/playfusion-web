@@ -11,7 +11,7 @@ const rowsFor = (ranking: CategoryFinalStanding[], cat: string) => ranking.find(
 /** S12/S13: organizer Finali tab — the bracket + the progressive final ranking, per category. */
 function finalsBody(data: FinalsData, selCat: string): string {
   const cats = categoryKeys(data.finals)
-  if (!cats.length) return `<p class="pf-muted">Nessun tabellone: configura la <b>Fase finale</b> (tab Competizione/Calendario) e genera il calendario.</p>`
+  if (!cats.length) return `<p class="pf-muted">Nessun tabellone: configura la <b>Fase finale</b> (tab Calendario) e genera il calendario.</p>`
   return `<div id="ft-cattabs">${renderTabs(cats.map((c) => ({ key: c, label: c })), selCat)}</div>
     <div id="fnbody">${finalsSection(data, selCat)}</div>`
 }
