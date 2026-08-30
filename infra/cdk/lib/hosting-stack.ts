@@ -33,6 +33,7 @@ export interface HostingStackProps extends StackProps {
 const APPS = [
   { name: 'e1', prefix: 'e1', title: 'E1 — Organizer' },
   { name: 'e3', prefix: 'e3', title: 'E3 — Public' },
+  { name: 'e4', prefix: 'e4', title: 'E4 — Admin' },
 ];
 
 /**
@@ -122,8 +123,8 @@ export class HostingStack extends Stack {
     }
 
     // Real built app bundles, one BucketDeployment per app, each under its own prefix.
-    // Prerequisite: `apps/{e1,e3}-web/dist` must already exist at synth time — run
-    // `npm run build -w @playfusion/e1-web -w @playfusion/e3-web` (or the Nx equivalent)
+    // Prerequisite: `apps/{e1,e3,e4}-web/dist` must already exist at synth time — run
+    // `npm run build -w @playfusion/e1-web -w @playfusion/e3-web -w @playfusion/e4-web` (or the Nx equivalent)
     // before `cdk synth`/`cdk deploy`, since Source.asset reads the built output on disk.
     //
     // `distribution` + `distributionPaths` make each deploy issue a CloudFront
@@ -145,6 +146,13 @@ export class HostingStack extends Stack {
       sources: [Source.asset(resolve(REPO, 'apps/e3-web/dist'))],
       distribution,
       distributionPaths: ['/e3/*'],
+    });
+    new BucketDeployment(this, 'e4', {
+      destinationBucket: bucket,
+      destinationKeyPrefix: 'e4',
+      sources: [Source.asset(resolve(REPO, 'apps/e4-web/dist'))],
+      distribution,
+      distributionPaths: ['/e4/*'],
     });
 
     // Marketing site at the bucket ROOT. prune:false is critical — a root deploy with the default
