@@ -86,9 +86,10 @@ export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED';
  *  (`1ª Girone A`, `Vincente SF1`) resolved to real teams on read. */
 export type MatchPhase = 'GROUP' | 'FINAL' | 'FINAL_GROUP';
 
-/** S12: how the finals bracket is drawn (mirrors o3's FinalsType — defined locally, ADR-002 forbids
- *  importing o3). */
-export type FinalsType = 'SINGLE_GROUP_CROSSOVER' | 'SPLIT_GROUP_FINALS' | 'PLACEMENT';
+/** S12: how the finals bracket is drawn. Single source of truth = the shared @playfusion/finals-format
+ *  lib (where the pure generators live); re-exported here so o7 code keeps importing it from domain. */
+import type { FinalsType } from '@playfusion/finals-format';
+export type { FinalsType };
 
 /** A placed group-stage fixture. `categoryId` is the categoria string (categories are
  *  plain strings on the o3 event today); `home`/`away` are the confirmed teams' labels
