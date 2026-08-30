@@ -124,12 +124,24 @@ function splitGroupFinals(groups: FinalGroupInput[], bracket: number): FinalDraw
   return draws;
 }
 
+/** finali-formule SP-A4 — FINAL_ROUND_ROBIN: a single round-robin poule among the top-N overall
+ *  qualifiers (cross-group `Seed k`, resolved on read once every group is complete). No elimination —
+ *  the poule's own standings decide every final position. */
+export function finalRoundRobin(topN: number): FinalDraw[] {
+  const n = Math.max(2, Math.floor(topN));
+  const seeds = Array.from({ length: n }, (_, i) => `Seed ${i + 1}`);
+  return roundRobinPairs(seeds).map(([home, away], k) => ({
+    bracketLabel: 'Girone finale', round: 'Girone finale', order: k + 1, slot: `FG${k + 1}`, home, away, phase: 'FINAL_GROUP' as const,
+  }));
+}
+
 export interface BuildFinalsOpts { finalsTeamsToBracket?: number; qualifiersPerGroup?: number; thirdPlace?: boolean }
 
 export function buildFinals(groups: FinalGroupInput[], finalsType: FinalsType, opts: BuildFinalsOpts = {}): FinalDraw[] {
   if (finalsType === 'SINGLE_GROUP_CROSSOVER') return singleGroupCrossover(groups);
   if (finalsType === 'SPLIT_GROUP_FINALS') return splitGroupFinals(groups, Math.max(0, Math.floor(opts.finalsTeamsToBracket ?? 0)));
   if (finalsType === 'GROUP_KNOCKOUT') return groupKnockout(groups, { qualifiersPerGroup: opts.qualifiersPerGroup, thirdPlace: opts.thirdPlace });
+  if (finalsType === 'FINAL_ROUND_ROBIN') return finalRoundRobin(opts.finalsTeamsToBracket ?? groups.length);
   return placement(groups);
 }
 

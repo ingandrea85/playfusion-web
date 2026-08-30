@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateFormat, compileFormat, bracketFromParticipants, buildFinals, groupKnockout, type CustomFinalsFormat, type FinalGroupInput } from '../src/index.js';
+import { validateFormat, compileFormat, bracketFromParticipants, buildFinals, groupKnockout, finalRoundRobin, type CustomFinalsFormat, type FinalGroupInput } from '../src/index.js';
 
 const fmt = (over: Partial<CustomFinalsFormat> = {}): CustomFinalsFormat => ({
   id: 'f1', name: 'Semi + finale + 3º', seeds: 4, createdAt: 't',
@@ -92,5 +92,21 @@ describe('groupKnockout (SP-A3): crossed group qualifiers + seeding', () => {
   it('buildFinals dispatches GROUP_KNOCKOUT', () => {
     const d = buildFinals(gr(['Girone A', 'Girone B']), 'GROUP_KNOCKOUT', { qualifiersPerGroup: 2 });
     expect(d.some((x) => x.home === '1ª Girone A')).toBe(true);
+  });
+})
+
+
+describe('finalRoundRobin (SP-A4): final poule of top-N', () => {
+  it('N=4 → 6 round-robin FINAL_GROUP matches among Seed 1..4', () => {
+    const d = finalRoundRobin(4);
+    expect(d).toHaveLength(6);
+    expect(d.every((x) => x.phase === 'FINAL_GROUP' && x.bracketLabel === 'Girone finale')).toBe(true);
+    expect(d[0]).toMatchObject({ home: 'Seed 1', away: 'Seed 2' });
+    expect(d.some((x) => x.home === 'Seed 3' && x.away === 'Seed 4')).toBe(true);
+  });
+  it('buildFinals dispatches FINAL_ROUND_ROBIN with finalsTeamsToBracket as poule size', () => {
+    const d = buildFinals([{ label: 'Girone A', size: 6 }], 'FINAL_ROUND_ROBIN', { finalsTeamsToBracket: 3 });
+    expect(d).toHaveLength(3); // 3 teams → 3 pairs
+    expect(d.every((x) => x.phase === 'FINAL_GROUP')).toBe(true);
   });
 })

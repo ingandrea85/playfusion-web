@@ -252,3 +252,16 @@ test('test_generate_GROUP_KNOCKOUT_crossesQualifiersFromGroups', async () => {
   expect(finals.some((m) => m.home === '1ª Girone A' && m.away === '2ª Girone B')).toBe(true);
   expect(finals.some((m) => m.slot === '3P')).toBe(true);
 });
+
+test('test_generate_FINAL_ROUND_ROBIN_buildsFinalPoule', async () => {
+  events = new FakeEventSource({ 'evt-rr': { sportEventId: 'evt-rr', dates: { from: '2026-09-01', to: '2026-09-02' },
+    categorie: ['U10'], gironi: { U10: { locked: true, groups: [
+      { label: 'Girone A', teams: ['A1', 'A2', 'A3'] }, { label: 'Girone B', teams: ['B1', 'B2', 'B3'] },
+    ] } } } });
+  teams = new FakeTeamSource({ 'evt-rr': { U10: ['A1', 'A2', 'A3', 'B1', 'B2', 'B3'] } });
+  await generateSchedule(deps())({ sportEventId: 'evt-rr', organizationId: 'org-1',
+    config: { ...config, groupsCount: 2, finalsType: 'FINAL_ROUND_ROBIN', finalsTeamsToBracket: 4 } });
+  const fg = (await matches.list('evt-rr')).filter((m) => m.phase === 'FINAL_GROUP');
+  expect(fg).toHaveLength(6); // top-4 poule = 6 matches
+  expect(fg.some((m) => m.home === 'Seed 1' && m.away === 'Seed 2')).toBe(true);
+});
