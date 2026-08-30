@@ -7,8 +7,13 @@ import type { CustomFinalsFormat } from '../finals-format.js';
 /** Global catalog table `o7-finals-formats` (PK formatId). Small catalog → Scan for list. */
 export class DynamoDbFinalsFormatRepository implements FinalsFormatRepository {
   constructor(private readonly db: DynamoDBDocumentClient, private readonly table = resourceName('o7-finals-formats')) {}
-  async list() {
-    const res = await this.db.send(new ScanCommand({ TableName: this.table }));
+  // Org-scoped list. The catalog is tiny (a handful of formats per org) → Scan + filter beats adding
+  // a GSI. Pre-org-scoping formats (no organizationId) simply don't match any org.
+  async listByOrg(organizationId: string) {
+    const res = await this.db.send(new ScanCommand({
+      TableName: this.table,
+      FilterExpression: 'organizationId = :o', ExpressionAttributeValues: { ':o': organizationId },
+    }));
     return (res.Items ?? []) as CustomFinalsFormat[];
   }
   async get(formatId: string) {

@@ -1,12 +1,12 @@
 import { esc } from '@playfusion/app-shell'
 import type { EventDetail, ResourceConfig, ResourcePlan, Resource, ResourceSlot } from '@playfusion/rest-client'
-import { inlineError, type Screen } from '../view.js'
+import { inlineError, lockCard, type Screen } from '../view.js'
 import { workspaceShell } from './workspace.js'
 
 /** S17 — event resources & post-match logistics (docce, terzo tempo, …). Owner/Organizer surface
  *  (per-role gating arrives with S19). Config is a single per-event object; the turns are computed
  *  on read by o7 from match finish times + person-capacity. Every mutation saves the whole config. */
-export interface ResourcesData { event: EventDetail; config: ResourceConfig; plan: ResourcePlan }
+export interface ResourcesData { event: EventDetail; config: ResourceConfig; plan: ResourcePlan; locked?: boolean }
 
 const resName = (r: { icon?: string; name: string }): string => `${r.icon ? `${esc(r.icon)} ` : ''}${esc(r.name)}`
 
@@ -106,6 +106,7 @@ function turnsSection(d: ResourcesData): string {
 }
 
 export function renderResources(d: ResourcesData): string {
+  if (d.locked) return workspaceShell(d.event, 'resources', lockCard('Risorse & logistica'))
   return workspaceShell(d.event, 'resources', `<div id="err"></div>${resourceTable(d.config)}${sizeEditor(d)}${unassignableCard(d)}${turnsSection(d)}`)
 }
 
@@ -113,13 +114,14 @@ function num(root: ParentNode, sel: string): number | undefined { const v = root
 
 export const resourcesScreen: Screen<ResourcesData> = {
   load: async (ctx, p) => {
-    const [event, config, plan] = await Promise.all([
-      ctx.client.o3.getEvent(p.id), ctx.client.o7.getResources(p.id), ctx.client.o7.getResourcePlan(p.id),
-    ])
+    const event = await ctx.client.o3.getEvent(p.id)
+    if (!ctx.entitlements.hasResources) return { event, config: { resources: [] }, plan: {} as ResourcePlan, locked: true }
+    const [config, plan] = await Promise.all([ctx.client.o7.getResources(p.id), ctx.client.o7.getResourcePlan(p.id)])
     return { event, config, plan }
   },
   render: renderResources,
   mount(root, ctx, d) {
+    if (d.locked) return // plan-gated
     const id = d.event.sportEventId
     const err = root.querySelector('#err')!
     const fail = (m: string) => { err.innerHTML = inlineError(m) }

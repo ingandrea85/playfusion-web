@@ -3,10 +3,10 @@ import { entitlements, atEventCap } from '../src/index.js'
 
 describe('entitlements', () => {
   it('FREE is the restricted solo plan', () => {
-    expect(entitlements('FREE')).toMatchObject({ maxSeats: 1, canInviteMembers: false, maxActiveEvents: 1, hasBrand: false, hasAnnouncements: false, hasPayments: false, hasEventSite: false })
+    expect(entitlements('FREE')).toMatchObject({ maxSeats: 1, canInviteMembers: false, maxActiveEvents: 1, hasBrand: false, hasAnnouncements: false, hasPayments: false, hasEventSite: false, hasFinalsFormats: false, hasResources: false })
   })
   it('PRO unlocks the team (5 seats, unlimited events, modules)', () => {
-    expect(entitlements('PRO')).toMatchObject({ maxSeats: 5, canInviteMembers: true, maxActiveEvents: null, hasBrand: true, hasAnnouncements: true, hasPayments: true, hasEventSite: true, hasBusinessFeatures: false })
+    expect(entitlements('PRO')).toMatchObject({ maxSeats: 5, canInviteMembers: true, maxActiveEvents: null, hasBrand: true, hasAnnouncements: true, hasPayments: true, hasEventSite: true, hasFinalsFormats: true, hasResources: true, hasBusinessFeatures: false })
   })
   it('BUSINESS adds seats + the business-only feature flag', () => {
     expect(entitlements('BUSINESS')).toMatchObject({ maxSeats: 20, hasBusinessFeatures: true })

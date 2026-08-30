@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import {
   withCorrelation, currentCorrelationId, checkpoint, makeDocClient, toHttpError,
-  auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, requirePlatformAdmin, getIdentity,
+  auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, requireOwner, getIdentity,
   bearerToken, verifyMagicLink, signMagicLink, ForbiddenError, UnauthorizedError,
 } from '@playfusion/platform-lib';
 import { DIRECTOR_ROLE, DIRECTOR_PURPOSE, directorSubject, parseDirectorScope } from './director-token.js';
@@ -76,7 +76,25 @@ export const scheduleConfigBody = z.object({
 const auth0cfg = auth0ConfigFromEnv();
 const auth0verify = auth0cfg ? createAuth0Verifier(auth0cfg) : undefined;
 const organizer = requireOrganizer({ auth0: auth0verify });
-const platformAdmin = requirePlatformAdmin({ auth0: auth0verify });
+// Editing finals formats is an owner-only capability (org identity/config).
+const owner = requireOwner({ auth0: auth0verify });
+
+/**
+ * Backend Pro enforcement: verify the caller's org is on a paid/trial plan (not FREE) before a
+ * Pro-only mutation (finals formats, resources). Reads the plan from o11 over HTTP, forwarding the
+ * caller's bearer token (o11 GET is organizer/owner-readable). Denies when the plan can't be verified.
+ */
+async function assertPro(c: any): Promise<void> {
+  const orgId = orgOf(c);
+  const base = process.env.PF_API_BASE_URL;
+  if (!base) throw new ForbiddenError('plan verification unavailable');
+  const res = await fetch(`${base}/o11/organizations/${encodeURIComponent(orgId)}/subscription`, {
+    headers: { authorization: `Bearer ${bearerToken(c)}` },
+  }).catch(() => null);
+  const sub = res && res.ok ? ((await res.json()) as { plan?: string }) : null;
+  if (!sub) throw new ForbiddenError('could not verify the organization plan');
+  if (sub.plan === 'FREE') throw new ForbiddenError('this feature requires a Pro plan');
+}
 
 // S25: who may report a result — the organizer (Auth0 / RegistrationManager bridge) OR a field
 // director (magic-link, role 'director'). Stashes the reporter's scope: `{ full: true }` for the
@@ -193,8 +211,10 @@ const resourceConfigBody = z.object({
   assignments: z.array(assignmentItem).optional(),
 });
 app.get('/events/:id/resources', async (c) => c.json(await getResources(resourceRepo)(c.req.param('id'))));
-app.put('/events/:id/resources', organizer, async (c) =>
-  c.json(await saveResources(resourceRepo)(c.req.param('id'), resourceConfigBody.parse(await c.req.json()))));
+app.put('/events/:id/resources', organizer, async (c) => {
+  await assertPro(c); // S17 resources are a Pro feature
+  return c.json(await saveResources(resourceRepo)(c.req.param('id'), resourceConfigBody.parse(await c.req.json())));
+});
 app.get('/events/:id/resource-plan', async (c) =>
   c.json(await getResourcePlan({ resources: resourceRepo, matches, schedules, teams })(c.req.param('id'))));
 
@@ -231,8 +251,8 @@ app.get('/events/:id/schedule', async (c) =>
 app.get('/events/:id/matches', async (c) =>
   c.json(await listMatches(matches, { overrides, events })(c.req.param('id'))));
 
-// SP1 — global custom finals-format catalog. List is organizer-readable (populates the selector);
-// writes are platform-admin only.
+// Custom finals-format catalog, ORG-SCOPED (visible only to the owning org). List/get are
+// organizer-readable (populate the schedule-config selector); writes are OWNER-only + Pro-gated.
 const seedRefSchema = z.union([z.object({ seed: z.number().int() }), z.object({ winnerOf: z.string() }), z.object({ loserOf: z.string() })]);
 const formatBody = z.object({
   name: z.string().min(1),
@@ -242,17 +262,19 @@ const formatBody = z.object({
     matches: z.array(z.object({ slot: z.string().min(1), home: seedRefSchema, away: seedRefSchema, placementFrom: z.number().int().optional(), placementTo: z.number().int().optional() })),
   })),
 });
-app.get('/finals-formats', organizer, async (c) => c.json(await listFinalsFormats({ repo: finalsFormats })()));
+app.get('/finals-formats', organizer, async (c) => c.json(await listFinalsFormats({ repo: finalsFormats })(orgOf(c))));
 app.get('/finals-formats/:id', organizer, async (c) => c.json(await getFinalsFormat({ repo: finalsFormats })(c.req.param('id'))));
-app.post('/finals-formats', platformAdmin, async (c) => {
+app.post('/finals-formats', owner, async (c) => {
+  await assertPro(c);
   const b = formatBody.parse(await c.req.json());
-  return c.json(await saveFinalsFormat({ repo: finalsFormats })({ id: randomUUID(), ...b }), 201);
+  return c.json(await saveFinalsFormat({ repo: finalsFormats })({ id: randomUUID(), organizationId: orgOf(c), ...b }), 201);
 });
-app.put('/finals-formats/:id', platformAdmin, async (c) => {
+app.put('/finals-formats/:id', owner, async (c) => {
+  await assertPro(c);
   const b = formatBody.parse(await c.req.json());
-  return c.json(await saveFinalsFormat({ repo: finalsFormats })({ id: c.req.param('id'), ...b }));
+  return c.json(await saveFinalsFormat({ repo: finalsFormats })({ id: c.req.param('id'), organizationId: orgOf(c), ...b }));
 });
-app.delete('/finals-formats/:id', platformAdmin, async (c) => { await deleteFinalsFormat({ repo: finalsFormats })(c.req.param('id')); return c.body(null, 204); });
+app.delete('/finals-formats/:id', owner, async (c) => { await assertPro(c); await deleteFinalsFormat({ repo: finalsFormats })(c.req.param('id')); return c.body(null, 204); });
 
 app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
 

@@ -16,14 +16,18 @@ export interface Entitlements {
   hasPayments: boolean
   /** Public event website (org site-defaults + per-event site) — Pro+. */
   hasEventSite: boolean
+  /** Custom finals-format editor (org-scoped, reusable formats) — Pro+. */
+  hasFinalsFormats: boolean
+  /** Event resources & post-match logistics (docce, terzo tempo) — Pro+. */
+  hasResources: boolean
   /** Business-only killer feature (sub-teams / multi-venue / SSO — scoped later). */
   hasBusinessFeatures: boolean
 }
 
 const TABLE: Record<Plan, Entitlements> = {
-  FREE: { maxSeats: 1, canInviteMembers: false, maxActiveEvents: 1, hasBrand: false, hasAnnouncements: false, hasPayments: false, hasEventSite: false, hasBusinessFeatures: false },
-  PRO: { maxSeats: 5, canInviteMembers: true, maxActiveEvents: null, hasBrand: true, hasAnnouncements: true, hasPayments: true, hasEventSite: true, hasBusinessFeatures: false },
-  BUSINESS: { maxSeats: 20, canInviteMembers: true, maxActiveEvents: null, hasBrand: true, hasAnnouncements: true, hasPayments: true, hasEventSite: true, hasBusinessFeatures: true },
+  FREE: { maxSeats: 1, canInviteMembers: false, maxActiveEvents: 1, hasBrand: false, hasAnnouncements: false, hasPayments: false, hasEventSite: false, hasFinalsFormats: false, hasResources: false, hasBusinessFeatures: false },
+  PRO: { maxSeats: 5, canInviteMembers: true, maxActiveEvents: null, hasBrand: true, hasAnnouncements: true, hasPayments: true, hasEventSite: true, hasFinalsFormats: true, hasResources: true, hasBusinessFeatures: false },
+  BUSINESS: { maxSeats: 20, canInviteMembers: true, maxActiveEvents: null, hasBrand: true, hasAnnouncements: true, hasPayments: true, hasEventSite: true, hasFinalsFormats: true, hasResources: true, hasBusinessFeatures: true },
 }
 
 /** Entitlements for a plan. Unknown/missing plan falls back to the most restrictive (FREE). */

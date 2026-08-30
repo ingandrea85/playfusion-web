@@ -157,7 +157,7 @@ export interface CategoryFinalStanding { categoryId: string; rows: FinalStanding
 export type FinalsMatchRef = { seed: number } | { winnerOf: string } | { loserOf: string }
 export interface FinalsFormatMatch { slot: string; home: FinalsMatchRef; away: FinalsMatchRef; placementFrom?: number; placementTo?: number }
 export interface FinalsFormatRound { name: string; matches: FinalsFormatMatch[] }
-export interface CustomFinalsFormat { id: string; name: string; seeds: number; rounds: FinalsFormatRound[]; createdAt: string }
+export interface CustomFinalsFormat { id: string; name: string; seeds: number; rounds: FinalsFormatRound[]; createdAt: string; organizationId?: string }
 export interface FinalsFormatInput { name: string; seeds: number; rounds: FinalsFormatRound[] }
 
 // S17 — event resources & post-match logistics.
