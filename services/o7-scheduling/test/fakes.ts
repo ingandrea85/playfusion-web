@@ -45,7 +45,7 @@ import type { FinalsFormatRepository } from '../src/ports.js';
 import type { CustomFinalsFormat } from '../src/finals-format.js';
 export class InMemoryFinalsFormatRepository implements FinalsFormatRepository {
   readonly items = new Map<string, CustomFinalsFormat>();
-  async list() { return [...this.items.values()]; }
+  async listByOrg(organizationId: string) { return [...this.items.values()].filter((f) => (f as { organizationId?: string }).organizationId === organizationId); }
   async get(id: string) { return this.items.get(id); }
   async save(f: CustomFinalsFormat) { this.items.set(f.id, f); }
   async delete(id: string) { this.items.delete(id); }
