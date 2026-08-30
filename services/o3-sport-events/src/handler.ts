@@ -15,17 +15,21 @@ import { drawGironi } from './application/draw-gironi.js';
 import { saveGironi, getGironi } from './application/save-gironi.js';
 import { listEvents, getEvent } from './read-model.js';
 import { makeEventSite, type EventSite } from './domain.js';
+import { DynamoDbSportRepository } from './adapters/dynamodb-sport-repository.js';
+import { listSports, getSport, saveSport, deleteSport } from './application/sports.js';
+import type { SportProfileInput } from './sport.js';
 
 const db = makeDocClient();
 const publisher = new EventBridgeEventPublisher(busName());
 const store = new DynamoDbEventStore(db);
 const gironiRepo = new DynamoDbGironiRepository(db);
 const teamSource = new HttpTeamSource();
+const sports = new DynamoDbSportRepository(db);
 const app = new Hono();
 // Actual (non-preflight) responses need CORS headers too: API Gateway's
 // defaultCorsPreflightOptions only answers OPTIONS, so browsers block GET/POST replies
 // unless the Lambda sets Access-Control-Allow-Origin itself.
-app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'] }));
+app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 const orgOf = (c: any) => getIdentity(c)?.organizationId ?? c.req.header('x-organization-id') ?? 'org-pilot';
 const tieBreakCriterion = z.enum(['HEAD_TO_HEAD', 'GOAL_DIFFERENCE', 'GOALS_FOR']);
 // S6.1: competition config is added additively — dates stay start/end date, the rest is
@@ -87,6 +91,27 @@ app.put('/events/:id/gironi/:categoria', organizer, async (c) => {
 });
 
 app.get('/events/:id/gironi', async (c) => c.json(await getGironi(gironiRepo)(c.req.param('id'))));
+
+// Sport catalog (Epic #143) — GLOBAL. GET is a public read (create-event selector, the engine's
+// snapshot source); writes are platform_admin (managed in E4).
+const sportBody = z.object({
+  name: z.string().min(1),
+  participants: z.enum(['team', 'individual', 'both']),
+  scoreLabel: z.string().min(1),
+  points: z.object({ win: z.number(), draw: z.number().nullable(), loss: z.number() }),
+  tieBreak: z.array(z.enum(['HEAD_TO_HEAD', 'SCORE_DIFFERENCE', 'SCORE_FOR', 'WINS'])).default([]),
+});
+app.get('/sports', async (c) => c.json(await listSports({ repo: sports })()));
+app.get('/sports/:id', async (c) => c.json(await getSport({ repo: sports })(c.req.param('id'))));
+app.post('/admin/sports', platformAdmin, async (c) => {
+  const b = sportBody.parse(await c.req.json()) as SportProfileInput;
+  return c.json(await saveSport({ repo: sports })({ id: randomUUID(), ...b }), 201);
+});
+app.put('/admin/sports/:id', platformAdmin, async (c) => {
+  const b = sportBody.parse(await c.req.json()) as SportProfileInput;
+  return c.json(await saveSport({ repo: sports })({ id: c.req.param('id'), ...b }));
+});
+app.delete('/admin/sports/:id', platformAdmin, async (c) => { await deleteSport({ repo: sports })(c.req.param('id')); return c.body(null, 204); });
 
 // Event Site (Pro) — per-event overrides of the public website. Organizer (or owner) editable: whoever
 // operates the event curates its site; org-level defaults stay owner-only (o1). Read publicly via

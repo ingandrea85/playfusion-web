@@ -231,6 +231,13 @@ export type PlanKey = 'FREE' | 'PRO' | 'BUSINESS'
 export type SubStatus = 'TRIAL' | 'ACTIVE'
 export interface Subscription { organizationId: string; plan: PlanKey; status: SubStatus; renewsOn: string; trialDaysLeft: number }
 
+// Epic #143 — global sport catalog (platform_admin managed; public read).
+export type SportParticipants = 'team' | 'individual' | 'both'
+export type SportTieBreak = 'HEAD_TO_HEAD' | 'SCORE_DIFFERENCE' | 'SCORE_FOR' | 'WINS'
+export interface SportPoints { win: number; draw: number | null; loss: number }
+export interface SportProfile { id: string; name: string; participants: SportParticipants; scoreLabel: string; points: SportPoints; tieBreak: SportTieBreak[]; createdAt: string }
+export interface SportProfileInput { name: string; participants: SportParticipants; scoreLabel: string; points: SportPoints; tieBreak: SportTieBreak[] }
+
 // S21 (E4 admin) — cross-tenant monitoring, platform_admin only.
 export interface AdminOrgSummary { id: string; name: string; memberCount: number }
 export interface AdminOrgDetail { id: string; name: string; members: Member[] }

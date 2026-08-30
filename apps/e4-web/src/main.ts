@@ -7,6 +7,8 @@ import { readConfig } from './config.js'
 import { createAuth0Adapter, ensureAuthenticated, authProviderFrom, type Auth0Port } from './auth/auth0.js'
 import { renderOrganizations, type OrgRow } from './views/organizations.js'
 import { renderOrganization, wireOrganization } from './views/organization.js'
+import { renderSports } from './views/sports.js'
+import { renderSportEditor, collectSport } from './views/sport-editor.js'
 
 const cfg = readConfig(import.meta.env)
 const app = document.getElementById('app')!
@@ -18,7 +20,8 @@ function topbar(port: Auth0Port, email?: string): void {
   const host = document.createElement('header')
   host.className = 'pf-topbar'
   host.innerHTML = `<a class="pf-brand" href="#/">play<b>fusion</b><small>Admin</small></a>
-    <nav><span class="pf-muted" style="margin-right:12px">${esc(email ?? '')}</span><a href="#" id="logout">Esci</a></nav>`
+    <nav><a href="#/">Organizzazioni</a> <a href="#/sports">Sport</a>
+      <span class="pf-muted" style="margin:0 12px">${esc(email ?? '')}</span><a href="#" id="logout">Esci</a></nav>`
   document.body.prepend(host)
   host.querySelector('#logout')!.addEventListener('click', (e) => { e.preventDefault(); void port.logout() })
 }
@@ -45,6 +48,9 @@ async function boot() {
     new HashRouter()
       .on('#/', () => { current = () => listRoute(client); return current() })
       .on('#/organizations/:id', (p) => { current = () => detailRoute(client, p.id, rerun); return current() })
+      .on('#/sports/new', () => { current = () => sportEditorRoute(client, null, rerun); return current() })
+      .on('#/sports/:id', (p) => { current = () => sportEditorRoute(client, p.id, rerun); return current() })
+      .on('#/sports', () => { current = () => sportsRoute(client, rerun); return current() })
       .start()
   } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
 }
@@ -74,6 +80,40 @@ async function detailRoute(client: Client, id: string, rerun: () => void): Promi
       onDone: rerun,
     })
   } catch { app.innerHTML = errorCard('Impossibile caricare l\'organizzazione.') }
+}
+
+async function sportsRoute(client: Client, rerun: () => void): Promise<void> {
+  try {
+    const sports = await client.o3.listSports()
+    app.innerHTML = renderSports(sports)
+    app.querySelectorAll<HTMLButtonElement>('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+      if (!confirm('Eliminare lo sport?')) return
+      try { await client.o3.adminDeleteSport(b.dataset.del!); rerun() }
+      catch { app.querySelector('#err')!.innerHTML = `<div class="pf-card" role="alert" style="border-color:var(--color-feedback-danger);margin-bottom:var(--space-md)">Eliminazione non riuscita.</div>` }
+    }))
+  } catch { app.innerHTML = errorCard('Impossibile caricare gli sport.') }
+}
+
+async function sportEditorRoute(client: Client, id: string | null, rerun: () => void): Promise<void> {
+  try {
+    const sport = id && id !== 'new' ? await client.o3.getSport(id) : null
+    app.innerHTML = renderSportEditor(sport)
+    const fail = (m: string) => { app.querySelector('#err')!.innerHTML = `<div class="pf-card" role="alert" style="border-color:var(--color-feedback-danger);margin-bottom:var(--space-md)">${esc(m)}</div>` }
+    const nodraw = app.querySelector<HTMLInputElement>('#sp-nodraw')!
+    const drawInp = app.querySelector<HTMLInputElement>('#sp-draw')!
+    nodraw.addEventListener('change', () => { drawInp.disabled = nodraw.checked })
+    app.querySelectorAll<HTMLInputElement>('input[name="sp-part"]').forEach((r) => r.addEventListener('change', () => {
+      app.querySelectorAll('.pf-segopt').forEach((o) => o.classList.toggle('on', (o.querySelector('input') as HTMLInputElement).checked))
+    }))
+    app.querySelector<HTMLButtonElement>('#sp-save')!.addEventListener('click', async () => {
+      const input = collectSport(app)
+      const btn = app.querySelector<HTMLButtonElement>('#sp-save')!; btn.disabled = true
+      try {
+        if (sport) await client.o3.adminUpdateSport(sport.id, input); else await client.o3.adminCreateSport(input)
+        window.location.hash = '#/sports'; rerun()
+      } catch { fail('Salvataggio non riuscito (controlla i campi).'); btn.disabled = false }
+    })
+  } catch { app.innerHTML = errorCard('Impossibile caricare lo sport.') }
 }
 
 boot()
