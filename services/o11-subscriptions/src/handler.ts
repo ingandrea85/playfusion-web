@@ -7,54 +7,77 @@ import {
 } from '@playfusion/platform-lib';
 import { z } from 'zod';
 import { DynamoDbSubscriptionRepository } from './adapters/dynamodb-subscription-repository.js';
-import { getOrProvision, activatePlan, expireTrial, adminSetPlan } from './application/subscription.js';
-
-const db = makeDocClient();
-const repo = new DynamoDbSubscriptionRepository(db);
-const deps = { repo };
+import { makeLiveStripeGateway } from './adapters/stripe-gateway-live.js';
+import { getSubscription, provision, billingPortal, resync, type Deps } from './application/subscription.js';
+import { handleStripeEvent } from './application/webhook.js';
+import type { StripeGateway } from './ports/stripe-gateway.js';
+import type { PriceToPlan } from './domain.js';
 
 const auth0cfg = auth0ConfigFromEnv();
 const verifier = auth0cfg ? createAuth0Verifier(auth0cfg) : undefined;
-// GET is organizer-readable (the E1 shell reads the plan at boot to compute entitlements) and also
-// platform_admin-readable (S21 E4 monitoring reads any org's plan). The billing levers (activate/
-// expire) are owner-only (T4); the admin plan setter is platform_admin (S21).
 const organizer = requireOrganizer({ auth0: verifier, allowPlatformAdmin: true });
 const owner = requireOwner({ auth0: verifier });
 const platformAdmin = requirePlatformAdmin({ auth0: verifier });
 
-const app = new Hono();
-app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
+const priceToPlan: PriceToPlan = {
+  ...(process.env.STRIPE_PRICE_STARTER ? { [process.env.STRIPE_PRICE_STARTER]: 'STARTER' as const } : {}),
+  ...(process.env.STRIPE_PRICE_CLUB ? { [process.env.STRIPE_PRICE_CLUB]: 'CLUB' as const } : {}),
+};
 
-// Read the tenant subscription (provisions a CLUB trial on first read — trial-first). Organizer only.
-app.get('/organizations/:orgId/subscription', organizer, async (c) => c.json(await getOrProvision(deps)(c.req.param('orgId'))));
-// Fake upgrade to a paid self-serve plan (STARTER or CLUB). Owner-only.
-const activateBody = z.object({ plan: z.enum(['STARTER', 'CLUB']) });
-app.post('/organizations/:orgId/subscription:activate', owner, async (c) => {
-  const b = activateBody.parse(await c.req.json());
-  return c.json(await activatePlan(deps)(c.req.param('orgId'), b.plan));
-});
-// Demo lever: expire the trial → limited Free. Owner-only.
-app.post('/organizations/:orgId/subscription:expire-trial', owner, async (c) => c.json(await expireTrial(deps)(c.req.param('orgId'))));
+export function defaultDeps(): Deps {
+  const repo = new DynamoDbSubscriptionRepository(makeDocClient());
+  const stripe: StripeGateway = makeLiveStripeGateway({
+    secretKey: process.env.STRIPE_SECRET_KEY ?? '',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
+    clubPriceId: process.env.STRIPE_PRICE_CLUB ?? '',
+  });
+  return { repo, stripe, priceToPlan };
+}
 
-// S21 admin: set any org's plan (ACTIVE) or grant a fresh CLUB trial. platform_admin only.
-const setPlanBody = z.object({ plan: z.enum(['FREE', 'STARTER', 'CLUB', 'ENTERPRISE']), trial: z.boolean().optional() });
-app.put('/admin/organizations/:orgId/subscription', platformAdmin, async (c) => {
-  const b = setPlanBody.parse(await c.req.json());
-  return c.json(await adminSetPlan(deps)(c.req.param('orgId'), b.plan, b.trial ?? false));
-});
+const provisionBody = z.object({ email: z.string().email().optional() });
+const portalBody = z.object({ returnUrl: z.string().url() });
 
-app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
+export function makeApp(deps: Deps): Hono {
+  const app = new Hono();
+  app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id', 'stripe-signature'], allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 
-export { app };
+  // Public Stripe webhook — no JWT; the Stripe signature is the auth. Uses the RAW body.
+  app.post('/webhooks/stripe', async (c) => {
+    const sig = c.req.header('stripe-signature') ?? '';
+    const raw = await c.req.text();
+    const out = await handleStripeEvent(deps)(raw, sig);
+    return c.json(out);
+  });
+
+  app.get('/organizations/:orgId/subscription', organizer, async (c) => c.json(await getSubscription(deps)(c.req.param('orgId'))));
+  app.post('/organizations/:orgId/subscription:provision', owner, async (c) => {
+    const b = provisionBody.parse(await c.req.json().catch(() => ({})));
+    return c.json(await provision(deps)(c.req.param('orgId'), b.email));
+  });
+  app.post('/organizations/:orgId/subscription:portal', owner, async (c) => {
+    const b = portalBody.parse(await c.req.json());
+    return c.json(await billingPortal(deps)(c.req.param('orgId'), b.returnUrl));
+  });
+  app.post('/admin/organizations/:orgId/subscription:resync', platformAdmin, async (c) => c.json(await resync(deps)(c.req.param('orgId'))));
+
+  app.onError((err, c) => { const e = toHttpError(err); return c.json(JSON.parse(e.body), e.statusCode as any); });
+  return app;
+}
 
 import { handle } from 'hono/aws-lambda';
-const inner = handle(app);
+
+// Lazy singleton: constructing the live Stripe/DynamoDB clients at module-import time would run
+// (and crash, given an empty STRIPE_SECRET_KEY) whenever this module is merely imported for its
+// named exports (e.g. `makeApp` in tests). Defer to the first real Lambda invocation instead.
+let cachedInner: ReturnType<typeof handle> | undefined;
+const getInner = () => (cachedInner ??= handle(makeApp(defaultDeps())));
+
 export const handler = async (event: any, ctx: any) => {
   if (event?.pathParameters?.proxy != null) event.path = `/${event.pathParameters.proxy}`;
   const correlationId = event.headers?.['x-correlation-id'] ?? randomUUID();
   return withCorrelation(correlationId, async () => {
     checkpoint('o11-handler', 'START', { path: event.rawPath ?? event.path, correlationId: currentCorrelationId() });
-    try { return await inner(event, ctx); }
+    try { return await getInner()(event, ctx); }
     finally { checkpoint('o11-handler', 'STOP', {}); }
   });
 };
