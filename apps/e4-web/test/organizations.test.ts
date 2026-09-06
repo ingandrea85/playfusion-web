@@ -4,27 +4,28 @@ import { renderOrganizations, planLabel, type OrgRow } from '../src/views/organi
 import type { Subscription } from '@playfusion/rest-client'
 
 const sub = (over: Partial<Subscription> = {}): Subscription =>
-  ({ organizationId: 'o1', plan: 'PRO', status: 'ACTIVE', renewsOn: '2026-10-01', trialDaysLeft: 0, ...over })
+  ({ organizationId: 'o1', plan: 'CLUB', status: 'ACTIVE', renewsOn: '2026-10-01', trialDaysLeft: 0, ...over })
 
 describe('planLabel', () => {
   it('maps plan/status to a label', () => {
     expect(planLabel(null)).toBe('—')
     expect(planLabel(sub({ plan: 'FREE', status: 'ACTIVE' }))).toBe('Free')
-    expect(planLabel(sub({ plan: 'PRO', status: 'ACTIVE' }))).toBe('Pro')
-    expect(planLabel(sub({ plan: 'BUSINESS', status: 'ACTIVE' }))).toBe('Business')
-    expect(planLabel(sub({ plan: 'PRO', status: 'TRIAL', trialDaysLeft: 7 }))).toBe('Prova Pro · 7g')
+    expect(planLabel(sub({ plan: 'STARTER', status: 'ACTIVE' }))).toBe('Starter')
+    expect(planLabel(sub({ plan: 'CLUB', status: 'ACTIVE' }))).toBe('Club')
+    expect(planLabel(sub({ plan: 'ENTERPRISE', status: 'ACTIVE' }))).toBe('Enterprise')
+    expect(planLabel(sub({ plan: 'CLUB', status: 'TRIAL', trialDaysLeft: 7 }))).toBe('Prova Club · 7g')
   })
 })
 
 describe('renderOrganizations', () => {
   it('lists orgs with plan + member count + a link to detail', () => {
     const rows: OrgRow[] = [
-      { id: 'org_a', name: 'Acme', memberCount: 3, sub: sub({ plan: 'BUSINESS' }) },
+      { id: 'org_a', name: 'Acme', memberCount: 3, sub: sub({ plan: 'ENTERPRISE' }) },
       { id: 'org_b', name: 'Beta', memberCount: 1, sub: null },
     ]
     const html = renderOrganizations(rows)
     expect(html).toContain('Acme')
-    expect(html).toContain('Business')
+    expect(html).toContain('Enterprise')
     expect(html).toContain('#/organizations/org_a')
     expect(html).toContain('—') // unknown plan for Beta
   })

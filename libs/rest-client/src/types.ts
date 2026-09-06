@@ -243,7 +243,10 @@ export interface EventSite {
 export interface ResolvedEventSite { enabled: boolean; tagline?: string; about?: string; program?: string; venue?: Venue; contacts?: Contacts; sponsors: Sponsor[] }
 
 // S20 (O11) — per-tenant subscription (trial-first billing). trialDaysLeft is server-computed.
-export type PlanKey = 'FREE' | 'PRO' | 'BUSINESS'
+// Tiers: FREE, STARTER (core tournament), CLUB (differentiators), ENTERPRISE (quote-based, admin-set).
+export type PlanKey = 'FREE' | 'STARTER' | 'CLUB' | 'ENTERPRISE'
+/** Paid self-serve tiers an owner can activate (ENTERPRISE is quote-based / admin-set). */
+export type SelfServePlan = 'STARTER' | 'CLUB'
 export type SubStatus = 'TRIAL' | 'ACTIVE'
 export interface Subscription { organizationId: string; plan: PlanKey; status: SubStatus; renewsOn: string; trialDaysLeft: number }
 

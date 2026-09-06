@@ -3,11 +3,12 @@ import type { AdminOrgSummary, Subscription } from '@playfusion/rest-client'
 
 export interface OrgRow extends AdminOrgSummary { sub?: Subscription | null }
 
+const PLAN_LABELS: Record<string, string> = { FREE: 'Free', STARTER: 'Starter', CLUB: 'Club', ENTERPRISE: 'Enterprise' }
 /** Plan badge label from a subscription (or "—" when unknown). */
 export function planLabel(sub?: Subscription | null): string {
   if (!sub) return '—'
-  if (sub.status === 'TRIAL') return `Prova Pro · ${sub.trialDaysLeft}g`
-  return sub.plan === 'FREE' ? 'Free' : sub.plan === 'BUSINESS' ? 'Business' : 'Pro'
+  if (sub.status === 'TRIAL') return `Prova Club · ${sub.trialDaysLeft}g`
+  return PLAN_LABELS[sub.plan] ?? sub.plan
 }
 const planMod = (sub?: Subscription | null): string =>
   !sub ? '' : sub.status === 'TRIAL' ? 'trial' : sub.plan.toLowerCase()

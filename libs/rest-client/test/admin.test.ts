@@ -13,13 +13,13 @@ describe('S21 admin client methods', () => {
     expect(f.mock.calls[1][0]).toBe('https://api/prod/o2/admin/organizations/org%201')
   })
   it('o11.adminSetPlan PUTs the plan', async () => {
-    const f = vi.fn().mockResolvedValue(res({ organizationId: 'o1', plan: 'BUSINESS', status: 'ACTIVE', renewsOn: '2026-10-01', trialDaysLeft: 0 }))
+    const f = vi.fn().mockResolvedValue(res({ organizationId: 'o1', plan: 'ENTERPRISE', status: 'ACTIVE', renewsOn: '2026-10-01', trialDaysLeft: 0 }))
     const c = createClient({ baseUrl: 'https://api/prod', fetch: f })
-    await c.o11.adminSetPlan('o1', { plan: 'BUSINESS' })
+    await c.o11.adminSetPlan('o1', { plan: 'ENTERPRISE' })
     const [url, init] = f.mock.calls[0]
     expect(url).toBe('https://api/prod/o11/admin/organizations/o1/subscription')
     expect(init.method).toBe('PUT')
-    expect(JSON.parse(init.body)).toEqual({ plan: 'BUSINESS' })
+    expect(JSON.parse(init.body)).toEqual({ plan: 'ENTERPRISE' })
   })
   it('o3.adminOrgEvents GETs the org events', async () => {
     const f = vi.fn().mockResolvedValue(res([]))

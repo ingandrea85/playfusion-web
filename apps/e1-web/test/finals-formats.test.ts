@@ -12,7 +12,7 @@ const fmt = (over: Partial<CustomFinalsFormat> = {}): CustomFinalsFormat => ({
   ],
   ...over,
 })
-const ctx = (over: any = {}) => ({ client: { o7: {} } as any, orgId: 'o', e3BaseUrl: '', navigate: vi.fn(), refresh: vi.fn(), isPlatformAdmin: false, orgRole: 'OWNER', entitlements: entitlements('PRO'), ...over })
+const ctx = (over: any = {}) => ({ client: { o7: {} } as any, orgId: 'o', e3BaseUrl: '', navigate: vi.fn(), refresh: vi.fn(), isPlatformAdmin: false, orgRole: 'OWNER', entitlements: entitlements('CLUB'), ...over })
 
 describe('finals-formats list', () => {
   it('lists formats with edit/delete + a Nuovo link (org routes)', () => {

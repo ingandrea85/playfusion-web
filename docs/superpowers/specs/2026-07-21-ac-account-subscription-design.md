@@ -76,6 +76,14 @@ riservati a Pro. Prezzi e packaging restano deferiti (ADR-007). Origine: mockup
 `playfusion-web`. (La scrittura effettiva nel Blueprint è committata dall'utente,
 repo separato.)
 
+> **⚠️ Superseded (2026-09-06).** D-O11-2 è stata formalizzata nel Blueprint
+> (`20-domain/bc/o11-billing.md`) con packaging a **quattro tier** dopo la ratifica
+> prezzi (ADR-007): **Free / Starter / Club / Enterprise**. Il trial-first resta, ma
+> il trial provisiona ora **Club** (non "Pro"), Starter+Club sono i tier self-serve, ed
+> Enterprise (federazioni, leghe, grandi associazioni) è a preventivo/admin-set. Prezzi
+> ratificati in `60-product-catalog/pricing-derivation.md`. I mockup di questo slice
+> mantengono i nomi storici Free/Pro/Business (prototipo congelato).
+
 ## Test — `shared/mock/account.test.ts`
 
 Scenario-driven (reset seed):

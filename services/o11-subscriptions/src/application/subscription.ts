@@ -1,5 +1,5 @@
 import { checkpoint } from '@playfusion/platform-lib';
-import { trialSubscription, proSubscription, freeSubscription, planSubscription, trialDaysLeft, type Subscription, type PlanKey } from '../domain.js';
+import { trialSubscription, paidSubscription, freeSubscription, planSubscription, trialDaysLeft, type Subscription, type PlanKey, type SelfServePlan } from '../domain.js';
 import type { SubscriptionRepository } from '../ports.js';
 
 type Deps = { repo: SubscriptionRepository; now?: () => Date };
@@ -9,7 +9,7 @@ export interface SubscriptionView extends Subscription { trialDaysLeft: number }
 const view = (sub: Subscription, now: Date): SubscriptionView => ({ ...sub, trialDaysLeft: trialDaysLeft(sub, now) });
 
 /**
- * Trial-first: reading a tenant's subscription provisions a PRO trial the first time (there is no
+ * Trial-first: reading a tenant's subscription provisions a CLUB trial the first time (there is no
  * OrganizationCreated event to hang it off yet), so every org is born in trial. Persist-on-read so
  * renewsOn is fixed and the trial actually counts down.
  */
@@ -23,16 +23,16 @@ export const getOrProvision = (d: Deps) => async (organizationId: string): Promi
   return view(sub, now);
 };
 
-/** Fake upgrade to paid Pro. */
-export const activatePro = (d: Deps) => async (organizationId: string): Promise<SubscriptionView> => {
+/** Fake upgrade to a paid self-serve plan (STARTER or CLUB). */
+export const activatePlan = (d: Deps) => async (organizationId: string, plan: SelfServePlan): Promise<SubscriptionView> => {
   const now = clock(d);
-  const sub = proSubscription(organizationId, now);
+  const sub = paidSubscription(organizationId, plan, now);
   await d.repo.save(sub);
-  checkpoint('activatePro', 'STOP', { organizationId });
+  checkpoint('activatePlan', 'STOP', { organizationId, plan });
   return view(sub, now);
 };
 
-/** S21 admin: set an org's plan (ACTIVE) or grant a fresh PRO trial. Cross-tenant (platform_admin). */
+/** S21 admin: set an org's plan (ACTIVE) or grant a fresh CLUB trial. Cross-tenant (platform_admin). */
 export const adminSetPlan = (d: Deps) => async (organizationId: string, plan: PlanKey, trial = false): Promise<SubscriptionView> => {
   const now = clock(d);
   const sub = planSubscription(organizationId, plan, now, trial);

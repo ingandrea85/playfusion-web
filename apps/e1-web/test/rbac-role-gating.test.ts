@@ -14,10 +14,10 @@ const ctx = (role: 'OWNER' | 'ORGANIZER'): ViewCtx => ({
   client: {
     o1: { getBrand: async () => null },
     o2: { listMembers: async () => [], listInvitations: async () => [] },
-    o11: { getSubscription: async () => ({ organizationId: 'o', plan: 'PRO', status: 'TRIAL', renewsOn: '', trialDaysLeft: 7 }) },
+    o11: { getSubscription: async () => ({ organizationId: 'o', plan: 'CLUB', status: 'TRIAL', renewsOn: '', trialDaysLeft: 7 }) },
   } as any,
   orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh: () => {},
-  isPlatformAdmin: false, orgRole: role, entitlements: entitlements('PRO'),
+  isPlatformAdmin: false, orgRole: role, entitlements: entitlements('CLUB'),
 })
 
 describe('org nav role-gating', () => {

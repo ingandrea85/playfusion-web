@@ -31,9 +31,10 @@ function subscriptionCard(sub: Subscription | null): string {
     <div class="pf-eyebrow" style="margin-top:var(--space-md)">Imposta piano</div>
     <div class="pf-row" style="gap:var(--space-sm);margin-top:var(--space-sm);flex-wrap:wrap">
       <button class="pf-btn pf-btn--ghost" data-plan="FREE">Free</button>
-      <button class="pf-btn pf-btn--ghost" data-plan="PRO">Pro</button>
-      <button class="pf-btn pf-btn--ghost" data-plan="BUSINESS">Business</button>
-      <button class="pf-btn pf-btn--ghost" data-trial="1">Concedi prova Pro</button>
+      <button class="pf-btn pf-btn--ghost" data-plan="STARTER">Starter</button>
+      <button class="pf-btn pf-btn--ghost" data-plan="CLUB">Club</button>
+      <button class="pf-btn pf-btn--ghost" data-plan="ENTERPRISE">Enterprise</button>
+      <button class="pf-btn pf-btn--ghost" data-trial="1">Concedi prova Club</button>
     </div>
   </div>`
 }
@@ -62,5 +63,5 @@ export function wireOrganization(root: ParentNode, orgId: string, api: {
   root.querySelectorAll<HTMLButtonElement>('[data-plan]').forEach((b) =>
     b.addEventListener('click', () => run({ plan: b.dataset.plan as PlanKey }, b)))
   root.querySelectorAll<HTMLButtonElement>('[data-trial]').forEach((b) =>
-    b.addEventListener('click', () => run({ plan: 'PRO', trial: true }, b)))
+    b.addEventListener('click', () => run({ plan: 'CLUB', trial: true }, b)))
 }

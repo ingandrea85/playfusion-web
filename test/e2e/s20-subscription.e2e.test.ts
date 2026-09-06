@@ -1,8 +1,8 @@
 import { test, expect } from 'vitest';
 import { randomUUID } from 'node:crypto';
 
-// Acceptance E2E (S20 · O11 subscriptions): trial-first lifecycle. First read bootstraps a PRO
-// trial (~14 days); activate-pro → PRO/ACTIVE; expire-trial → FREE/ACTIVE. Skip-gated on API_BASE_URL.
+// Acceptance E2E (S20 · O11 subscriptions): trial-first lifecycle. First read bootstraps a CLUB
+// trial (~14 days); activate(CLUB) → CLUB/ACTIVE; expire-trial → FREE/ACTIVE. Skip-gated on API_BASE_URL.
 // Uses a throwaway org id so it never collides with real tenant data.
 const API = process.env.API_BASE_URL;
 const run = test.skipIf(!API);
@@ -21,9 +21,9 @@ run('test_e2e_subscription_trialFirstLifecycle', async () => {
   const auth = { authorization: await token(['RegistrationManager']) };
   const base = `/o11/organizations/${org}/subscription`;
 
-  // first read bootstraps a PRO trial
+  // first read bootstraps a CLUB trial
   const trial = await j(await get(base, auth));
-  expect(trial.plan).toBe('PRO');
+  expect(trial.plan).toBe('CLUB');
   expect(trial.status).toBe('TRIAL');
   expect(trial.trialDaysLeft).toBeGreaterThan(10);
 
@@ -31,9 +31,9 @@ run('test_e2e_subscription_trialFirstLifecycle', async () => {
   const again = await j(await get(base, auth));
   expect(again.renewsOn).toBe(trial.renewsOn);
 
-  // upgrade to paid Pro
-  const pro = await j(await post(`${base}:activate-pro`, auth));
-  expect(pro).toMatchObject({ plan: 'PRO', status: 'ACTIVE' });
+  // upgrade to paid Club
+  const club = await j(await req('POST', `${base}:activate`, { plan: 'CLUB' }, auth));
+  expect(club).toMatchObject({ plan: 'CLUB', status: 'ACTIVE' });
 
   // expire the trial → limited Free
   const free = await j(await post(`${base}:expire-trial`, auth));

@@ -17,7 +17,7 @@ const ctx = (over: Partial<ViewCtx> = {}, ev: EventDetail = event): ViewCtx => (
     o1: { getSite: vi.fn().mockResolvedValue(org) },
   } as any,
   orgId: 'org-1', e3BaseUrl: '', navigate: () => {}, refresh: vi.fn(),
-  isPlatformAdmin: false, orgRole: 'OWNER', entitlements: entitlements('PRO'), ...over,
+  isPlatformAdmin: false, orgRole: 'OWNER', entitlements: entitlements('CLUB'), ...over,
 })
 
 const mounted = async (c: ViewCtx) => {

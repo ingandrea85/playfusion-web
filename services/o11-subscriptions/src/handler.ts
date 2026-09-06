@@ -7,7 +7,7 @@ import {
 } from '@playfusion/platform-lib';
 import { z } from 'zod';
 import { DynamoDbSubscriptionRepository } from './adapters/dynamodb-subscription-repository.js';
-import { getOrProvision, activatePro, expireTrial, adminSetPlan } from './application/subscription.js';
+import { getOrProvision, activatePlan, expireTrial, adminSetPlan } from './application/subscription.js';
 
 const db = makeDocClient();
 const repo = new DynamoDbSubscriptionRepository(db);
@@ -25,15 +25,19 @@ const platformAdmin = requirePlatformAdmin({ auth0: verifier });
 const app = new Hono();
 app.use('*', cors({ origin: '*', allowHeaders: ['content-type', 'authorization', 'x-organization-id', 'x-correlation-id'], allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 
-// Read the tenant subscription (provisions a PRO trial on first read — trial-first). Organizer only.
+// Read the tenant subscription (provisions a CLUB trial on first read — trial-first). Organizer only.
 app.get('/organizations/:orgId/subscription', organizer, async (c) => c.json(await getOrProvision(deps)(c.req.param('orgId'))));
-// Fake upgrade to paid Pro. Owner-only.
-app.post('/organizations/:orgId/subscription:activate-pro', owner, async (c) => c.json(await activatePro(deps)(c.req.param('orgId'))));
+// Fake upgrade to a paid self-serve plan (STARTER or CLUB). Owner-only.
+const activateBody = z.object({ plan: z.enum(['STARTER', 'CLUB']) });
+app.post('/organizations/:orgId/subscription:activate', owner, async (c) => {
+  const b = activateBody.parse(await c.req.json());
+  return c.json(await activatePlan(deps)(c.req.param('orgId'), b.plan));
+});
 // Demo lever: expire the trial → limited Free. Owner-only.
 app.post('/organizations/:orgId/subscription:expire-trial', owner, async (c) => c.json(await expireTrial(deps)(c.req.param('orgId'))));
 
-// S21 admin: set any org's plan (ACTIVE) or grant a fresh PRO trial. platform_admin only.
-const setPlanBody = z.object({ plan: z.enum(['FREE', 'PRO', 'BUSINESS']), trial: z.boolean().optional() });
+// S21 admin: set any org's plan (ACTIVE) or grant a fresh CLUB trial. platform_admin only.
+const setPlanBody = z.object({ plan: z.enum(['FREE', 'STARTER', 'CLUB', 'ENTERPRISE']), trial: z.boolean().optional() });
 app.put('/admin/organizations/:orgId/subscription', platformAdmin, async (c) => {
   const b = setPlanBody.parse(await c.req.json());
   return c.json(await adminSetPlan(deps)(c.req.param('orgId'), b.plan, b.trial ?? false));

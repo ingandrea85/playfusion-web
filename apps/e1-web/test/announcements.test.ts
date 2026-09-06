@@ -92,7 +92,7 @@ describe('announcementsScreen.load', () => {
       o3: { getEvent: vi.fn().mockResolvedValue(event) },
       o9: { listAnnouncements: vi.fn().mockRejectedValue(new Error('down')) },
       o5: { listRegistrations: vi.fn().mockRejectedValue(new Error('down')) },
-    } , entitlements: entitlements('PRO') } as any
+    } , entitlements: entitlements('CLUB') } as any
     const d = await announcementsScreen.load(ctx, { id: 'e1' })
     expect(d.event.sportEventId).toBe('e1')
     expect(d.announcements).toEqual([])

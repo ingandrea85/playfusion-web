@@ -7,7 +7,7 @@ import type { ViewCtx } from '../src/view'
 const ctx = (over: Partial<ViewCtx> = {}): ViewCtx => ({
   client: { o1: { getSite: vi.fn().mockResolvedValue(null), setSite: vi.fn().mockResolvedValue({}) } } as any,
   orgId: 'org-1', e3BaseUrl: '', navigate: () => {}, refresh: vi.fn(),
-  isPlatformAdmin: false, orgRole: 'OWNER', entitlements: entitlements('PRO'), ...over,
+  isPlatformAdmin: false, orgRole: 'OWNER', entitlements: entitlements('CLUB'), ...over,
 })
 
 describe('org site editor gating', () => {
