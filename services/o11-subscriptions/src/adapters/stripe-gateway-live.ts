@@ -6,7 +6,7 @@ export interface StripeGatewayConfig { secretKey: string; webhookSecret: string;
 
 // `sdk` is injectable for tests; defaults to a real Stripe client.
 export function makeLiveStripeGateway(cfg: StripeGatewayConfig, sdk?: Stripe): StripeGateway {
-  const stripe = sdk ?? new Stripe(cfg.secretKey, { apiVersion: '2025-08-27.basil' });
+  const stripe = sdk ?? new Stripe(cfg.secretKey, { apiVersion: '2025-02-24.acacia' });
   return {
     async createTrialSubscription({ organizationId, email }) {
       const customer = await stripe.customers.create({ email, metadata: { organizationId } });
