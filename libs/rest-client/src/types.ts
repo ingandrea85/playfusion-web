@@ -245,10 +245,8 @@ export interface ResolvedEventSite { enabled: boolean; tagline?: string; about?:
 // S20 (O11) — per-tenant subscription (trial-first billing). trialDaysLeft is server-computed.
 // Tiers: FREE, STARTER (core tournament), CLUB (differentiators), ENTERPRISE (quote-based, admin-set).
 export type PlanKey = 'FREE' | 'STARTER' | 'CLUB' | 'ENTERPRISE'
-/** Paid self-serve tiers an owner can activate (ENTERPRISE is quote-based / admin-set). */
-export type SelfServePlan = 'STARTER' | 'CLUB'
-export type SubStatus = 'TRIAL' | 'ACTIVE'
-export interface Subscription { organizationId: string; plan: PlanKey; status: SubStatus; renewsOn: string; trialDaysLeft: number }
+export type SubStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE'
+export interface Subscription { organizationId: string; plan: PlanKey; status: SubStatus; renewsOn: string; trialDaysLeft: number; stripeCustomerId?: string; stripeSubscriptionId?: string }
 
 // Epic #143 — global sport catalog (platform_admin managed; public read).
 export type SportParticipants = 'team' | 'individual' | 'both'
@@ -260,8 +258,6 @@ export interface SportProfileInput { name: string; participants: SportParticipan
 // S21 (E4 admin) — cross-tenant monitoring, platform_admin only.
 export interface AdminOrgSummary { id: string; name: string; memberCount: number }
 export interface AdminOrgDetail { id: string; name: string; members: Member[] }
-/** Admin plan action: set the org to a plan (ACTIVE), or grant a fresh PRO trial when trial=true. */
-export interface AdminSetPlanInput { plan: PlanKey; trial?: boolean }
 
 // S19 (O2) — per-tenant membership & roles.
 // T3: membership on Auth0 Organizations. Two roles only — directors enter via magic link, not membership.
