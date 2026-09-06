@@ -16,6 +16,7 @@ const planLabel = (k: PlanKey): string => PLANS.find((p) => p.key === k)?.label 
 
 function statusLine(sub: Subscription): string {
   if (sub.status === 'TRIAL') return `<span class="pf-badge">Prova Club</span> <b>${sub.trialDaysLeft}</b> giorn${sub.trialDaysLeft === 1 ? 'o' : 'i'} rimast${sub.trialDaysLeft === 1 ? 'o' : 'i'}`
+  if (sub.status === 'PAST_DUE') return `<span class="pf-badge pf-badge--warn">Pagamento in sospeso</span> Aggiorna il metodo di pagamento`
   return sub.plan === 'FREE' ? `<span class="pf-badge">Free</span> Piano gratuito limitato` : `<span class="pf-badge">${esc(planLabel(sub.plan))}</span> Attivo · rinnovo ${esc(sub.renewsOn)}`
 }
 
@@ -26,15 +27,14 @@ function priceBlock(p: PlanDef): string {
 }
 
 function planCard(p: PlanDef, sub: Subscription): string {
-  // "Paid current" = the active paid plan. A CLUB trial is NOT paid-current: the Club card still
-  // offers "Attiva Club" (convert trial → paid), and is highlighted as the plan in use.
+  // "Paid current" = the active paid plan. A CLUB trial is NOT paid-current, but is
+  // highlighted as the plan in use during the trial.
   const paidCurrent = sub.status === 'ACTIVE' && sub.plan === p.key
   const trialingClub = p.key === 'CLUB' && sub.status === 'TRIAL'
   const feats = p.features.map((f) => `<li>${esc(f)}</li>`).join('')
   let cta = ''
   if (paidCurrent) cta = `<span class="pf-badge pf-badge--paid">Piano attuale</span>`
-  else if (p.key === 'STARTER') cta = `<button class="pf-btn pf-btn--ghost" id="activate-starter">Attiva Starter</button>`
-  else if (p.key === 'CLUB') cta = `<button class="pf-btn pf-btn--primary" id="activate-club">Attiva Club</button>${trialingClub ? ' <span class="pf-muted">in prova ora</span>' : ''}`
+  else if (trialingClub) cta = `<span class="pf-muted">in prova ora</span>`
   else if (p.key === 'ENTERPRISE') cta = `<a class="pf-btn pf-btn--ghost" href="mailto:sales@playfusion.example">Contattaci</a>`
   return `<div class="pf-card pf-plan${paidCurrent || trialingClub ? ' pf-plan--current' : ''}">
     <div class="pf-eyebrow">${esc(p.label)}</div>
@@ -45,13 +45,13 @@ function planCard(p: PlanDef, sub: Subscription): string {
 }
 
 export function renderSubscription(sub: Subscription): string {
-  const expireLever = sub.status === 'TRIAL'
-    ? `<button class="pf-btn pf-btn--ghost" id="expire-trial">Simula scadenza prova</button>`
+  const manage = (sub.status !== 'ACTIVE' || sub.plan !== 'FREE')
+    ? `<button class="pf-btn pf-btn--primary" id="manage-billing">Gestisci abbonamento</button>`
     : ''
   return renderOrgShell('subscription', `
       <div class="pf-pagehead"><div class="pf-eyebrow">Organizzazione</div><h1>Abbonamento</h1></div>
       <div id="err"></div>
-      <div class="pf-card"><h2 class="pf-h3">Il tuo piano</h2><p>${statusLine(sub)}</p>${expireLever}</div>
+      <div class="pf-card"><h2 class="pf-h3">Il tuo piano</h2><p>${statusLine(sub)}</p>${manage}</div>
       <div class="pf-plangrid">${PLANS.map((p) => planCard(p, sub)).join('')}</div>`)
 }
 
@@ -64,17 +64,9 @@ export const subscriptionScreen: Screen<SubscriptionData> = {
   mount(root, ctx: ViewCtx, data) {
     if (data.forbidden) return // owner-only
     const fail = (msg: string) => { root.querySelector('#err')!.innerHTML = inlineError(msg) }
-    root.querySelector<HTMLButtonElement>('#activate-starter')?.addEventListener('click', async () => {
-      try { await ctx.client.o11.activatePlan(ctx.orgId, 'STARTER'); ctx.refresh() }
-      catch { fail('Attivazione non riuscita. Riprova.') }
-    })
-    root.querySelector<HTMLButtonElement>('#activate-club')?.addEventListener('click', async () => {
-      try { await ctx.client.o11.activatePlan(ctx.orgId, 'CLUB'); ctx.refresh() }
-      catch { fail('Attivazione non riuscita. Riprova.') }
-    })
-    root.querySelector<HTMLButtonElement>('#expire-trial')?.addEventListener('click', async () => {
-      try { await ctx.client.o11.expireTrial(ctx.orgId); ctx.refresh() }
-      catch { fail('Operazione non riuscita. Riprova.') }
+    root.querySelector<HTMLButtonElement>('#manage-billing')?.addEventListener('click', async () => {
+      try { const { url } = await ctx.client.o11.openBillingPortal(ctx.orgId, location.href); location.assign(url) }
+      catch { fail('Impossibile aprire la gestione abbonamento. Riprova.') }
     })
   },
 }

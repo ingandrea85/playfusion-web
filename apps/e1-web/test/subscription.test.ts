@@ -6,49 +6,33 @@ import { renderSubscription, subscriptionScreen } from '../src/views/subscriptio
 import { renderCapBlocked, createEventScreen } from '../src/views/create-event'
 
 const sub = (over: Partial<Subscription> = {}): Subscription =>
-  ({ organizationId: 'org-1', plan: 'CLUB', status: 'TRIAL', renewsOn: '2026-09-15', trialDaysLeft: 14, ...over })
+  ({ organizationId: 'org-1', plan: 'CLUB', status: 'TRIAL', renewsOn: '2026-09-15', trialDaysLeft: 14, stripeCustomerId: 'cus_1', ...over })
 
 describe('renderSubscription', () => {
-  it('trial shows days left and the Attiva Club CTA', () => {
+  it('trial shows days left and the manage-billing CTA', () => {
     const html = renderSubscription(sub())
-    expect(html).toContain('Prova Club')
-    expect(html).toContain('14')
-    expect(html).toContain('id="activate-club"')
-    expect(html).toContain('id="activate-starter"')
-    expect(html).toContain('id="expire-trial"')
+    expect(html).toContain('Prova Club'); expect(html).toContain('id="manage-billing"')
   })
-  it('free shows the plan and no expire lever; paid cards offer upgrade', () => {
+  it('past_due shows the warning and manage CTA', () => {
+    const html = renderSubscription(sub({ status: 'PAST_DUE' }))
+    expect(html).toContain('Pagamento in sospeso'); expect(html).toContain('id="manage-billing"')
+  })
+  it('free shows no manage CTA', () => {
     const html = renderSubscription(sub({ plan: 'FREE', status: 'ACTIVE', trialDaysLeft: 0 }))
-    expect(html).toContain('Piano gratuito limitato')
-    expect(html).not.toContain('id="expire-trial"')
-    expect(html).toContain('id="activate-club"')
-    expect(html).toContain('id="activate-starter"')
-  })
-  it('active Club marks Club as the current plan (no upgrade button)', () => {
-    const html = renderSubscription(sub({ plan: 'CLUB', status: 'ACTIVE', trialDaysLeft: 0 }))
-    expect(html).toContain('Piano attuale')
-    expect(html).not.toContain('id="activate-club"')
+    expect(html).not.toContain('id="manage-billing"')
   })
 })
 
 describe('subscription mount', () => {
-  it('Attiva Club calls activatePlan(CLUB) and refreshes', async () => {
-    const o11 = { activatePlan: vi.fn().mockResolvedValue({}), expireTrial: vi.fn().mockResolvedValue({}) }
-    const refresh = vi.fn()
-    const ctx = { client: { o11 } as any, orgId: 'org-1', e3BaseUrl: '', navigate: () => {}, refresh }
-    const root = document.createElement('div'); root.innerHTML = renderSubscription(sub())
-    subscriptionScreen.mount!(root, ctx as any, { sub: sub() })
-    root.querySelector<HTMLButtonElement>('#activate-club')!.click()
-    await vi.waitFor(() => expect(o11.activatePlan).toHaveBeenCalledWith('org-1', 'CLUB'))
-    await vi.waitFor(() => expect(refresh).toHaveBeenCalled())
-  })
-  it('Attiva Starter calls activatePlan(STARTER)', async () => {
-    const o11 = { activatePlan: vi.fn().mockResolvedValue({}), expireTrial: vi.fn().mockResolvedValue({}) }
+  it('manage-billing opens the portal and redirects', async () => {
+    const o11 = { openBillingPortal: vi.fn().mockResolvedValue({ url: 'https://portal' }) }
+    const assign = vi.fn(); Object.defineProperty(window, 'location', { value: { href: 'https://app/x', assign }, writable: true })
     const ctx = { client: { o11 } as any, orgId: 'org-1', e3BaseUrl: '', navigate: () => {}, refresh: vi.fn() }
     const root = document.createElement('div'); root.innerHTML = renderSubscription(sub())
     subscriptionScreen.mount!(root, ctx as any, { sub: sub() })
-    root.querySelector<HTMLButtonElement>('#activate-starter')!.click()
-    await vi.waitFor(() => expect(o11.activatePlan).toHaveBeenCalledWith('org-1', 'STARTER'))
+    root.querySelector<HTMLButtonElement>('#manage-billing')!.click()
+    await vi.waitFor(() => expect(o11.openBillingPortal).toHaveBeenCalledWith('org-1', 'https://app/x'))
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('https://portal'))
   })
 })
 
