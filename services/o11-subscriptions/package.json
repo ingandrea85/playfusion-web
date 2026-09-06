@@ -7,7 +7,8 @@
     "hono": "^4.5.0",
     "zod": "^3.23.0",
     "@aws-sdk/client-dynamodb": "^3.600.0",
-    "@aws-sdk/lib-dynamodb": "^3.600.0"
+    "@aws-sdk/lib-dynamodb": "^3.600.0",
+    "stripe": "^17.0.0"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
