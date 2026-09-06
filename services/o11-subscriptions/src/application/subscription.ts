@@ -1,4 +1,4 @@
-import { checkpoint } from '@playfusion/platform-lib';
+import { checkpoint, DomainError } from '@playfusion/platform-lib';
 import { subscriptionFromStripe, trialDaysLeft, type Subscription, type PriceToPlan } from '../domain.js';
 import type { SubscriptionRepository } from '../ports.js';
 import type { StripeGateway } from '../ports/stripe-gateway.js';
@@ -25,5 +25,23 @@ export const provision = (d: Deps) => async (organizationId: string, email?: str
   const sub = subscriptionFromStripe(organizationId, stripeSub, d.priceToPlan);
   await d.repo.save(sub);
   checkpoint('provisionTrial', 'STOP', { organizationId, stripeSubscriptionId: sub.stripeSubscriptionId, renewsOn: sub.renewsOn });
+  return view(sub, now);
+};
+
+/** Create a hosted Stripe Billing Portal session for the org's customer. */
+export const billingPortal = (d: Deps) => async (organizationId: string, returnUrl: string): Promise<{ url: string }> => {
+  const sub = await d.repo.get(organizationId);
+  if (!sub?.stripeCustomerId) throw new DomainError('NO_STRIPE_CUSTOMER', 'No Stripe customer for this organization', 409);
+  return d.stripe.createBillingPortalSession({ customerId: sub.stripeCustomerId, returnUrl });
+};
+
+/** Debug/admin: refetch the org's Stripe subscription and rewrite the local projection. */
+export const resync = (d: Deps) => async (organizationId: string): Promise<SubscriptionView> => {
+  const now = clock(d);
+  const cur = await d.repo.get(organizationId);
+  if (!cur?.stripeSubscriptionId) throw new DomainError('NOTHING_TO_RESYNC', 'Nothing to resync (no Stripe subscription)', 409);
+  const stripeSub = await d.stripe.getSubscription(cur.stripeSubscriptionId);
+  const sub = subscriptionFromStripe(organizationId, stripeSub, d.priceToPlan);
+  await d.repo.save(sub);
   return view(sub, now);
 };
