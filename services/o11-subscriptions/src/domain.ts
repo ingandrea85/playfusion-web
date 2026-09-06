@@ -1,58 +1,59 @@
-// S20 (O11 subscriptions) — trial-first billing (Blueprint D-O11-2). A tenant is born in a 14-day
-// CLUB trial (the full-featured self-serve tier), then degrades to a limited FREE plan at expiry
-// (never locked). Paid self-serve tiers: STARTER (core tournament) and CLUB (differentiators —
-// payments, referees, post-match logistics). ENTERPRISE (federations, leagues, large associations)
-// is sales-led / quote-based, set by an admin, not self-serve. Prices are ratified in the Blueprint
-// pricing-derivation (ADR-007 deferral lifted, MVP complete). Real payment/billing is out of scope.
+// O11 subscriptions — Stripe-backed billing (Blueprint D-O11-2). Stripe is the source of truth;
+// O11 stores a projection updated by webhooks. A tenant is born in a Stripe-native 14-day CLUB
+// trial (no card); at trial end without a payment method Stripe cancels → the org degrades to FREE.
 export type PlanKey = 'FREE' | 'STARTER' | 'CLUB' | 'ENTERPRISE';
-export type SubStatus = 'TRIAL' | 'ACTIVE';
-
-/** Paid self-serve tiers a tenant can activate on its own (ENTERPRISE is quote-based, admin-set). */
-export type SelfServePlan = 'STARTER' | 'CLUB';
+export type SubStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE';
 
 export interface Subscription {
   organizationId: string;
   plan: PlanKey;
   status: SubStatus;
-  renewsOn: string; // 'YYYY-MM-DD'
+  renewsOn: string; // 'YYYY-MM-DD' — mirrors Stripe trial_end / current_period_end
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
 }
 
-const TRIAL_DAYS = 14;
-const day = (iso: string) => iso.slice(0, 10);
-const addDays = (from: Date, days: number): string => new Date(from.getTime() + days * 86400000).toISOString().slice(0, 10);
+/** Map of Stripe price id → plan (from env: priceStarter, priceClub). */
+export type PriceToPlan = Record<string, PlanKey>;
 
-/** A fresh tenant's subscription: CLUB (full features) in trial for 14 days from `now`. */
-export function trialSubscription(organizationId: string, now: Date): Subscription {
-  return { organizationId, plan: 'CLUB', status: 'TRIAL', renewsOn: addDays(now, TRIAL_DAYS) };
+/** The subset of a Stripe Subscription object this domain reads. */
+export interface StripeSubShape {
+  id: string;
+  status: string; // trialing | active | past_due | unpaid | canceled | incomplete | incomplete_expired
+  customer: string;
+  trial_end: number | null;         // unix seconds
+  current_period_end: number | null; // unix seconds
+  items: { data: Array<{ price: { id: string } }> };
 }
 
-/** Upgrade to a paid self-serve plan — STARTER or CLUB (renews a month out). */
-export function paidSubscription(organizationId: string, plan: SelfServePlan, now: Date): Subscription {
-  return { organizationId, plan, status: 'ACTIVE', renewsOn: addDays(now, 30) };
+const isoDay = (unixSeconds: number | null): string =>
+  unixSeconds ? new Date(unixSeconds * 1000).toISOString().slice(0, 10) : '';
+const addDays = (from: Date, days: number): string =>
+  new Date(from.getTime() + days * 86400000).toISOString().slice(0, 10);
+
+const STATUS: Record<string, SubStatus> = {
+  trialing: 'TRIAL', active: 'ACTIVE', past_due: 'PAST_DUE', unpaid: 'PAST_DUE',
+};
+
+/** Pure projection of a Stripe subscription into our domain shape. Caller handles
+ *  canceled/incomplete_expired separately (→ freeSubscription). */
+export function subscriptionFromStripe(organizationId: string, sub: StripeSubShape, priceToPlan: PriceToPlan): Subscription {
+  const status = STATUS[sub.status] ?? 'PAST_DUE';
+  const priceId = sub.items.data[0]?.price.id ?? '';
+  const plan: PlanKey = priceToPlan[priceId] ?? 'CLUB';
+  const renewsOn = status === 'TRIAL' ? isoDay(sub.trial_end) : isoDay(sub.current_period_end);
+  return { organizationId, plan, status, renewsOn, stripeCustomerId: sub.customer, stripeSubscriptionId: sub.id };
 }
 
-/** Trial expiry / downgrade: limited Free (renewsOn in the past marks it lapsed). */
-export function freeSubscription(organizationId: string, now: Date): Subscription {
-  return { organizationId, plan: 'FREE', status: 'ACTIVE', renewsOn: addDays(now, -1) };
-}
-
-/** Paid Enterprise (quote-based; renews a month out). Admin-set, not self-serve. */
-export function enterpriseSubscription(organizationId: string, now: Date): Subscription {
-  return { organizationId, plan: 'ENTERPRISE', status: 'ACTIVE', renewsOn: addDays(now, 30) };
-}
-
-/** S21 admin: build the subscription for an explicit plan (ACTIVE), or a fresh CLUB trial. */
-export function planSubscription(organizationId: string, plan: PlanKey, now: Date, trial = false): Subscription {
-  if (trial) return trialSubscription(organizationId, now);
-  if (plan === 'FREE') return freeSubscription(organizationId, now);
-  if (plan === 'ENTERPRISE') return enterpriseSubscription(organizationId, now);
-  return paidSubscription(organizationId, plan, now);
+/** Cancellation / trial-lapse → limited Free (renewsOn in the past marks it lapsed). Retains ids for audit. */
+export function freeSubscription(organizationId: string, now: Date, ids?: { stripeCustomerId?: string; stripeSubscriptionId?: string }): Subscription {
+  return { organizationId, plan: 'FREE', status: 'ACTIVE', renewsOn: addDays(now, -1), ...ids };
 }
 
 /** Whole days left in the trial (0 once past renewsOn); only meaningful while status TRIAL. */
 export function trialDaysLeft(sub: Subscription, now: Date): number {
   if (sub.status !== 'TRIAL') return 0;
-  const today = new Date(day(now.toISOString())).getTime();
+  const today = new Date(now.toISOString().slice(0, 10)).getTime();
   const end = new Date(sub.renewsOn).getTime();
   return Math.max(0, Math.round((end - today) / 86400000));
 }
