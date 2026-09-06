@@ -1,73 +1,54 @@
-import { describe, it, expect } from 'vitest';
-import { trialSubscription, freeSubscription, paidSubscription, trialDaysLeft } from '../src/domain.js';
-import { getOrProvision, activatePlan, expireTrial, adminSetPlan } from '../src/application/subscription.js';
+import { describe, it, expect, vi } from 'vitest';
+import { getSubscription, provision } from '../src/application/subscription.js';
 import type { SubscriptionRepository } from '../src/ports.js';
 import type { Subscription } from '../src/domain.js';
+import type { StripeGateway } from '../src/ports/stripe-gateway.js';
 
 class InMemoryRepo implements SubscriptionRepository {
   readonly byOrg = new Map<string, Subscription>();
   async get(o: string) { return this.byOrg.get(o); }
   async save(s: Subscription) { this.byOrg.set(s.organizationId, s); }
 }
-const at = (iso: string) => () => new Date(iso);
+const MAP = { price_club: 'CLUB' as const, price_starter: 'STARTER' as const };
+const now = () => new Date('2026-01-01T00:00:00Z');
+const trialSub = { id: 'sub_1', status: 'trialing', customer: 'cus_1', trial_end: 1767225600, current_period_end: 1769817600, items: { data: [{ price: { id: 'price_club' } }] } };
+const gw = (over: Partial<StripeGateway> = {}): StripeGateway => ({
+  createTrialSubscription: vi.fn().mockResolvedValue(trialSub),
+  getSubscription: vi.fn().mockResolvedValue(trialSub),
+  findSubscriptionByOrg: vi.fn().mockResolvedValue(undefined),
+  createBillingPortalSession: vi.fn().mockResolvedValue({ url: 'https://portal' }),
+  parseEvent: vi.fn(),
+  ...over,
+});
 
-describe('subscription domain', () => {
-  it('test_trialSubscription_isClubTrial14Days', () => {
-    const s = trialSubscription('org-1', new Date('2026-01-01T00:00:00Z'));
-    expect(s).toEqual({ organizationId: 'org-1', plan: 'CLUB', status: 'TRIAL', renewsOn: '2026-01-15' });
+describe('provision', () => {
+  it('creates a Stripe trial and stores a CLUB/TRIAL projection', async () => {
+    const repo = new InMemoryRepo(); const stripe = gw();
+    const s = await provision({ repo, stripe, priceToPlan: MAP, now })('org-1', 'a@b.c');
+    expect(stripe.createTrialSubscription).toHaveBeenCalledWith({ organizationId: 'org-1', email: 'a@b.c' });
+    expect(s).toMatchObject({ plan: 'CLUB', status: 'TRIAL', stripeSubscriptionId: 'sub_1', trialDaysLeft: expect.any(Number) });
+    expect(repo.byOrg.get('org-1')).toBeTruthy();
   });
-  it('test_trialDaysLeft_countsWholeDaysAndFloorsAtZero', () => {
-    const s = trialSubscription('org-1', new Date('2026-01-01T00:00:00Z'));
-    expect(trialDaysLeft(s, new Date('2026-01-01T10:00:00Z'))).toBe(14);
-    expect(trialDaysLeft(s, new Date('2026-01-10T00:00:00Z'))).toBe(5);
-    expect(trialDaysLeft(s, new Date('2026-02-01T00:00:00Z'))).toBe(0);
-  });
-  it('test_trialDaysLeft_zeroWhenNotTrial', () => {
-    expect(trialDaysLeft(freeSubscription('o', new Date('2026-01-01T00:00:00Z')), new Date('2026-01-01T00:00:00Z'))).toBe(0);
-    expect(trialDaysLeft(paidSubscription('o', 'CLUB', new Date('2026-01-01T00:00:00Z')), new Date('2026-01-01T00:00:00Z'))).toBe(0);
+  it('is idempotent: if a projection with a stripe sub exists, it does not create another', async () => {
+    const repo = new InMemoryRepo();
+    await repo.save({ organizationId: 'org-1', plan: 'CLUB', status: 'TRIAL', renewsOn: '2026-01-15', stripeSubscriptionId: 'sub_1' });
+    const stripe = gw();
+    await provision({ repo, stripe, priceToPlan: MAP, now })('org-1');
+    expect(stripe.createTrialSubscription).not.toHaveBeenCalled();
   });
 });
 
-describe('subscription application', () => {
-  it('test_getOrProvision_bootstrapsAClubTrialOnFirstRead', async () => {
+describe('getSubscription', () => {
+  it('returns the stored projection without side effects', async () => {
     const repo = new InMemoryRepo();
-    const s = await getOrProvision({ repo, now: at('2026-01-01T00:00:00Z') })('org-1');
-    expect(s).toMatchObject({ plan: 'CLUB', status: 'TRIAL', renewsOn: '2026-01-15', trialDaysLeft: 14 });
-    expect(repo.byOrg.get('org-1')).toBeTruthy(); // persisted so renewsOn is fixed
-  });
-  it('test_getOrProvision_returnsTheSameSubscriptionOnSubsequentReads', async () => {
-    const repo = new InMemoryRepo();
-    await getOrProvision({ repo, now: at('2026-01-01T00:00:00Z') })('org-1');
-    const again = await getOrProvision({ repo, now: at('2026-01-05T00:00:00Z') })('org-1');
-    expect(again.renewsOn).toBe('2026-01-15'); // unchanged
-    expect(again.trialDaysLeft).toBe(10);
-  });
-  it('test_activatePlan_setsClubActive', async () => {
-    const repo = new InMemoryRepo();
-    const s = await activatePlan({ repo, now: at('2026-01-01T00:00:00Z') })('org-1', 'CLUB');
-    expect(s).toMatchObject({ plan: 'CLUB', status: 'ACTIVE', trialDaysLeft: 0 });
-  });
-  it('test_activatePlan_setsStarterActive', async () => {
-    const repo = new InMemoryRepo();
-    const s = await activatePlan({ repo, now: at('2026-01-01T00:00:00Z') })('org-1', 'STARTER');
+    await repo.save({ organizationId: 'org-1', plan: 'STARTER', status: 'ACTIVE', renewsOn: '2026-02-01', stripeSubscriptionId: 'sub_9' });
+    const stripe = gw();
+    const s = await getSubscription({ repo, stripe, priceToPlan: MAP, now })('org-1');
     expect(s).toMatchObject({ plan: 'STARTER', status: 'ACTIVE', trialDaysLeft: 0 });
+    expect(stripe.createTrialSubscription).not.toHaveBeenCalled();
   });
-  it('test_expireTrial_downgradesToFree', async () => {
-    const repo = new InMemoryRepo();
-    const s = await expireTrial({ repo, now: at('2026-01-01T00:00:00Z') })('org-1');
+  it('returns a FREE-shaped default when nothing is provisioned', async () => {
+    const s = await getSubscription({ repo: new InMemoryRepo(), stripe: gw(), priceToPlan: MAP, now })('org-x');
     expect(s).toMatchObject({ plan: 'FREE', status: 'ACTIVE' });
-  });
-
-  it('adminSetPlan sets an ACTIVE plan or grants a fresh trial', async () => {
-    const repo = new InMemoryRepo();
-    const now = at('2026-01-01T00:00:00Z');
-    expect(await adminSetPlan({ repo, now })('org-1', 'ENTERPRISE')).toMatchObject({ plan: 'ENTERPRISE', status: 'ACTIVE' });
-    expect(await adminSetPlan({ repo, now })('org-1', 'STARTER')).toMatchObject({ plan: 'STARTER', status: 'ACTIVE' });
-    expect(await adminSetPlan({ repo, now })('org-1', 'FREE')).toMatchObject({ plan: 'FREE', status: 'ACTIVE' });
-    const trial = await adminSetPlan({ repo, now })('org-1', 'CLUB', true);
-    expect(trial).toMatchObject({ plan: 'CLUB', status: 'TRIAL' });
-    expect(trial.trialDaysLeft).toBe(14);
-    // persisted
-    expect((await repo.get('org-1'))!.status).toBe('TRIAL');
   });
 });
