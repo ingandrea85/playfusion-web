@@ -8,6 +8,7 @@ const PLAN_LABELS: Record<string, string> = { FREE: 'Free', STARTER: 'Starter', 
 export function planLabel(sub?: Subscription | null): string {
   if (!sub) return '—'
   if (sub.status === 'TRIAL') return `Prova Club · ${sub.trialDaysLeft}g`
+  if (sub.status === 'PAST_DUE') return `${PLAN_LABELS[sub.plan] ?? sub.plan} · in sospeso`
   return PLAN_LABELS[sub.plan] ?? sub.plan
 }
 const planMod = (sub?: Subscription | null): string =>

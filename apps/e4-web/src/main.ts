@@ -75,7 +75,7 @@ async function detailRoute(client: Client, id: string, rerun: () => void): Promi
     ])
     app.innerHTML = renderOrganization({ detail, sub, events })
     wireOrganization(app, id, {
-      setPlan: (orgId, input) => client.o11.adminSetPlan(orgId, input),
+      resync: (orgId) => client.o11.resync(orgId),
       fail: (msg) => { app.querySelector('#err')!.innerHTML = `<div class="pf-card" role="alert" style="border-color:var(--color-feedback-danger);margin-bottom:var(--space-md)">${esc(msg)}</div>` },
       onDone: rerun,
     })

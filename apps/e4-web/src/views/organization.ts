@@ -1,5 +1,5 @@
 import { esc } from '@playfusion/app-shell'
-import type { AdminOrgDetail, Subscription, EventSummary, Member, PlanKey } from '@playfusion/rest-client'
+import type { AdminOrgDetail, Subscription, EventSummary, Member } from '@playfusion/rest-client'
 import { planLabel } from './organizations.js'
 
 export interface OrgDetailData { detail: AdminOrgDetail; sub: Subscription | null; events: EventSummary[] }
@@ -28,13 +28,9 @@ function subscriptionCard(sub: Subscription | null): string {
     : `<p class="pf-muted">Nessuna sottoscrizione (mai provisionata).</p>`
   return `<div class="pf-card"><div id="err"></div>
     <h2 class="pf-h3">Sottoscrizione</h2>${line}
-    <div class="pf-eyebrow" style="margin-top:var(--space-md)">Imposta piano</div>
-    <div class="pf-row" style="gap:var(--space-sm);margin-top:var(--space-sm);flex-wrap:wrap">
-      <button class="pf-btn pf-btn--ghost" data-plan="FREE">Free</button>
-      <button class="pf-btn pf-btn--ghost" data-plan="STARTER">Starter</button>
-      <button class="pf-btn pf-btn--ghost" data-plan="CLUB">Club</button>
-      <button class="pf-btn pf-btn--ghost" data-plan="ENTERPRISE">Enterprise</button>
-      <button class="pf-btn pf-btn--ghost" data-trial="1">Concedi prova Club</button>
+    <div class="pf-eyebrow" style="margin-top:var(--space-md)">Stripe</div>
+    <div class="pf-row" style="gap:var(--space-sm);margin-top:var(--space-sm)">
+      <button class="pf-btn pf-btn--ghost" data-resync="1">Risincronizza da Stripe</button>
     </div>
   </div>`
 }
@@ -49,19 +45,16 @@ export function renderOrganization(data: OrgDetailData): string {
   </main>`
 }
 
-/** Wire the plan-action buttons: set plan / grant trial → o11 admin → onDone(refresh). */
+/** Wire the resync action: force a Stripe re-fetch → o11 admin → onDone(refresh). */
 export function wireOrganization(root: ParentNode, orgId: string, api: {
-  setPlan(orgId: string, input: { plan: PlanKey; trial?: boolean }): Promise<unknown>
+  resync(orgId: string): Promise<unknown>
   fail(msg: string): void
   onDone(): void
 }): void {
-  const run = async (input: { plan: PlanKey; trial?: boolean }, btn: HTMLButtonElement) => {
-    btn.disabled = true
-    try { await api.setPlan(orgId, input); api.onDone() }
-    catch { api.fail('Operazione non riuscita. Riprova.'); btn.disabled = false }
-  }
-  root.querySelectorAll<HTMLButtonElement>('[data-plan]').forEach((b) =>
-    b.addEventListener('click', () => run({ plan: b.dataset.plan as PlanKey }, b)))
-  root.querySelectorAll<HTMLButtonElement>('[data-trial]').forEach((b) =>
-    b.addEventListener('click', () => run({ plan: 'CLUB', trial: true }, b)))
+  root.querySelectorAll<HTMLButtonElement>('[data-resync]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      b.disabled = true
+      try { await api.resync(orgId); api.onDone() }
+      catch { api.fail('Risync non riuscito. Riprova.'); b.disabled = false }
+    }))
 }

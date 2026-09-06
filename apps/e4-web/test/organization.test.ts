@@ -9,35 +9,25 @@ const sub: Subscription = { organizationId: 'org_a', plan: 'CLUB', status: 'ACTI
 const data: OrgDetailData = { detail, sub, events: [{ sportEventId: 'e1', sport: 'Calcio', categorie: ['U10'], dates: { from: '2026-09-01', to: '2026-09-02' }, status: 'Published', playbook: 'PB-1', name: 'Torneo' }] }
 
 describe('renderOrganization', () => {
-  it('shows members, events, subscription and plan actions', () => {
+  it('shows members, events and subscription', () => {
     const html = renderOrganization(data)
     expect(html).toContain('Acme')
     expect(html).toContain('Nome a')
     expect(html).toContain('Torneo')
-    expect(html).toContain('data-plan="ENTERPRISE"')
-    expect(html).toContain('data-plan="STARTER"')
-    expect(html).toContain('data-trial="1"')
   })
   it('handles a missing subscription', () => {
     expect(renderOrganization({ ...data, sub: null })).toContain('mai provisionata')
   })
+  it('shows a resync action', () => { expect(renderOrganization(data)).toContain('data-resync="1"') })
 })
 
 describe('wireOrganization', () => {
-  it('a plan button calls setPlan then onDone', async () => {
+  it('resync calls api.resync then onDone', async () => {
     const root = document.createElement('div'); root.innerHTML = renderOrganization(data)
-    const setPlan = vi.fn().mockResolvedValue({})
-    const onDone = vi.fn()
-    wireOrganization(root, 'org_a', { setPlan, fail: () => {}, onDone })
-    root.querySelector<HTMLButtonElement>('[data-plan="ENTERPRISE"]')!.click()
-    await vi.waitFor(() => expect(setPlan).toHaveBeenCalledWith('org_a', { plan: 'ENTERPRISE' }))
+    const resync = vi.fn().mockResolvedValue({}); const onDone = vi.fn()
+    wireOrganization(root, 'org_a', { resync, fail: () => {}, onDone })
+    root.querySelector<HTMLButtonElement>('[data-resync]')!.click()
+    await vi.waitFor(() => expect(resync).toHaveBeenCalledWith('org_a'))
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled())
-  })
-  it('the trial button grants a CLUB trial', async () => {
-    const root = document.createElement('div'); root.innerHTML = renderOrganization(data)
-    const setPlan = vi.fn().mockResolvedValue({})
-    wireOrganization(root, 'org_a', { setPlan, fail: () => {}, onDone: () => {} })
-    root.querySelector<HTMLButtonElement>('[data-trial="1"]')!.click()
-    await vi.waitFor(() => expect(setPlan).toHaveBeenCalledWith('org_a', { plan: 'CLUB', trial: true }))
   })
 })

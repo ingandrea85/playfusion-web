@@ -14,6 +14,7 @@ describe('planLabel', () => {
     expect(planLabel(sub({ plan: 'CLUB', status: 'ACTIVE' }))).toBe('Club')
     expect(planLabel(sub({ plan: 'ENTERPRISE', status: 'ACTIVE' }))).toBe('Enterprise')
     expect(planLabel(sub({ plan: 'CLUB', status: 'TRIAL', trialDaysLeft: 7 }))).toBe('Prova Club · 7g')
+    expect(planLabel(sub({ plan: 'CLUB', status: 'PAST_DUE' }))).toBe('Club · in sospeso')
   })
 })
 
