@@ -8,6 +8,13 @@ export interface Brand { logoText: string; primaryColor: string; accentColor: st
 
 let currentLogo: string | null = null
 
+// The PlayFusion mark ("Campo"): hexagon + peak, brand blue/orange. Shown only alongside the
+// DEFAULT wordmark — a tenant with its own logoText keeps its brand, never gets this mark.
+const PF_MARK =
+  '<svg class="pf-mark" viewBox="0 0 64 64" aria-hidden="true">' +
+  '<polygon points="32,6 56,19 56,45 32,58 8,45 8,19" fill="none" stroke="#0b5fff" stroke-width="6" stroke-linejoin="round"/>' +
+  '<path d="M20 42 L32 24 L44 42" fill="none" stroke="#ff6b00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+
 /**
  * Apply a tenant brand (or clear it with null). Sets the two accent CSS custom properties on the
  * document root and remembers the wordmark for {@link brandWordmark}. Returns the wordmark, or null
@@ -27,7 +34,8 @@ export function applyBrand(brand: Brand | null): string | null {
   return currentLogo
 }
 
-/** The wordmark HTML for the topbars: the branded logoText (escaped) or the default PlayFusion mark. */
+/** The wordmark HTML for the topbars: the branded logoText (escaped) or the default PlayFusion
+ *  mark + wordmark. Branded tenants never get the PlayFusion mark. */
 export function brandWordmark(): string {
-  return currentLogo ? esc(currentLogo) : 'play<b>fusion</b>'
+  return currentLogo ? esc(currentLogo) : `${PF_MARK}play<b>fusion</b>`
 }

@@ -36,6 +36,7 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
   font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -0.02em;
   color: var(--color-text-default); text-decoration: none; }
 .pf-brand b { color: var(--color-action-primary); }
+.pf-mark { width: 22px; height: 22px; flex: none; align-self: center; margin-right: 6px; }
 .pf-brand small { font-family: var(--font-sans); font-weight: 600; font-size: 12px; color: var(--color-text-muted);
   text-transform: uppercase; letter-spacing: 0.08em; margin-left: var(--space-sm); }
 .pf-topbar nav { display: flex; align-items: center; gap: var(--space-lg); margin-left: auto; }
