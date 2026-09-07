@@ -23,6 +23,7 @@ const cfg = JSON.parse(
   auth0?: { issuer?: string; audience?: string; jwksUri?: string; rolesClaim?: string; orgClaim?: string };
   auth0mgmt?: { domain: string; clientId: string; ownerRoleId: string; organizerRoleId: string; connectionId: string; inviteClientId: string };
   domain?: { name: string; certificateArn: string };
+  stripe?: { priceStarter: string; priceClub: string };
 };
 
 const stackEnv = {
@@ -31,6 +32,6 @@ const stackEnv = {
 };
 
 const data = new DataStack(app, `playfusion2-data-${envToken}`, { env: stackEnv, appEnv: envToken });
-new ApiStack(app, `playfusion2-api-${envToken}`, { env: stackEnv, appEnv: envToken, data, auth0: cfg.auth0, auth0mgmt: cfg.auth0mgmt });
+new ApiStack(app, `playfusion2-api-${envToken}`, { env: stackEnv, appEnv: envToken, data, auth0: cfg.auth0, auth0mgmt: cfg.auth0mgmt, stripe: cfg.stripe });
 new WorkflowStack(app, `playfusion2-workflow-${envToken}`, { env: stackEnv, appEnv: envToken });
 new HostingStack(app, `playfusion2-hosting-${envToken}`, { env: stackEnv, appEnv: envToken, domain: cfg.domain });

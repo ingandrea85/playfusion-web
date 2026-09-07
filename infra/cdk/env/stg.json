@@ -16,5 +16,6 @@
     "organizerRoleId": "rol_NTnVlXjIr0R9eC8k",
     "connectionId": "con_LmuclRYAX5VuUMow",
     "inviteClientId": "65atFepkIh2jiMeaDqZlqgD63ccd2Gw1"
-  }
+  },
+  "stripe": { "priceStarter": "price_REPLACE_STARTER", "priceClub": "price_REPLACE_CLUB" }
 }

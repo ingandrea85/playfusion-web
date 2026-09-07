@@ -33,11 +33,16 @@ export interface Auth0MgmtEnvConfig {
   readonly inviteClientId: string;
 }
 
+/** Non-secret Stripe config (price ids). Secret keys are injected via env (STRIPE_SECRET_KEY,
+ *  STRIPE_WEBHOOK_SECRET), like AUTH0_MGMT_CLIENT_SECRET — never here. */
+export interface StripeEnvConfig { readonly priceStarter: string; readonly priceClub: string }
+
 export interface ApiStackProps extends StackProps {
   readonly appEnv: string;
   readonly data: DataStack;
   readonly auth0?: Auth0EnvConfig;
   readonly auth0mgmt?: Auth0MgmtEnvConfig;
+  readonly stripe?: StripeEnvConfig;
 }
 
 // One Bounded Context = one mono-Lambda (ADR-002). `tables` are the primary stores the
@@ -164,6 +169,16 @@ export class ApiStack extends Stack {
         handler.addEnvironment('AUTH0_ROLE_ORGANIZER', m.organizerRoleId);
         handler.addEnvironment('AUTH0_ORG_CONNECTION_ID', m.connectionId);
         handler.addEnvironment('AUTH0_INVITE_CLIENT_ID', m.inviteClientId);
+      }
+
+      // S20: the o11 handler backs Stripe billing (Checkout + webhook). Non-secret price ids
+      // from env json; the secret/webhook keys are injected by the deployer via env
+      // (STRIPE_SECRET_KEY/STRIPE_WEBHOOK_SECRET, never committed).
+      if (bc.route === 'o11' && props.stripe) {
+        handler.addEnvironment('STRIPE_PRICE_STARTER', props.stripe.priceStarter);
+        handler.addEnvironment('STRIPE_PRICE_CLUB', props.stripe.priceClub);
+        if (process.env.STRIPE_SECRET_KEY) handler.addEnvironment('STRIPE_SECRET_KEY', process.env.STRIPE_SECRET_KEY);
+        if (process.env.STRIPE_WEBHOOK_SECRET) handler.addEnvironment('STRIPE_WEBHOOK_SECRET', process.env.STRIPE_WEBHOOK_SECRET);
       }
       for (const t of bc.tables) props.data.tables[t]!.grantReadWriteData(handler);
       props.data.bus.grantPutEventsTo(handler);
