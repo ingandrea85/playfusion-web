@@ -69,13 +69,18 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       # T3: the o2 Lambda reads Auth0 Management API config; the client secret is injected here
-      # (never committed). Absent secret → membership endpoints return 503, deploy still succeeds.
+      # (never committed). Stripe test-mode keys (secret + webhook signing) also injected here.
+      # Absent secrets → membership/billing endpoints return 503, deploy still succeeds.
       - name: CDK synth (env=stg)
         run: npx cdk synth -c env=stg
         env:
           AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
 
       - name: CDK deploy (env=stg)
         run: npx cdk deploy --all -c env=stg --require-approval never
         env:
           AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
