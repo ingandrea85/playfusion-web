@@ -32,6 +32,14 @@ describe('e3 views', () => {
     expect(html).toContain('/bracket')   // the bracket link stays
     expect(renderLanding(ev, win, true)).toContain('/standings') // default event still shows it
   })
+  it('landing for a festival event is calendar-only (no standings/bracket/formula)', () => {
+    const festEv = { ...ev, format: 'festival' as const }
+    const html = renderLanding(festEv, win, true)
+    expect(html).toContain('/calendar')
+    expect(html).not.toContain('/standings')
+    expect(html).not.toContain('/bracket')
+    expect(html).not.toContain('/formula')
+  })
   it('landing has NO apply CTA (registration is a separate page via the organizer link)', () => {
     expect(renderLanding(ev, win)).not.toContain(`#/events/${ev.sportEventId}/apply`)
     expect(renderLanding(ev, closedWin)).not.toContain(`#/events/${ev.sportEventId}/apply`)

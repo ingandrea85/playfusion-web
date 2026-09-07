@@ -90,6 +90,8 @@ new HashRouter()
       const [ev, standings] = await Promise.all([client.o3.getEvent(id), client.o7.getStandings(id)]); await applyEventBrand(ev)
       // Epic #143 (S4): solo tabellone has no standings — send the visitor to the bracket instead.
       if (ev.format === 'bracket') { location.hash = `#/events/${encodeURIComponent(id)}/bracket`; return }
+      // Festival (non-competitive): no standings — send the visitor to the calendar.
+      if (ev.format === 'festival') { location.hash = `#/events/${encodeURIComponent(id)}/calendar`; return }
       app.innerHTML = renderPublicStandings(ev, standings); wirePublicStandings(app, standings, eventLabels(ev).participant)
     }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
@@ -111,13 +113,14 @@ new HashRouter()
     try {
       const [ev, sched, regs] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o5.listRegistrations(id, 'Confirmed').catch(() => [])])
       await applyEventBrand(ev)
+      if (ev.format === 'festival') { location.hash = `#/events/${encodeURIComponent(id)}/calendar`; return }
       const teamsByCat: Record<string, number> = {}
       for (const c of ev.categorie) teamsByCat[c] = regs.filter((r) => r.categoria === c).length
       app.innerHTML = renderPublicFormula(ev, sched.config, teamsByCat)
     } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/bracket', async ({ id }) => {
-    try { const [ev, sched, matches, ranking] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id), client.o7.getFinalStandings(id)]); await applyEventBrand(ev); app.innerHTML = renderPublicBracket(ev, sched, matches, ranking); wirePublicBracket(app, matches, ranking) }
+    try { const [ev, sched, matches, ranking] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id), client.o7.getFinalStandings(id)]); await applyEventBrand(ev); if (ev.format === 'festival') { location.hash = `#/events/${encodeURIComponent(id)}/calendar`; return } app.innerHTML = renderPublicBracket(ev, sched, matches, ranking); wirePublicBracket(app, matches, ranking) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id', async ({ id }) => {
