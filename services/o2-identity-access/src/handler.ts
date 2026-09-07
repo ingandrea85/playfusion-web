@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { handle } from 'hono/aws-lambda';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken, auth0ConfigFromEnv, createAuth0Verifier, requireOwner, requirePlatformAdmin, DomainError, EventBridgeEventPublisher, busName } from '@playfusion/platform-lib';
+import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken, auth0ConfigFromEnv, createAuth0Verifier, requireOwner, requirePlatformAdmin, DomainError, ForbiddenError, EventBridgeEventPublisher, busName, getIdentity } from '@playfusion/platform-lib';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { signToken, verifyToken } from './token.js';
 import { Auth0MembershipDirectory, auth0MgmtConfigFromEnv } from './adapters/auth0-membership.js';
@@ -83,6 +83,11 @@ const orgCreatedBody = z.object({ email: z.string().email().optional() });
 app.post('/organizations/:orgId/events:created', owner, async (c) => {
   const b = orgCreatedBody.parse(await c.req.json().catch(() => ({})));
   const orgId = c.req.param('orgId');
+  // Defense-in-depth on a money-adjacent route: block an owner from declaring an org that isn't the
+  // one on their token. Best-effort — tokens without an org claim are not blocked (keeps parity with
+  // the other owner routes here, whose tenant-scoping cleanup is a separate follow-up).
+  const id = getIdentity(c as any);
+  if (id?.organizationId && id.organizationId !== orgId) throw new ForbiddenError('organization mismatch');
   await publisher.publish('OrganizationCreated', { organizationId: orgId, email: b.email }, orgId);
   return c.json({ published: 'OrganizationCreated', organizationId: orgId }, 202);
 });

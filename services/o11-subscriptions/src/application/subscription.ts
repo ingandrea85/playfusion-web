@@ -21,7 +21,10 @@ export const provision = (d: Deps) => async (organizationId: string, email?: str
   const now = clock(d);
   const existing = await d.repo.get(organizationId);
   if (existing?.stripeSubscriptionId) return view(existing, now);
-  const stripeSub = await d.stripe.createTrialSubscription({ organizationId, email });
+  // Stripe-side idempotency: adopt an existing subscription for this org (lost local projection, or a
+  // concurrent provision that just created one) instead of creating a duplicate on Stripe.
+  const found = await d.stripe.findSubscriptionByOrg(organizationId);
+  const stripeSub = found ?? await d.stripe.createTrialSubscription({ organizationId, email });
   const sub = subscriptionFromStripe(organizationId, stripeSub, d.priceToPlan);
   await d.repo.save(sub);
   checkpoint('provisionTrial', 'STOP', { organizationId, stripeSubscriptionId: sub.stripeSubscriptionId, renewsOn: sub.renewsOn });

@@ -36,6 +36,15 @@ describe('provision', () => {
     await provision({ repo, stripe, priceToPlan: MAP, now })('org-1');
     expect(stripe.createTrialSubscription).not.toHaveBeenCalled();
   });
+  it('adopts an existing Stripe subscription (found by org) instead of creating a duplicate', async () => {
+    const repo = new InMemoryRepo();
+    const existingStripe = { id: 'sub_existing', status: 'trialing', customer: 'cus_9', trial_end: 1767225600, current_period_end: 1769817600, items: { data: [{ price: { id: 'price_club' } }] } };
+    const stripe = gw({ findSubscriptionByOrg: vi.fn().mockResolvedValue(existingStripe) });
+    const s = await provision({ repo, stripe, priceToPlan: MAP, now })('org-1');
+    expect(stripe.findSubscriptionByOrg).toHaveBeenCalledWith('org-1');
+    expect(stripe.createTrialSubscription).not.toHaveBeenCalled();
+    expect(s).toMatchObject({ stripeSubscriptionId: 'sub_existing', plan: 'CLUB', status: 'TRIAL' });
+  });
 });
 
 describe('getSubscription', () => {

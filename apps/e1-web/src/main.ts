@@ -61,7 +61,10 @@ async function boot() {
     const sub = await client.o11.getSubscription(orgId).catch(() => null)
     // D-O11-3: an owner opening an org with no Stripe subscription yet declares the org created, so
     // O11 provisions a trial (async, via EventBridge). Idempotent + fire-and-forget (never blocks boot).
-    if (orgRole === 'OWNER' && sub && !sub.stripeSubscriptionId) {
+    // Fire at most once per browser session so a persistently-failing provision can't re-emit on every load.
+    const declaredKey = `pf-org-declared:${orgId}`
+    if (orgRole === 'OWNER' && sub && !sub.stripeSubscriptionId && !sessionStorage.getItem(declaredKey)) {
+      sessionStorage.setItem(declaredKey, '1')
       void client.o2.declareOrganizationCreated(orgId, user?.email).catch(() => {})
     }
     const ent = entitlements(sub?.plan)
