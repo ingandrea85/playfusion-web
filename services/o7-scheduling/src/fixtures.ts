@@ -122,3 +122,27 @@ export function buildFixtures(
   }
   return placeMatches(raw, startDate, endDate, dailyStart, eventId);
 }
+
+/** One festival category: its confirmed teams + how many matches each plays + its placement config. */
+export interface FestivalCategory {
+  id: string; teams: string[]; matchesPerTeam: number;
+  fields: string[]; periods: number; periodMinutes: number; breakMinutes: number;
+}
+
+/** Festival (non-competitive): each category's teams play `matchesPerTeam` rotation matches, placed on
+ *  the shared grid (same engine as buildFixtures). No groups, no finals; every match is phase FESTIVAL
+ *  with an empty groupLabel, so it never feeds the standings. */
+export function buildFestivalFixtures(
+  eventId: string, startDate: string, endDate: string, dailyStart: string, cats: FestivalCategory[],
+): ScheduledMatch[] {
+  const raw: RawMatch[] = [];
+  for (const cat of cats) {
+    const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
+    const fields = cat.fields.length ? cat.fields : ['Campo 1'];
+    const place: Placement = { fields, slotMinutes };
+    for (const [home, away] of rotationPairs(cat.teams, cat.matchesPerTeam)) {
+      raw.push({ categoryId: cat.id, groupLabel: '', home, away, place, phase: 'FESTIVAL' });
+    }
+  }
+  return placeMatches(raw, startDate, endDate, dailyStart, eventId);
+}
