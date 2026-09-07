@@ -118,10 +118,12 @@ export function renderCalendar(matches: CalendarMatch[], catName: (id: string) =
         // On the public calendar the SCHEDULED pill is suppressed (noise on upcoming rows);
         // LIVE/FINISHED/CANCELLED always show.
         const badge = opts.hideScheduledBadge && st === 'SCHEDULED' ? '' : matchStatusBadge(m)
+        // Festival matches have no group/finale label — show just the category (no dangling "· ").
+        const label = m.phase === 'FINAL' ? `${m.bracketLabel ?? 'Finali'}${m.round ? ` · ${roundLabel(m.round)}` : ''}` : m.groupLabel
         return `<li class="pf-match${st === 'CANCELLED' ? ' pf-match--cancelled' : ''}">
         <span class="pf-match__time pf-mono">${esc(m.time)}</span>
         <span class="pf-match__field pf-mono">${esc(m.field)}</span>
-        <span class="pf-match__cat">${esc(catName(m.categoryId))} · ${esc(m.phase === 'FINAL' ? `${m.bracketLabel ?? 'Finali'}${m.round ? ` · ${roundLabel(m.round)}` : ''}` : m.groupLabel)}${m.phase === 'FINAL' && m.placementFrom != null && m.placementTo === m.placementFrom + 1 ? ` <span class="pf-brk__pos">${m.placementFrom}º/${m.placementTo}º</span>` : ''} ${badge}${decideBadge(m)}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
+        <span class="pf-match__cat">${esc(catName(m.categoryId))}${label ? ` · ${esc(label)}` : ''}${m.phase === 'FINAL' && m.placementFrom != null && m.placementTo === m.placementFrom + 1 ? ` <span class="pf-brk__pos">${m.placementFrom}º/${m.placementTo}º</span>` : ''} ${badge}${decideBadge(m)}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
         <span class="pf-match__teams">${esc(m.homeResolved ?? m.home)} <b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b> ${esc(m.awayResolved ?? m.away)}</span>
         ${editable ? `<span class="pf-match__actions"><button type="button" class="pf-btn pf-btn--ghost js-resultmatch" data-match="${esc(m.id ?? '')}">Risultato</button><button type="button" class="pf-btn pf-btn--ghost js-editmatch" data-match="${esc(m.id ?? '')}">Modifica</button></span>` : ''}
       </li>`

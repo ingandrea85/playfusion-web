@@ -29,7 +29,8 @@ const catName = (c: string): string => c
 
 const defaultCat = (c: ScheduleConfig): CategorySchedule =>
   ({ fields: c.fields, periods: c.periods, periodMinutes: c.periodMinutes, breakMinutes: c.breakMinutes, legs: c.legs,
-     finalsType: c.finalsType, finalsEnabled: c.finalsEnabled, finalsTeamsToBracket: c.finalsTeamsToBracket, finalsFormatId: c.finalsFormatId })
+     finalsType: c.finalsType, finalsEnabled: c.finalsEnabled, finalsTeamsToBracket: c.finalsTeamsToBracket, finalsFormatId: c.finalsFormatId,
+     festivalMatchesPerTeam: c.festivalMatchesPerTeam })
 const textToFields = (s: string): string[] => s.split(',').map((f) => f.trim()).filter(Boolean)
 
 /** finali-formule SP-B1: the config card's live "formula" — an explainer sentence + the structural
@@ -55,15 +56,19 @@ function renderFormula(cc: CategorySchedule, bracket: boolean, count: number, gr
  *  tagged with data-cat; absent → the shared "same for all" card. Epic #143 (S4): a `bracket`
  *  (solo tabellone) event hides the group-only inputs — Andata/ritorno + the finals-format row
  *  (its bracket is auto-seeded from the participants, not from gironi). SP-B1: appends the live formula. */
-function playCard(cc: CategorySchedule, locked: boolean, formats: CustomFinalsFormat[], cat: string | undefined, bracket: boolean, count: number, groups: number): string {
+function playCard(cc: CategorySchedule, locked: boolean, formats: CustomFinalsFormat[], cat: string | undefined, bracket: boolean, count: number, groups: number, festival = false): string {
   const dis = locked ? 'disabled' : ''
-  const legsField = bracket ? '' : `<div class="pf-field" style="margin-bottom:0"><label>Andata/ritorno</label><select class="cfg-legs" ${dis}>
+  const legsField = (bracket || festival) ? '' : `<div class="pf-field" style="margin-bottom:0"><label>Andata/ritorno</label><select class="cfg-legs" ${dis}>
         <option value="SINGLE" ${cc.legs === 'SINGLE' ? 'selected' : ''}>Solo andata</option>
         <option value="HOME_AWAY" ${cc.legs === 'HOME_AWAY' ? 'selected' : ''}>Andata e ritorno</option>
       </select></div>`
   // finali-formule SP-A2: 3rd/4th-place toggle for knockout brackets.
   const thirdPlace = `<label class="pf-switch cfg-thirdplace-w" style="margin-top:var(--space-sm)"><input type="checkbox" class="cfg-thirdplace" ${cc.finalsThirdPlace ? 'checked' : ''} ${dis} /> Includi finale 3º/4º posto</label>`
-  const finalsRow = bracket
+  // Festival: a single "matches per team" input, no finals config.
+  const festivalField = festival ? `<div class="pf-field" style="margin-bottom:0"><label>Incontri per squadra</label><input class="cfg-festivalMatchesPerTeam" type="number" min="1" value="${cc.festivalMatchesPerTeam ?? 3}" ${dis} /></div>` : ''
+  const finalsRow = festival
+    ? ''
+    : bracket
     ? thirdPlace // solo tabellone: the bracket auto-seeds from participants; only the 3rd-place option applies
     : `<div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
       <div class="pf-field" style="margin-bottom:0"><label>Fase finale</label><select class="cfg-finalsType" ${dis}>
@@ -84,42 +89,47 @@ function playCard(cc: CategorySchedule, locked: boolean, formats: CustomFinalsFo
       <div class="pf-field" style="margin-bottom:0"><label>Durata (min)</label><input class="cfg-periodMinutes" type="number" min="1" value="${cc.periodMinutes}" ${dis} /></div>
       <div class="pf-field" style="margin-bottom:0"><label>Pausa (min)</label><input class="cfg-breakMinutes" type="number" min="0" value="${cc.breakMinutes}" ${dis} /></div>
       ${legsField}
+      ${festivalField}
     </div>
     ${finalsRow}
-    <div class="js-formula">${renderFormula(cc, bracket, count, groups)}</div>
+    ${festival ? '' : `<div class="js-formula">${renderFormula(cc, bracket, count, groups)}</div>`}
   </div>`
 }
 
 /** A representative team count for the shared "same for all" card = the busiest category. */
 const repCount = (teamsByCat: Record<string, number>): number => Math.max(0, ...Object.values(teamsByCat))
 
-function renderConfigBody(mode: 'all' | 'per', config: ScheduleConfig, categorie: string[], locked: boolean, formats: CustomFinalsFormat[], bracket: boolean, teamsByCat: Record<string, number>): string {
+function renderConfigBody(mode: 'all' | 'per', config: ScheduleConfig, categorie: string[], locked: boolean, formats: CustomFinalsFormat[], bracket: boolean, teamsByCat: Record<string, number>, festival = false): string {
   const groups = config.groupsCount || 1
-  if (mode === 'all') return playCard(defaultCat(config), locked, formats, undefined, bracket, repCount(teamsByCat), groups)
-  return categorie.map((c) => playCard(config.byCategory?.[c] ?? defaultCat(config), locked, formats, c, bracket, teamsByCat[c] ?? 0, groups)).join('')
+  if (mode === 'all') return playCard(defaultCat(config), locked, formats, undefined, bracket, repCount(teamsByCat), groups, festival)
+  return categorie.map((c) => playCard(config.byCategory?.[c] ?? defaultCat(config), locked, formats, c, bracket, teamsByCat[c] ?? 0, groups, festival)).join('')
 }
 
-function globalCard(config: ScheduleConfig, locked: boolean, bracket: boolean): string {
+function globalCard(config: ScheduleConfig, locked: boolean, bracket: boolean, festival = false): string {
   const dis = locked ? 'disabled' : ''
-  const hint = bracket
+  const hint = festival
+    ? 'Gli slot per giornata sono calcolati automaticamente. Ogni squadra gioca il numero di incontri impostato, senza classifiche né finali.'
+    : bracket
     ? 'Gli slot per giornata sono calcolati automaticamente. Il <b>tabellone</b> è generato dai partecipanti iscritti (eliminazione diretta).'
     : 'Gli slot per giornata sono calcolati automaticamente per far stare tutte le partite nei giorni dell\'evento. I gironi si compongono nel tab <b>Gironi</b>.'
+  // Festival has no finals — hide the finals/bracket date field.
+  const dateField = festival ? '' : `<div class="pf-field" style="margin-bottom:0"><label>Data ${bracket ? 'tabellone' : 'finali'}</label><input id="finalsDate" type="date" value="${esc(config.finalsDate ?? '')}" ${dis} /></div>`
   return `<div class="pf-card"><h2 class="pf-h3">Finestra impianto</h2>
     <div class="pf-row" style="justify-content:flex-start;gap:var(--space-md)">
       <div class="pf-field" style="margin-bottom:0"><label>Inizio giornata</label><input id="dailyStart" type="time" value="${esc(config.dailyStart)}" ${dis} /></div>
-      <div class="pf-field" style="margin-bottom:0"><label>Data ${bracket ? 'tabellone' : 'finali'}</label><input id="finalsDate" type="date" value="${esc(config.finalsDate ?? '')}" ${dis} /></div>
+      ${dateField}
     </div>
     <p class="pf-muted" style="margin:var(--space-sm) 0 0">${hint}</p></div>`
 }
 
-function configSection(config: ScheduleConfig, categorie: string[], status: ScheduleView['status'], formats: CustomFinalsFormat[], bracket: boolean, teamsByCat: Record<string, number>): string {
+function configSection(config: ScheduleConfig, categorie: string[], status: ScheduleView['status'], formats: CustomFinalsFormat[], bracket: boolean, teamsByCat: Record<string, number>, festival = false): string {
   const locked = isLocked(status)
   const mode = config.byCategory ? 'per' : 'all'
-  return `${globalCard(config, locked, bracket)}
+  return `${globalCard(config, locked, bracket, festival)}
     <div class="pf-card">
       <h2 class="pf-h3">Config di gioco</h2>
       <label class="pf-switch"><input type="checkbox" id="sameForAll" ${mode === 'all' ? 'checked' : ''} ${locked ? 'disabled' : ''} /> Stessa config di gioco per tutte le categorie</label>
-      <div id="cfgbody" style="margin-top:var(--space-md)">${renderConfigBody(mode, config, categorie, locked, formats, bracket, teamsByCat)}</div>
+      <div id="cfgbody" style="margin-top:var(--space-md)">${renderConfigBody(mode, config, categorie, locked, formats, bracket, teamsByCat, festival)}</div>
       ${locked
         ? '<p class="pf-muted" style="margin-top:var(--space-md)">Calendario approvato: configurazione bloccata.</p>'
         : '<button class="pf-btn pf-btn--primary" id="generate" style="margin-top:var(--space-md)">Genera calendario</button>'}
@@ -142,10 +152,12 @@ const filterMatches = (matches: ScheduledMatchView[], selCat: string, selGir: st
 
 /** Calendar card with Category + (Gironi | Finali) + dynamic phase filter tabs — shared UX with E3/director. */
 function calendarCard(matches: ScheduledMatchView[], selCat: string, selGir: string): string {
+  // Festival (non-competitive): no gironi/finali — plain list, no phase filter.
+  const isFestival = matches.some((m) => m.phase === 'FESTIVAL')
   const gtabs = calendarGironeTabs(matches, selCat)
   return `<div class="pf-card"><h2 class="pf-h3">Calendario</h2>
     <div id="cal-cattabs">${renderTabs(categoryKeys(matches).map((c) => ({ key: c, label: c })), selCat)}</div>
-    <div id="cal-girtabs">${renderTabs(gtabs, selGir)}</div>
+    <div id="cal-girtabs">${isFestival ? '' : renderTabs(gtabs, selGir)}</div>
     <div id="cal-phasetabs"></div>
     <div id="editmatch"></div>
     <div id="calbody">${renderCalendar(filterMatches(matches, selCat, selGir), catName, true)}</div>
@@ -169,10 +181,11 @@ function directorCard(matches: ScheduledMatchView[]): string {
 export function renderSchedule(data: ScheduleData): string {
   const { event, schedule, matches } = data
   const bracket = event.format === 'bracket'
+  const festival = event.format === 'festival'
   const calendar = schedule.status === 'NONE' ? '' : calendarCard(matches, categoryKeys(matches)[0] ?? '', 'ALL')
   const directors = schedule.status === 'NONE' ? '' : directorCard(matches)
   return workspaceShell(event, 'schedule',
-    `<div id="err"></div>${configSection(schedule.config, event.categorie, schedule.status, data.finalsFormats, bracket, data.teamsByCat)}${actionsCard(schedule.status)}${calendar}${directors}`)
+    `<div id="err"></div>${configSection(schedule.config, event.categorie, schedule.status, data.finalsFormats, bracket, data.teamsByCat, festival)}${actionsCard(schedule.status)}${calendar}${directors}`)
 }
 
 export const scheduleScreen: Screen<ScheduleData> = {
@@ -200,6 +213,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
 
     const categorie = data.event.categorie
     const bracket = data.event.format === 'bracket'
+    const festival = data.event.format === 'festival'
     const groups = data.schedule.config.groupsCount || 1
     const cfgbody = root.querySelector('#cfgbody')!
     const sameForAll = root.querySelector<HTMLInputElement>('#sameForAll')
@@ -218,7 +232,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
         card.addEventListener('change', redraw)
       })
     }
-    sameForAll?.addEventListener('change', () => { cfgbody.innerHTML = renderConfigBody(mode(), data.schedule.config, categorie, false, data.finalsFormats, bracket, data.teamsByCat); wireFormula() })
+    sameForAll?.addEventListener('change', () => { cfgbody.innerHTML = renderConfigBody(mode(), data.schedule.config, categorie, false, data.finalsFormats, bracket, data.teamsByCat, festival); wireFormula() })
 
     const readCard = (el: Element): CategorySchedule => {
       const val = (s: string) => el.querySelector<HTMLInputElement>(s)?.value ?? ''
@@ -236,6 +250,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
         periods: num('.cfg-periods', 2), periodMinutes: num('.cfg-periodMinutes', 20),
         breakMinutes: Number(val('.cfg-breakMinutes')) || 0,
         legs: el.querySelector<HTMLSelectElement>('.cfg-legs')?.value === 'HOME_AWAY' ? 'HOME_AWAY' : 'SINGLE',
+        ...(el.querySelector<HTMLInputElement>('.cfg-festivalMatchesPerTeam') ? { festivalMatchesPerTeam: num('.cfg-festivalMatchesPerTeam', 3) } : {}),
         // Finals format per category; only include the fields that are set (avoid undefined noise).
         ...(finalsFormatId ? { finalsFormatId } : {}),
         ...(finalsType ? { finalsType, finalsEnabled: true } : {}),
@@ -320,18 +335,24 @@ export const scheduleScreen: Screen<ScheduleData> = {
       let selCat = categoryKeys(data.matches)[0] ?? ''
       let selGir = 'ALL'
       let selPhase = 'ALL'
+      // Festival (non-competitive): no gironi/finali — plain list, no phase filter.
+      const isFestival = data.matches.some((m) => m.phase === 'FESTIVAL')
       function draw() {
         catbar.innerHTML = renderTabs(categoryKeys(data.matches).map((c) => ({ key: c, label: c })), selCat)
         catbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
           b.addEventListener('click', () => { selCat = b.dataset.key!; selGir = 'ALL'; selPhase = 'ALL'; draw() }))
-        const gtabs = calendarGironeTabs(data.matches, selCat)
-        girbar.innerHTML = renderTabs(gtabs, selGir)
-        girbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
-          b.addEventListener('click', () => { selGir = b.dataset.key!; selPhase = 'ALL'; draw() }))
-        const phaseTabs = selGir === FINALS_TAB ? finalsPhaseTabs(data.matches, selCat) : []
-        phasebar.innerHTML = phaseTabs.length ? `<div class="pf-tabs--sub">${renderTabs(phaseTabs, selPhase)}</div>` : ''
-        phasebar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
-          b.addEventListener('click', () => { selPhase = b.dataset.key!; draw() }))
+        if (isFestival) {
+          girbar.innerHTML = ''; phasebar.innerHTML = ''
+        } else {
+          const gtabs = calendarGironeTabs(data.matches, selCat)
+          girbar.innerHTML = renderTabs(gtabs, selGir)
+          girbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
+            b.addEventListener('click', () => { selGir = b.dataset.key!; selPhase = 'ALL'; draw() }))
+          const phaseTabs = selGir === FINALS_TAB ? finalsPhaseTabs(data.matches, selCat) : []
+          phasebar.innerHTML = phaseTabs.length ? `<div class="pf-tabs--sub">${renderTabs(phaseTabs, selPhase)}</div>` : ''
+          phasebar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
+            b.addEventListener('click', () => { selPhase = b.dataset.key!; draw() }))
+        }
         calbody!.innerHTML = renderCalendar(filterMatches(data.matches, selCat, selGir, selPhase), catName, true)
         wireResult(); wireReschedule()
       }

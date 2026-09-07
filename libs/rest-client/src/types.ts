@@ -98,6 +98,7 @@ export interface CategorySchedule {
   finalsFormatId?: string
   finalsThirdPlace?: boolean
   finalsQualifiersPerGroup?: number
+  festivalMatchesPerTeam?: number
 }
 export interface ScheduleConfig {
   fields: string[]
@@ -116,6 +117,7 @@ export interface ScheduleConfig {
   finalsFormatId?: string
   finalsThirdPlace?: boolean
   finalsQualifiersPerGroup?: number
+  festivalMatchesPerTeam?: number
 }
 export interface ScheduleView {
   sportEventId: string
