@@ -1,5 +1,5 @@
 import { DomainError } from '@playfusion/platform-lib';
-import { buildFixtures } from '../fixtures.js';
+import { buildFixtures, buildFestivalFixtures, type FestivalCategory } from '../fixtures.js';
 import { buildFinals, bracketFromParticipants } from '../finals.js';
 import { compileFormat, type CustomFinalsFormat } from '../finals-format.js';
 import { autoSplit, canGenerate, categoryConfig, defaultConfig, type FixtureCategory, type Schedule, type ScheduleConfig, type ScheduledMatch } from '../domain.js';
@@ -157,6 +157,18 @@ export function generateSchedule(deps: GenerateScheduleDeps) {
       // Epic #143 (S4): solo tabellone — no gironi, no group fixtures, no standings; each category's
       // single-elimination bracket is seeded directly from its confirmed participants.
       allMatches = buildBracketMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, event.categorie, input.config, byCategory, formatMap);
+    } else if (event.format === 'festival') {
+      // Festival (non-competitive): each category's confirmed teams play N rotation matches. No gironi,
+      // no standings (phase FESTIVAL), no finals (buildFinalMatches is not called).
+      const festCats: FestivalCategory[] = event.categorie.map((categoria) => {
+        const cc = categoryConfig(input.config, categoria);
+        return {
+          id: categoria, teams: byCategory.get(categoria) ?? [],
+          matchesPerTeam: cc.festivalMatchesPerTeam ?? 3,
+          fields: cc.fields, periods: cc.periods, periodMinutes: cc.periodMinutes, breakMinutes: cc.breakMinutes,
+        };
+      });
+      allMatches = buildFestivalFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config.dailyStart, festCats);
     } else {
       // Resolve each category's groups: the explicit o3 gironi composition (S8) when it exists
       // and is non-empty, otherwise the S7 auto-split of confirmed teams by config.groupsCount.

@@ -50,7 +50,7 @@ export interface EventView {
   sportProfile?: { points: { win: number; draw: number | null; loss: number }; tieBreak: string[] };
   /** Epic #143 (S4): the event structure. `bracket` = solo tabellone (no gironi, no standings; the
    *  bracket is seeded from the confirmed participants). Absent ⇒ legacy `groups+bracket`. */
-  format?: 'groups' | 'groups+bracket' | 'bracket';
+  format?: 'groups' | 'groups+bracket' | 'bracket' | 'festival';
 }
 export interface EventSource {
   get(sportEventId: string): Promise<EventView | undefined>;

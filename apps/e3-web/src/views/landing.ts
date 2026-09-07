@@ -14,14 +14,17 @@ const catChips = (event: EventDetail, published: boolean): string => {
 /** The results/nav buttons (Calendario / Classifiche / Tabellone / Avvisi / Squadre). */
 function navButtons(event: EventDetail, published: boolean): string {
   const id = encodeURIComponent(event.sportEventId)
+  // Festival (non-competitive): calendar-only — no bracket, no standings, no finals formula.
+  const isFestival = event.format === 'festival'
   const calendarCta = published ? `<a class="pf-btn" href="#/events/${id}/calendar">Calendario →</a>` : ''
-  const bracketCta = published ? `<a class="pf-btn pf-btn--ghost" href="#/events/${id}/bracket">Tabellone →</a>` : ''
-  // Epic #143 (S4): solo tabellone has no standings — hide the Classifiche link.
-  const standingsCta = event.format === 'bracket' ? '' : `<a class="pf-btn pf-btn--ghost" href="#/events/${id}/standings">Classifiche →</a>`
+  const bracketCta = published && !isFestival ? `<a class="pf-btn pf-btn--ghost" href="#/events/${id}/bracket">Tabellone →</a>` : ''
+  // Epic #143 (S4): solo tabellone has no standings — hide the Classifiche link. Festival too.
+  const standingsCta = (event.format === 'bracket' || isFestival) ? '' : `<a class="pf-btn pf-btn--ghost" href="#/events/${id}/standings">Classifiche →</a>`
+  const formulaCta = isFestival ? '' : `<a class="pf-btn pf-btn--ghost" href="#/events/${id}/formula">Formula →</a>`
   return `${calendarCta}
     ${standingsCta}
     ${bracketCta}
-    <a class="pf-btn pf-btn--ghost" href="#/events/${id}/formula">Formula →</a>
+    ${formulaCta}
     <a class="pf-btn pf-btn--ghost" href="#/events/${id}/avvisi">Avvisi →</a>
     <a class="pf-btn pf-btn--ghost" href="#/events/${id}/participants">${esc(eventLabels(event).participantPlural)} iscritt${event.participantType === 'individual' ? 'i' : 'e'} →</a>`
 }

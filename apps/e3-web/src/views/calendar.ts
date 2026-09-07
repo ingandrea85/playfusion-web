@@ -13,9 +13,11 @@ export function renderPublicCalendar(event: EventDetail, schedule: ScheduleView,
   const published = schedule.status === 'PUBLISHED'
   const keys = categoryKeys(matches)
   const selCat = (initialCat && keys.includes(initialCat) ? initialCat : keys[0]) ?? ''
+  // Festival (non-competitive): no gironi/finali — plain match list, no phase filter.
+  const isFestival = matches.some((m) => m.phase === 'FESTIVAL')
   const inner = published
     ? `<div id="cal-cattabs">${renderTabs(keys.map((c) => ({ key: c, label: c })), selCat)}</div>
-       <div id="cal-girtabs">${renderTabs(gironeTabs(matches, selCat), 'ALL')}</div>
+       <div id="cal-girtabs">${isFestival ? '' : renderTabs(gironeTabs(matches, selCat), 'ALL')}</div>
        <div id="cal-phasetabs"></div>
        <div id="calbody">${renderCalendar(filterMatches(matches, selCat, 'ALL', 'ALL'), catName)}</div>`
     : `<p class="pf-muted">Il calendario non è ancora stato pubblicato.</p>`
@@ -38,17 +40,22 @@ export function wirePublicCalendar(root: ParentNode, matches: ScheduledMatchView
   let selCat = (initialCat && keys.includes(initialCat) ? initialCat : keys[0]) ?? ''
   let selGir = 'ALL'
   let selPhase = 'ALL'
+  const isFestival = matches.some((m) => m.phase === 'FESTIVAL')
   function draw() {
     catbar.innerHTML = renderTabs(keys.map((c) => ({ key: c, label: c })), selCat)
     catbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
       b.addEventListener('click', () => { selCat = b.dataset.key!; selGir = 'ALL'; selPhase = 'ALL'; draw() }))
-    girbar.innerHTML = renderTabs(gironeTabs(matches, selCat), selGir)
-    girbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
-      b.addEventListener('click', () => { selGir = b.dataset.key!; selPhase = 'ALL'; draw() }))
-    const phaseTabs = selGir === FINALS_TAB ? finalsPhaseTabs(matches, selCat) : []
-    phasebar.innerHTML = phaseTabs.length ? `<div class="pf-tabs--sub">${renderTabs(phaseTabs, selPhase)}</div>` : ''
-    phasebar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
-      b.addEventListener('click', () => { selPhase = b.dataset.key!; draw() }))
+    if (isFestival) {
+      girbar.innerHTML = ''; phasebar.innerHTML = '' // no gironi/finali filter for a festival
+    } else {
+      girbar.innerHTML = renderTabs(gironeTabs(matches, selCat), selGir)
+      girbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
+        b.addEventListener('click', () => { selGir = b.dataset.key!; selPhase = 'ALL'; draw() }))
+      const phaseTabs = selGir === FINALS_TAB ? finalsPhaseTabs(matches, selCat) : []
+      phasebar.innerHTML = phaseTabs.length ? `<div class="pf-tabs--sub">${renderTabs(phaseTabs, selPhase)}</div>` : ''
+      phasebar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
+        b.addEventListener('click', () => { selPhase = b.dataset.key!; draw() }))
+    }
     calbody!.innerHTML = renderCalendar(filterMatches(matches, selCat, selGir, selPhase), catName, false, { hideScheduledBadge: true })
   }
   draw()

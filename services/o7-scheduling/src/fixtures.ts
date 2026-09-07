@@ -1,10 +1,31 @@
-import type { FixtureCategory, ScheduledMatch } from './domain.js';
+import type { FixtureCategory, MatchPhase, ScheduledMatch } from './domain.js';
 
 /** Every unordered pair (i<j) of a group's teams — a single round-robin. */
 function pairs(teams: string[]): Array<[string, string]> {
   const out: Array<[string, string]> = [];
   for (let i = 0; i < teams.length; i++)
     for (let j = i + 1; j < teams.length; j++) out.push([teams[i]!, teams[j]!]);
+  return out;
+}
+
+/** Festival pairing (circle method): `n` rounds where each team meets distinct opponents. Even team
+ *  counts give each team exactly min(n, teams-1) matches; odd counts add a rotating bye, so a team
+ *  plays at most that many. Returns unordered pairs; ordering (home/away) is arbitrary (no legs). */
+export function rotationPairs(teams: string[], n: number): Array<[string, string]> {
+  if (teams.length < 2 || n < 1) return [];
+  const t = [...teams];
+  if (t.length % 2 === 1) t.push('__BYE__');
+  const m = t.length; // even
+  const rounds = Math.min(Math.floor(n), m - 1);
+  const out: Array<[string, string]> = [];
+  let arr = [...t];
+  for (let r = 0; r < rounds; r++) {
+    for (let i = 0; i < m / 2; i++) {
+      const a = arr[i]!, b = arr[m - 1 - i]!;
+      if (a !== '__BYE__' && b !== '__BYE__') out.push([a, b]);
+    }
+    arr = [arr[0]!, arr[m - 1]!, ...arr.slice(1, m - 1)]; // fix first, rotate the rest
+  }
   return out;
 }
 
@@ -43,22 +64,16 @@ interface Slot { teams: Set<string>; count: number }
  *  ids `sm-${n}` in category → group → pair order. */
 const placeKey = (p: Placement): string => `${p.fields.join('|')}@${p.slotMinutes}`;
 
-export function buildFixtures(
-  eventId: string, startDate: string, endDate: string, dailyStart: string, cats: FixtureCategory[],
-): ScheduledMatch[] {
-  const raw: Array<{ categoryId: string; groupLabel: string; home: string; away: string; place: Placement }> = [];
-  for (const cat of cats) {
-    const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
-    const fields = cat.fields.length ? cat.fields : ['Campo 1'];
-    const place: Placement = { fields, slotMinutes };
-    for (const group of cat.groups) {
-      for (const [home, away] of pairs(group.teams)) {
-        raw.push({ categoryId: cat.id, groupLabel: group.label, home, away, place });
-        if (cat.legs === 'HOME_AWAY') raw.push({ categoryId: cat.id, groupLabel: group.label, home: away, away: home, place });
-      }
-    }
-  }
+/** A match to place: teams + its category's placement (fields + slot length), plus an optional phase
+ *  (group fixtures leave it absent; festival matches set 'FESTIVAL'). */
+interface RawMatch { categoryId: string; groupLabel: string; home: string; away: string; place: Placement; phase?: MatchPhase }
 
+/** Greedy first-fit placement over (time-slot → day → field), one team at most per (day, time).
+ *  Shared by the round-robin (buildFixtures) and festival (buildFestivalFixtures) paths; `phase` is
+ *  carried through to the emitted match. Deterministic; ids `sm-${n}` in input order. */
+export function placeMatches(
+  raw: RawMatch[], startDate: string, endDate: string, dailyStart: string, eventId: string,
+): ScheduledMatch[] {
   const days = dateRange(startDate, endDate);
   const D = days.length;
   // slots[`${signature}#${day}:${slot}`] = which teams + how many fields are already used there.
@@ -85,6 +100,49 @@ export function buildFixtures(
       id: `sm-${idx + 1}`, sportEventId: eventId, categoryId: r.categoryId, groupLabel: r.groupLabel,
       day: days[day]!, time: addMinutes(dailyStart, slot * r.place.slotMinutes),
       field: r.place.fields[field]!, home: r.home, away: r.away,
+      ...(r.phase ? { phase: r.phase } : {}),
     };
   });
+}
+
+export function buildFixtures(
+  eventId: string, startDate: string, endDate: string, dailyStart: string, cats: FixtureCategory[],
+): ScheduledMatch[] {
+  const raw: RawMatch[] = [];
+  for (const cat of cats) {
+    const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
+    const fields = cat.fields.length ? cat.fields : ['Campo 1'];
+    const place: Placement = { fields, slotMinutes };
+    for (const group of cat.groups) {
+      for (const [home, away] of pairs(group.teams)) {
+        raw.push({ categoryId: cat.id, groupLabel: group.label, home, away, place });
+        if (cat.legs === 'HOME_AWAY') raw.push({ categoryId: cat.id, groupLabel: group.label, home: away, away: home, place });
+      }
+    }
+  }
+  return placeMatches(raw, startDate, endDate, dailyStart, eventId);
+}
+
+/** One festival category: its confirmed teams + how many matches each plays + its placement config. */
+export interface FestivalCategory {
+  id: string; teams: string[]; matchesPerTeam: number;
+  fields: string[]; periods: number; periodMinutes: number; breakMinutes: number;
+}
+
+/** Festival (non-competitive): each category's teams play `matchesPerTeam` rotation matches, placed on
+ *  the shared grid (same engine as buildFixtures). No groups, no finals; every match is phase FESTIVAL
+ *  with an empty groupLabel, so it never feeds the standings. */
+export function buildFestivalFixtures(
+  eventId: string, startDate: string, endDate: string, dailyStart: string, cats: FestivalCategory[],
+): ScheduledMatch[] {
+  const raw: RawMatch[] = [];
+  for (const cat of cats) {
+    const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
+    const fields = cat.fields.length ? cat.fields : ['Campo 1'];
+    const place: Placement = { fields, slotMinutes };
+    for (const [home, away] of rotationPairs(cat.teams, cat.matchesPerTeam)) {
+      raw.push({ categoryId: cat.id, groupLabel: '', home, away, place, phase: 'FESTIVAL' });
+    }
+  }
+  return placeMatches(raw, startDate, endDate, dailyStart, eventId);
 }

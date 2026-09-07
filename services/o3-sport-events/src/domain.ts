@@ -37,7 +37,7 @@ export interface SportEvent {
   /** Epic #143: the sport profile snapshot + participant type + format chosen at creation. */
   sportProfile?: EventSportSnapshot;
   participantType?: 'team' | 'individual';
-  format?: 'groups' | 'groups+bracket' | 'bracket';
+  format?: 'groups' | 'groups+bracket' | 'bracket' | 'festival';
 }
 
 export interface EventSportSnapshot {

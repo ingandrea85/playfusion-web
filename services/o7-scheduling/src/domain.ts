@@ -34,6 +34,8 @@ export interface CategorySchedule {
   finalsThirdPlace?: boolean;
   /** finali-formule SP-A3: how many top teams of each group qualify to the GROUP_KNOCKOUT. Default 1. */
   finalsQualifiersPerGroup?: number;
+  /** Festival: matches each team plays (default 3). Per-category override of the top-level default. */
+  festivalMatchesPerTeam?: number;
 }
 
 /** Fields + match-format params live on the Schedule (O7), never on the Event/Category.
@@ -63,6 +65,8 @@ export interface ScheduleConfig {
   finalsThirdPlace?: boolean;
   /** finali-formule SP-A3: default GROUP_KNOCKOUT qualifiers-per-group. Per-category via byCategory. */
   finalsQualifiersPerGroup?: number;
+  /** Festival: default matches each team plays (default 3). Per-category via byCategory. */
+  festivalMatchesPerTeam?: number;
 }
 
 /** Resolve a category's playing config: its `byCategory` override if present, else the
@@ -74,6 +78,7 @@ export function categoryConfig(config: ScheduleConfig, categoria: string): Categ
     finalsType: config.finalsType, finalsEnabled: config.finalsEnabled, finalsTeamsToBracket: config.finalsTeamsToBracket,
     finalsFormatId: config.finalsFormatId, finalsThirdPlace: config.finalsThirdPlace,
     finalsQualifiersPerGroup: config.finalsQualifiersPerGroup,
+    festivalMatchesPerTeam: config.festivalMatchesPerTeam,
   };
 }
 
@@ -94,7 +99,7 @@ export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED';
 /** S12: a match belongs to the group stage or the finals bracket. Absent ⇒ GROUP (legacy). Only
  *  GROUP matches feed the standings; FINAL matches carry bracket metadata + placeholder home/away
  *  (`1ª Girone A`, `Vincente SF1`) resolved to real teams on read. */
-export type MatchPhase = 'GROUP' | 'FINAL' | 'FINAL_GROUP';
+export type MatchPhase = 'GROUP' | 'FINAL' | 'FINAL_GROUP' | 'FESTIVAL';
 
 /** S12: how the finals bracket is drawn. Single source of truth = the shared @playfusion/finals-format
  *  lib (where the pure generators live); re-exported here so o7 code keeps importing it from domain. */

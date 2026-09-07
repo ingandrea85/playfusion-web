@@ -327,4 +327,21 @@ describe('schedule config: solo tabellone (S4) hides group-only inputs', () => {
     expect(html).toContain('cfg-legs')
     expect(html).toContain('cfg-finalsType')
   })
+
+  const festivalData = (): ScheduleData => ({
+    event: { ...event, format: 'festival' },
+    schedule: { sportEventId: 'e1', organizationId: 'org', status: 'NONE', config: cfg }, matches: [], finalsFormats: [], teamsByCat: { U10: 8, U12: 6 },
+  })
+  it('shows "Incontri per squadra" and hides all competitive config for a festival event', () => {
+    const html = renderSchedule(festivalData())
+    expect(html).toContain('cfg-festivalMatchesPerTeam')
+    expect(html).toContain('Incontri per squadra')
+    expect(html).not.toContain('cfg-legs')          // no andata/ritorno
+    expect(html).not.toContain('cfg-finalsType')     // no finals
+    expect(html).not.toContain('cfg-thirdplace')     // no 3º/4º
+    expect(html).not.toContain('js-formula')         // no formula preview
+    expect(html).not.toContain('Data finali')        // no finals date field
+    expect(html).toContain('senza classifiche né finali') // festival hint
+    expect(html).toContain('cfg-periods')            // match-timing inputs stay
+  })
 })

@@ -30,7 +30,7 @@ export function computeStandings(matches: ScheduledMatch[], points: PointsPolicy
   };
 
   for (const m of matches) {
-    if (m.phase === 'FINAL') continue; // S12: finals never affect the group table nor create rows
+    if (m.phase === 'FINAL' || m.phase === 'FESTIVAL') continue; // finals & festival never feed the table nor create rows
     const g = groupOf(m);
     const home = rowOf(g, m.home);
     const away = rowOf(g, m.away);

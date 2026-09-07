@@ -27,7 +27,7 @@ export interface EventDetail {
 }
 
 export type ParticipantType = 'team' | 'individual'
-export type EventFormat = 'groups' | 'groups+bracket' | 'bracket'
+export type EventFormat = 'groups' | 'groups+bracket' | 'bracket' | 'festival'
 /** Frozen copy of the chosen SportProfile, stored on the event so the engine/UI read it locally. */
 export interface EventSportSnapshot { sportId: string; name: string; scoreLabel: string; points: SportPoints; tieBreak: SportTieBreak[] }
 export type EventSummary = EventDetail
@@ -98,6 +98,7 @@ export interface CategorySchedule {
   finalsFormatId?: string
   finalsThirdPlace?: boolean
   finalsQualifiersPerGroup?: number
+  festivalMatchesPerTeam?: number
 }
 export interface ScheduleConfig {
   fields: string[]
@@ -116,6 +117,7 @@ export interface ScheduleConfig {
   finalsFormatId?: string
   finalsThirdPlace?: boolean
   finalsQualifiersPerGroup?: number
+  festivalMatchesPerTeam?: number
 }
 export interface ScheduleView {
   sportEventId: string
@@ -141,7 +143,7 @@ export interface ScheduledMatchView {
   startedAt?: string | null // S26: ISO kickoff instant
   // S12/S13: finals. phase absent ⇒ GROUP. FINAL/FINAL_GROUP carry bracket metadata + placeholder
   // home/away, with homeResolved/awayResolved filled on read (qualifier + winner propagation).
-  phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'
+  phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' | 'FESTIVAL'
   bracketLabel?: string
   round?: string
   order?: number

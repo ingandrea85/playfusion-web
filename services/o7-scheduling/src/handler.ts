@@ -58,6 +58,7 @@ const categorySchedule = z.object({
   periodMinutes: z.number().int().positive(),
   breakMinutes: z.number().int().nonnegative(),
   legs: z.enum(['SINGLE', 'HOME_AWAY']),
+  festivalMatchesPerTeam: z.number().int().positive().optional(),
   ...finalsFields,
 });
 export const scheduleConfigBody = z.object({
@@ -72,6 +73,8 @@ export const scheduleConfigBody = z.object({
   byCategory: z.record(categorySchedule).optional(),
   // S12/S13: finals scheduling day (global) + top-level finals format default.
   finalsDate: z.string().optional(),
+  // Festival: default matches each team plays.
+  festivalMatchesPerTeam: z.number().int().positive().optional(),
   ...finalsFields,
 });
 

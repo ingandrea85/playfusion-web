@@ -33,7 +33,7 @@ export type MatchStatus = 'SCHEDULED' | 'LIVE' | 'FINISHED' | 'CANCELLED'
  *  no dependency on rest-client (rest-client's ScheduledMatchView satisfies it). `id` is
  *  only needed in editable mode (E1 reschedule — S9). `status`/`startedAt` drive the S26
  *  lifecycle badges + delay. */
-export interface CalendarMatch { id?: string; categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string; homeScore?: number | null; awayScore?: number | null; status?: MatchStatus; startedAt?: string | null; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'; round?: string; bracketLabel?: string; placementFrom?: number; placementTo?: number; decidedWinner?: 'HOME' | 'AWAY'; homeResolved?: string; awayResolved?: string }
+export interface CalendarMatch { id?: string; categoryId: string; groupLabel: string; day: string; time: string; field: string; home: string; away: string; homeScore?: number | null; awayScore?: number | null; status?: MatchStatus; startedAt?: string | null; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' | 'FESTIVAL'; round?: string; bracketLabel?: string; placementFrom?: number; placementTo?: number; decidedWinner?: 'HOME' | 'AWAY'; homeResolved?: string; awayResolved?: string }
 
 /** A knockout (FINAL) match that finished level and has no decreed winner yet — the organizer/
  *  director still has to pick who advances. Used to flag such rows in the calendar/bracket/director. */
@@ -118,10 +118,12 @@ export function renderCalendar(matches: CalendarMatch[], catName: (id: string) =
         // On the public calendar the SCHEDULED pill is suppressed (noise on upcoming rows);
         // LIVE/FINISHED/CANCELLED always show.
         const badge = opts.hideScheduledBadge && st === 'SCHEDULED' ? '' : matchStatusBadge(m)
+        // Festival matches have no group/finale label — show just the category (no dangling "· ").
+        const label = m.phase === 'FINAL' ? `${m.bracketLabel ?? 'Finali'}${m.round ? ` · ${roundLabel(m.round)}` : ''}` : m.groupLabel
         return `<li class="pf-match${st === 'CANCELLED' ? ' pf-match--cancelled' : ''}">
         <span class="pf-match__time pf-mono">${esc(m.time)}</span>
         <span class="pf-match__field pf-mono">${esc(m.field)}</span>
-        <span class="pf-match__cat">${esc(catName(m.categoryId))} · ${esc(m.phase === 'FINAL' ? `${m.bracketLabel ?? 'Finali'}${m.round ? ` · ${roundLabel(m.round)}` : ''}` : m.groupLabel)}${m.phase === 'FINAL' && m.placementFrom != null && m.placementTo === m.placementFrom + 1 ? ` <span class="pf-brk__pos">${m.placementFrom}º/${m.placementTo}º</span>` : ''} ${badge}${decideBadge(m)}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
+        <span class="pf-match__cat">${esc(catName(m.categoryId))}${label ? ` · ${esc(label)}` : ''}${m.phase === 'FINAL' && m.placementFrom != null && m.placementTo === m.placementFrom + 1 ? ` <span class="pf-brk__pos">${m.placementFrom}º/${m.placementTo}º</span>` : ''} ${badge}${decideBadge(m)}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
         <span class="pf-match__teams">${esc(m.homeResolved ?? m.home)} <b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b> ${esc(m.awayResolved ?? m.away)}</span>
         ${editable ? `<span class="pf-match__actions"><button type="button" class="pf-btn pf-btn--ghost js-resultmatch" data-match="${esc(m.id ?? '')}">Risultato</button><button type="button" class="pf-btn pf-btn--ghost js-editmatch" data-match="${esc(m.id ?? '')}">Modifica</button></span>` : ''}
       </li>`
@@ -168,7 +170,7 @@ export function categoryKeys(items: Array<{ categoryId: string }>): string[] {
 }
 /** Distinct groupLabels of one category, first-seen order. Finals (phase FINAL) are excluded so
  *  their bracket labels never appear as girone tabs (S12). */
-export function groupKeys(items: Array<{ categoryId: string; groupLabel: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' }>, categoryId: string): string[] {
+export function groupKeys(items: Array<{ categoryId: string; groupLabel: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' | 'FESTIVAL' }>, categoryId: string): string[] {
   const out: string[] = []
   for (const i of items) if (i.categoryId === categoryId && i.phase !== 'FINAL' && !out.includes(i.groupLabel)) out.push(i.groupLabel)
   return out
@@ -177,8 +179,8 @@ export function groupKeys(items: Array<{ categoryId: string; groupLabel: string;
 /** S13: shared calendar filter — one UX across E1 organizer, E3 public and the director view. The
  *  girone tab bar lists the real gironi + a "Finali" tab; "Tutti" shows the whole category. */
 export const FINALS_TAB = 'FINALS'
-export const isFinalPhase = (m: { phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' }): boolean => m.phase === 'FINAL' || m.phase === 'FINAL_GROUP'
-export function calendarGironeTabs<T extends { categoryId: string; groupLabel: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' }>(matches: T[], categoryId: string): { key: string; label: string }[] {
+export const isFinalPhase = (m: { phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' | 'FESTIVAL' }): boolean => m.phase === 'FINAL' || m.phase === 'FINAL_GROUP'
+export function calendarGironeTabs<T extends { categoryId: string; groupLabel: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' | 'FESTIVAL' }>(matches: T[], categoryId: string): { key: string; label: string }[] {
   const gironi = groupKeys(matches.filter((m) => !isFinalPhase(m)), categoryId).map((g) => ({ key: g, label: g }))
   const tabs = [{ key: 'ALL', label: 'Tutti' }, ...gironi]
   if (matches.some((m) => m.categoryId === categoryId && isFinalPhase(m))) tabs.push({ key: FINALS_TAB, label: 'Finali' })
@@ -191,7 +193,7 @@ export function calendarGironeTabs<T extends { categoryId: string; groupLabel: s
 const PHASE_ORDER = ['R64', 'R32', 'R16', 'QF', 'SF', 'F']
 export const PLACEMENTS_PHASE = 'PIAZZAMENTI'
 export const finalsPhaseKey = (round?: string): string => (round && CODE_ROUNDS.has(round) ? round : PLACEMENTS_PHASE)
-export function finalsPhaseTabs<T extends { categoryId: string; round?: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' }>(matches: T[], categoryId?: string): Tab[] {
+export function finalsPhaseTabs<T extends { categoryId: string; round?: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' | 'FESTIVAL' }>(matches: T[], categoryId?: string): Tab[] {
   const present = new Set<string>()
   for (const m of matches) if ((!categoryId || m.categoryId === categoryId) && isFinalPhase(m)) present.add(finalsPhaseKey(m.round))
   if (present.size < 2) return []
@@ -199,7 +201,7 @@ export function finalsPhaseTabs<T extends { categoryId: string; round?: string; 
   const tabs = [...present].sort((a, b) => idx(a) - idx(b)).map((k) => ({ key: k, label: k === PLACEMENTS_PHASE ? 'Piazzamenti' : roundLabel(k) }))
   return [{ key: 'ALL', label: 'Tutte' }, ...tabs]
 }
-export function filterCalendarMatches<T extends { categoryId: string; groupLabel: string; round?: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' }>(matches: T[], categoryId: string, selGir: string, selPhase = 'ALL'): T[] {
+export function filterCalendarMatches<T extends { categoryId: string; groupLabel: string; round?: string; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' | 'FESTIVAL' }>(matches: T[], categoryId: string, selGir: string, selPhase = 'ALL'): T[] {
   return matches.filter((m) => {
     if (m.categoryId !== categoryId) return false
     if (selGir === 'ALL') return true
@@ -232,7 +234,7 @@ export function renderStandings(groups: GroupStandingView[], catName: (id: strin
 }
 
 /** Structural finals match shape (app-shell stays free of rest-client). */
-export interface BracketMatch { categoryId: string; bracketLabel?: string; round?: string; order?: number; slot?: string; placementFrom?: number; placementTo?: number; day?: string; time?: string; field?: string; home: string; away: string; homeResolved?: string; awayResolved?: string; status?: MatchStatus; homeScore?: number | null; awayScore?: number | null; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'; decidedWinner?: 'HOME' | 'AWAY' }
+export interface BracketMatch { categoryId: string; bracketLabel?: string; round?: string; order?: number; slot?: string; placementFrom?: number; placementTo?: number; day?: string; time?: string; field?: string; home: string; away: string; homeResolved?: string; awayResolved?: string; status?: MatchStatus; homeScore?: number | null; awayScore?: number | null; phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' | 'FESTIVAL'; decidedWinner?: 'HOME' | 'AWAY' }
 
 /** Which side won a finished match: by score, or (on a draw) the decreed winner; null if not decided. */
 export function winnerSide(m: BracketMatch): 'HOME' | 'AWAY' | null {
