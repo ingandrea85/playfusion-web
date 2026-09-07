@@ -12,6 +12,7 @@ const FORMAT_LABEL: Record<NonNullable<CreateEventInput['format']>, string> = {
   'groups': 'Solo gironi',
   'groups+bracket': 'Gironi + Tabellone',
   'bracket': 'Solo tabellone',
+  'festival': 'Festival (non competitivo)',
 }
 
 export function renderCreateEvent(categorie: string[] = [], sports: SportProfile[] = []): string {
