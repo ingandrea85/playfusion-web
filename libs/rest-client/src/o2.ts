@@ -14,6 +14,8 @@ export interface O2Api {
   // S21 admin (platform_admin) — cross-tenant org monitoring via Auth0.
   adminListOrgs(): Promise<AdminOrgSummary[]>
   adminGetOrg(orgId: string): Promise<AdminOrgDetail>
+  // D-O11-3 — owner declares its org was created → publishes OrganizationCreated (O11 provisions a trial).
+  declareOrganizationCreated(orgId: string, email?: string): Promise<{ published: string; organizationId: string }>
 }
 export const o2 = (cfg: HttpConfig): O2Api => ({
   mintMagicLink: (input) => request(cfg, 'POST', '/o2/identities/magic-link', input),
@@ -27,4 +29,5 @@ export const o2 = (cfg: HttpConfig): O2Api => ({
   removeMember: (orgId, memberId) => request(cfg, 'DELETE', `/o2/organizations/${encodeURIComponent(orgId)}/members/${encodeURIComponent(memberId)}`),
   adminListOrgs: () => request(cfg, 'GET', '/o2/admin/organizations'),
   adminGetOrg: (orgId) => request(cfg, 'GET', `/o2/admin/organizations/${encodeURIComponent(orgId)}`),
+  declareOrganizationCreated: (orgId, email) => request(cfg, 'POST', `/o2/organizations/${encodeURIComponent(orgId)}/events:created`, email ? { email } : {}),
 })

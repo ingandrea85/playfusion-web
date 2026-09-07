@@ -3,36 +3,20 @@ import { cors } from 'hono/cors';
 import { randomUUID } from 'node:crypto';
 import {
   withCorrelation, currentCorrelationId, toHttpError, checkpoint,
-  makeDocClient, auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, requireOwner, requirePlatformAdmin,
+  auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, requireOwner, requirePlatformAdmin,
 } from '@playfusion/platform-lib';
 import { z } from 'zod';
-import { DynamoDbSubscriptionRepository } from './adapters/dynamodb-subscription-repository.js';
-import { makeLiveStripeGateway } from './adapters/stripe-gateway-live.js';
 import { getSubscription, provision, billingPortal, resync, type Deps } from './application/subscription.js';
 import { handleStripeEvent } from './application/webhook.js';
-import type { StripeGateway } from './ports/stripe-gateway.js';
-import type { PriceToPlan } from './domain.js';
+import { defaultDeps } from './deps.js';
+
+export { defaultDeps };
 
 const auth0cfg = auth0ConfigFromEnv();
 const verifier = auth0cfg ? createAuth0Verifier(auth0cfg) : undefined;
 const organizer = requireOrganizer({ auth0: verifier, allowPlatformAdmin: true });
 const owner = requireOwner({ auth0: verifier });
 const platformAdmin = requirePlatformAdmin({ auth0: verifier });
-
-const priceToPlan: PriceToPlan = {
-  ...(process.env.STRIPE_PRICE_STARTER ? { [process.env.STRIPE_PRICE_STARTER]: 'STARTER' as const } : {}),
-  ...(process.env.STRIPE_PRICE_CLUB ? { [process.env.STRIPE_PRICE_CLUB]: 'CLUB' as const } : {}),
-};
-
-export function defaultDeps(): Deps {
-  const repo = new DynamoDbSubscriptionRepository(makeDocClient());
-  const stripe: StripeGateway = makeLiveStripeGateway({
-    secretKey: process.env.STRIPE_SECRET_KEY ?? '',
-    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? '',
-    clubPriceId: process.env.STRIPE_PRICE_CLUB ?? '',
-  });
-  return { repo, stripe, priceToPlan };
-}
 
 const provisionBody = z.object({ email: z.string().email().optional() });
 const portalBody = z.object({ returnUrl: z.string().url() });

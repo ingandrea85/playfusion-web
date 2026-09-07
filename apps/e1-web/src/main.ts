@@ -59,6 +59,11 @@ async function boot() {
     // T1: the org's plan drives what's unlocked. Read the subscription once at boot (best-effort;
     // a not-yet-provisioned/errored subscription → most restrictive FREE entitlements).
     const sub = await client.o11.getSubscription(orgId).catch(() => null)
+    // D-O11-3: an owner opening an org with no Stripe subscription yet declares the org created, so
+    // O11 provisions a trial (async, via EventBridge). Idempotent + fire-and-forget (never blocks boot).
+    if (orgRole === 'OWNER' && sub && !sub.stripeSubscriptionId) {
+      void client.o2.declareOrganizationCreated(orgId, user?.email).catch(() => {})
+    }
     const ent = entitlements(sub?.plan)
 
     let current: () => Promise<void> = async () => {}

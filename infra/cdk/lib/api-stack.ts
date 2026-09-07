@@ -83,8 +83,14 @@ const BCS: BcSpec[] = [
   { key: 'o9-communications', route: 'o9', tables: ['o9-announcements'] },
   // O1 organization (S18): per-tenant brand identity, public read + organizer write. No consumer.
   { key: 'o1-organization', route: 'o1', tables: ['o1-organizations'] },
-  // O11 subscriptions (S20): per-tenant trial-first billing. Organizer-only. No consumer.
-  { key: 'o11-subscriptions', route: 'o11', tables: ['o11-subscriptions'] },
+  // O11 subscriptions (S20): per-tenant trial-first billing. Consumes OrganizationCreated (D-O11-3)
+  // to provision a Stripe trial when an org is created.
+  {
+    key: 'o11-subscriptions',
+    route: 'o11',
+    tables: ['o11-subscriptions'],
+    consumer: { tables: ['o11-subscriptions', 'o11-processed-events'], detailTypes: ['OrganizationCreated'] },
+  },
 ];
 
 /**
@@ -152,6 +158,16 @@ export class ApiStack extends Stack {
     // avoid the Lambda→Stage→Deployment circular dependency.
     const apiBaseUrl = `https://${api.restApiId}.execute-api.${this.region}.amazonaws.com/prod`;
 
+    // S20: Stripe billing env for the o11 Lambdas (handler + consumer both call Stripe). Non-secret
+    // price ids from env json; secret/webhook keys injected by the deployer via env (never committed).
+    const addStripeEnv = (fn: NodejsFunction): void => {
+      if (!props.stripe) return;
+      fn.addEnvironment('STRIPE_PRICE_STARTER', props.stripe.priceStarter);
+      fn.addEnvironment('STRIPE_PRICE_CLUB', props.stripe.priceClub);
+      if (process.env.STRIPE_SECRET_KEY) fn.addEnvironment('STRIPE_SECRET_KEY', process.env.STRIPE_SECRET_KEY);
+      if (process.env.STRIPE_WEBHOOK_SECRET) fn.addEnvironment('STRIPE_WEBHOOK_SECRET', process.env.STRIPE_WEBHOOK_SECRET);
+    };
+
     for (const bc of BCS) {
       const handler = lambda(`${bc.route}-handler`, resolve(SERVICES, bc.key, 'src/handler.ts'));
       handler.addEnvironment('O2_BASE_URL', o2BaseUrl);
@@ -171,15 +187,7 @@ export class ApiStack extends Stack {
         handler.addEnvironment('AUTH0_INVITE_CLIENT_ID', m.inviteClientId);
       }
 
-      // S20: the o11 handler backs Stripe billing (Checkout + webhook). Non-secret price ids
-      // from env json; the secret/webhook keys are injected by the deployer via env
-      // (STRIPE_SECRET_KEY/STRIPE_WEBHOOK_SECRET, never committed).
-      if (bc.route === 'o11' && props.stripe) {
-        handler.addEnvironment('STRIPE_PRICE_STARTER', props.stripe.priceStarter);
-        handler.addEnvironment('STRIPE_PRICE_CLUB', props.stripe.priceClub);
-        if (process.env.STRIPE_SECRET_KEY) handler.addEnvironment('STRIPE_SECRET_KEY', process.env.STRIPE_SECRET_KEY);
-        if (process.env.STRIPE_WEBHOOK_SECRET) handler.addEnvironment('STRIPE_WEBHOOK_SECRET', process.env.STRIPE_WEBHOOK_SECRET);
-      }
+      if (bc.route === 'o11') addStripeEnv(handler);
       for (const t of bc.tables) props.data.tables[t]!.grantReadWriteData(handler);
       props.data.bus.grantPutEventsTo(handler);
 
@@ -191,6 +199,7 @@ export class ApiStack extends Stack {
 
       if (bc.consumer) {
         const consumer = lambda(`${bc.route}-consumer`, resolve(SERVICES, bc.key, 'src/consumer.ts'));
+        if (bc.route === 'o11') addStripeEnv(consumer); // the o11 consumer calls provision → Stripe
         for (const t of bc.consumer.tables) props.data.tables[t]!.grantReadWriteData(consumer);
         props.data.bus.grantPutEventsTo(consumer);
         new Rule(this, `${bc.route}-consumer-rule`, {

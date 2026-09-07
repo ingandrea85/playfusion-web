@@ -91,6 +91,8 @@ export class DataStack extends Stack {
     this.tables['o1-organizations'] = table('o1-organizations', 'organizationId');
     // O11 subscriptions (S20): one subscription per org (trial-first billing).
     this.tables['o11-subscriptions'] = table('o11-subscriptions', 'organizationId');
+    // O11 consumer idempotency (D-O11-3): dedupe OrganizationCreated deliveries.
+    this.tables['o11-processed-events'] = table('o11-processed-events', 'eventId');
 
     // O9 communications (S15): announcements per event; event-index GSI to list per event.
     const announcements = table('o9-announcements', 'announcementId');

@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { handle } from 'hono/aws-lambda';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
-import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken, auth0ConfigFromEnv, createAuth0Verifier, requireOwner, requirePlatformAdmin, DomainError } from '@playfusion/platform-lib';
+import { withCorrelation, makeDocClient, toHttpError, resourceName, bearerToken, auth0ConfigFromEnv, createAuth0Verifier, requireOwner, requirePlatformAdmin, DomainError, EventBridgeEventPublisher, busName } from '@playfusion/platform-lib';
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { signToken, verifyToken } from './token.js';
 import { Auth0MembershipDirectory, auth0MgmtConfigFromEnv } from './adapters/auth0-membership.js';
@@ -20,6 +20,9 @@ const requireDirectory = () => {
 };
 const auth0cfg = auth0ConfigFromEnv();
 const verifier = auth0cfg ? createAuth0Verifier(auth0cfg) : undefined;
+// o2 owns identity/org existence, so it announces OrganizationCreated (consumed by O11 to provision
+// a Stripe trial). Blueprint D-O11-3; the trigger is the E1 owner's first visit with no subscription.
+const publisher = new EventBridgeEventPublisher(busName());
 // T4: managing members/roles/invitations is owner-only (billing/brand/members capability).
 const owner = requireOwner({ auth0: verifier });
 // S21: cross-tenant admin monitoring (E4).
@@ -71,6 +74,17 @@ app.put('/organizations/:orgId/members/:id/role', owner, async (c) => {
 app.delete('/organizations/:orgId/members/:id', owner, async (c) => {
   await removeMember(requireDirectory())({ organizationId: c.req.param('orgId'), memberId: c.req.param('id') });
   return c.body(null, 204);
+});
+
+// Owner declares its organization was created → publish OrganizationCreated so O11 provisions a
+// Stripe trial (event-driven, D-O11-3). Idempotent downstream (provision + o11-processed-events),
+// so repeated calls are safe. Email (for the Stripe customer) comes from the caller's profile.
+const orgCreatedBody = z.object({ email: z.string().email().optional() });
+app.post('/organizations/:orgId/events:created', owner, async (c) => {
+  const b = orgCreatedBody.parse(await c.req.json().catch(() => ({})));
+  const orgId = c.req.param('orgId');
+  await publisher.publish('OrganizationCreated', { organizationId: orgId, email: b.email }, orgId);
+  return c.json({ published: 'OrganizationCreated', organizationId: orgId }, 202);
 });
 
 // S21 admin — cross-tenant org monitoring (E4). platform_admin only.

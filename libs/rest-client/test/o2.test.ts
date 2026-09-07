@@ -39,6 +39,17 @@ describe('o2 membership api (T3 — Auth0 Organizations, org-scoped)', () => {
     await expect(c2.o2.changeMemberRole('org-pilot', 'm1', 'ORGANIZER')).rejects.toMatchObject({ status: 409, code: 'LAST_OWNER' })
   })
 
+  it('declareOrganizationCreated POSTs to events:created with the email', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(res({ published: 'OrganizationCreated', organizationId: 'org-pilot' }, 202))
+    const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
+    const out = await c.o2.declareOrganizationCreated('org-pilot', 'owner@x.io')
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://api/prod/o2/organizations/org-pilot/events:created')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ email: 'owner@x.io' })
+    expect(out.published).toBe('OrganizationCreated')
+  })
+
   it('removeMember / revokeInvitation DELETE their org-scoped resources', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
     const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
