@@ -141,7 +141,7 @@ export interface ScheduledMatchView {
   startedAt?: string | null // S26: ISO kickoff instant
   // S12/S13: finals. phase absent ⇒ GROUP. FINAL/FINAL_GROUP carry bracket metadata + placeholder
   // home/away, with homeResolved/awayResolved filled on read (qualifier + winner propagation).
-  phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP'
+  phase?: 'GROUP' | 'FINAL' | 'FINAL_GROUP' | 'FESTIVAL'
   bracketLabel?: string
   round?: string
   order?: number
