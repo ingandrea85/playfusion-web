@@ -36,10 +36,18 @@ describe('S17 resources view', () => {
     const over: ResourcesData = { ...base, plan: { ...plan, turns: [{ resourceId: 'r', day: '2026-09-01', slots: [{ time: '10:00', teams: [{ team: 'X', categoryId: 'U10', size: 20 }], persons: 20, capacity: 16, overflow: true }] }] } }
     expect(renderResources(over)).toContain('pf-res-slot--over')
   })
-  it('surfaces teams that fit no resource', () => {
+  it('surfaces residual people the pool could not seat', () => {
     const d: ResourcesData = { ...base, plan: { ...plan, unassignable: [{ day: '2026-09-01', team: 'Giganti', categoryId: 'U10', size: 25 }] } }
     const html = renderResources(d)
-    expect(html).toContain('Squadre senza risorsa')
+    expect(html).toContain('Posti non assegnati')
     expect(html).toContain('Giganti')
+    expect(html).toContain('25 posti non assegnati')
+  })
+  it('flags a partial portion when a team is split across rooms ("10p di 14")', () => {
+    const d: ResourcesData = { ...base,
+      plan: { ...plan,
+        teams: [{ team: 'Leoni', categoryId: 'U10', size: 14 }],
+        turns: [{ resourceId: 'r', day: '2026-09-01', slots: [{ time: '10:00', teams: [{ team: 'Leoni', categoryId: 'U10', size: 10 }], persons: 10, capacity: 10, overflow: false }] }] } }
+    expect(renderResources(d)).toContain('10p di 14')
   })
 })
