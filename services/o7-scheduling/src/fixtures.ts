@@ -8,6 +8,27 @@ function pairs(teams: string[]): Array<[string, string]> {
   return out;
 }
 
+/** Festival pairing (circle method): `n` rounds where each team meets distinct opponents. Even team
+ *  counts give each team exactly min(n, teams-1) matches; odd counts add a rotating bye, so a team
+ *  plays at most that many. Returns unordered pairs; ordering (home/away) is arbitrary (no legs). */
+export function rotationPairs(teams: string[], n: number): Array<[string, string]> {
+  if (teams.length < 2 || n < 1) return [];
+  const t = [...teams];
+  if (t.length % 2 === 1) t.push('__BYE__');
+  const m = t.length; // even
+  const rounds = Math.min(Math.floor(n), m - 1);
+  const out: Array<[string, string]> = [];
+  let arr = [...t];
+  for (let r = 0; r < rounds; r++) {
+    for (let i = 0; i < m / 2; i++) {
+      const a = arr[i]!, b = arr[m - 1 - i]!;
+      if (a !== '__BYE__' && b !== '__BYE__') out.push([a, b]);
+    }
+    arr = [arr[0]!, arr[m - 1]!, ...arr.slice(1, m - 1)]; // fix first, rotate the rest
+  }
+  return out;
+}
+
 /** Inclusive list of ISO days from start to end (UTC, no time zone drift). */
 function dateRange(start: string, end: string): string[] {
   const out: string[] = [];
