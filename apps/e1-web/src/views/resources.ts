@@ -66,14 +66,16 @@ function moveOptions(d: ResourcesData, day: string, team: string): string {
 
 const slotHtml = (s: ResourceSlot, d: ResourcesData, day: string): string => {
   const pct = Math.min(100, Math.round((s.persons / Math.max(1, s.capacity)) * 100))
+  // Full roster size per team, to flag a partial portion (team split across rooms): "10p di 14".
+  const fullSizeOf = (team: string): number | undefined => d.plan.teams.find((t) => t.team === team)?.size
   return `<div class="pf-res-slot${s.overflow ? ' pf-res-slot--over' : ''}">
     <div class="pf-res-slot__head"><span class="pf-mono">${esc(s.time)}</span>
       <span class="pf-res-gauge"><span class="pf-res-gauge__bar" style="width:${pct}%"></span></span>
       <span class="pf-mono">${s.persons}/${s.capacity}${s.overflow ? ' ⚠' : ''}</span></div>
-    <ul class="pf-res-slot__teams">${s.teams.map((t) => `<li>
-      <span>${esc(t.team)} <span class="pf-muted pf-mono">${esc(t.categoryId)} · ${t.size}p${t.pinned ? ' · fissato' : ''}</span></span>
+    <ul class="pf-res-slot__teams">${s.teams.map((t) => { const full = fullSizeOf(t.team); const partial = full != null && t.size < full; return `<li>
+      <span>${esc(t.team)} <span class="pf-muted pf-mono">${esc(t.categoryId)} · ${t.size}p${partial ? ` di ${full}` : ''}${t.pinned ? ' · fissato' : ''}</span></span>
       <select class="pf-res-move" data-day="${esc(day)}" data-team="${esc(t.team)}">${moveOptions(d, day, t.team)}</select>
-    </li>`).join('')}</ul>
+    </li>` }).join('')}</ul>
   </div>`
 }
 
@@ -85,10 +87,10 @@ function renderTurns(d: ResourcesData, resourceId: string, day: string): string 
 
 function unassignableCard(d: ResourcesData): string {
   if (!d.plan.unassignable.length) return ''
-  const items = d.plan.unassignable.map((u) => `<li>${esc(u.team)} <span class="pf-muted pf-mono">${esc(u.categoryId)} · ${u.size}p · ${esc(u.day)}</span></li>`).join('')
+  const items = d.plan.unassignable.map((u) => `<li>${esc(u.team)} <span class="pf-muted pf-mono">${esc(u.categoryId)} · ${u.size} posti non assegnati · ${esc(u.day)}</span></li>`).join('')
   return `<div class="pf-card" style="border-color:var(--color-feedback-danger)">
-    <h2 class="pf-h3">⚠ Squadre senza risorsa</h2>
-    <p class="pf-muted">Nessuna risorsa ha capienza sufficiente per queste squadre. Aumenta la capienza di una risorsa o riduci la dimensione della squadra.</p>
+    <h2 class="pf-h3">⚠ Posti non assegnati</h2>
+    <p class="pf-muted">La capienza totale delle risorse non basta per queste squadre: le persone sono state distribuite su più risorse fin dove possibile, ma alcune restano senza posto. Aumenta la capienza (o aggiungi una risorsa) per coprirle tutte.</p>
     <ul class="pf-stack" style="list-style:none;padding:0">${items}</ul></div>`
 }
 

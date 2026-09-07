@@ -48,10 +48,37 @@ test('test_plan_tooSmallRoomGetsNoTeam_bigRoomTakesThem', () => {
   expect(p.unassignable).toHaveLength(0);
 });
 
-test('test_plan_teamBiggerThanEveryRoom_isUnassignable', () => {
+test('test_plan_teamBiggerThanEveryRoom_splitsAcrossThePool', () => {
+  // 25 people, rooms of 10 + 20 (pool 30 ≥ 25) → split across BOTH rooms, nothing unassignable.
   const p = plan([m('X', 'A', '09:00')], { resources: [res('R1', 10), res('R2', 20)], teamSizes: { X: 25 } }, ['X', 'A']);
-  expect(p.unassignable.map((u) => u.team)).toEqual(['X']);  // 25 > every capacity; A (14) fits R2
-  expect(totalAssignments(p)).toBe(1);                        // only A got a slot
+  expect(p.unassignable).toHaveLength(0);
+  const xInR1 = slotsOf(p, 'R1').flatMap((s) => s.teams).filter((t) => t.team === 'X');
+  const xInR2 = slotsOf(p, 'R2').flatMap((s) => s.teams).filter((t) => t.team === 'X');
+  expect(xInR1.reduce((n, t) => n + t.size, 0) + xInR2.reduce((n, t) => n + t.size, 0)).toBe(25); // portions sum to team size
+  expect(xInR1.length + xInR2.length).toBe(2);               // appears in both rooms
+});
+
+test('test_plan_splitsBigTeam_thenSmallTeamFillsLeftoverSeats', () => {
+  // The reported case: two rooms of 10, a team of 14 and a team of 6 finishing together.
+  // 14 → 10 (room A) + 4 (room B); the 6 free seats in room B are then filled by the 6-team.
+  const p = plan([m('BIG', 'SMALL', '09:00')], { resources: [res('A', 10), res('B', 10)], teamSizes: { BIG: 14, SMALL: 6 } }, ['BIG', 'SMALL']);
+  expect(p.unassignable).toHaveLength(0);
+  const seats = (rid: string, team: string) => slotsOf(p, rid).flatMap((s) => s.teams).filter((t) => t.team === team).reduce((n, t) => n + t.size, 0);
+  expect(seats('A', 'BIG')).toBe(10);
+  expect(seats('B', 'BIG')).toBe(4);
+  expect(seats('B', 'SMALL')).toBe(6);                        // small team fills the leftover in room B
+  // Room B slot holds BIG's 4 + SMALL's 6 = 10, exactly at capacity, no overflow.
+  const bSlot = slotsOf(p, 'B').find((s) => s.teams.some((t) => t.team === 'SMALL'))!;
+  expect(bSlot.persons).toBe(10);
+  expect(bSlot.overflow).toBe(false);
+});
+
+test('test_plan_poolTooSmall_residualPeopleUnassignable', () => {
+  // 14 people but the whole pool is only 5 + 5 = 10 → 10 seated (split), 4 unseated as residual.
+  const p = plan([m('X', 'A', '09:00')], { resources: [res('R1', 5), res('R2', 5)], teamSizes: { X: 14, A: 5 } }, ['X', 'A']);
+  const xResidual = p.unassignable.filter((u) => u.team === 'X');
+  expect(xResidual).toHaveLength(1);
+  expect(xResidual[0]!.size).toBe(4);                         // residual people, not the whole team
 });
 
 test('test_plan_smallTeamsShareASlot_whenCapacityAllows', () => {

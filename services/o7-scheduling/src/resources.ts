@@ -35,8 +35,9 @@ export interface ResourcePlan {
   defaultTeamSize: number;
   teams: { team: string; categoryId: string; size: number }[];
   turns: ResourceDayTurns[];
-  /** Teams that fit no resource (bigger than every capacity) on a given day — surfaced, never
-   *  silently packed into a too-small room. */
+  /** Residual people a day's total resource capacity could not seat (team size > sum of all room
+   *  capacities). `size` is the number of unseated people, not necessarily the whole team — a team
+   *  is split across rooms first, and only the overflow beyond the pool surfaces here. */
   unassignable: UnassignableTeam[];
   finishesByDay: Record<string, TeamFinish[]>;
 }
@@ -80,24 +81,29 @@ export function teamFinishes(matches: ScheduledMatch[], config: ScheduleConfig, 
 
 const maxTime = (a: string, b: string): string => (a.localeCompare(b) >= 0 ? a : b);
 
-/** Assign each of a day's team-finishes to EXACTLY ONE resource+slot, distributing the load across the
- *  resources (they are alternatives, not parallel copies). A team only enters a resource that can hold
- *  it (`size <= capacity`); teams sharing a slot must fit together and be ready within its occupancy
- *  window. Greedy by finish order, picking the resource+slot that lets the team start earliest — so a
- *  free room wins over a busy one. Manual `assignments` pin a team to a resource+slotTime. Teams that
- *  fit no resource are returned as `unassignable` (never packed into a too-small room). Pure. */
+/** Assign each of a day's team-finishes to resource slots, distributing the load across the resources
+ *  (they are alternatives, not parallel copies). Greedy by finish order, earliest-start wins.
+ *  A team prefers a SINGLE resource that can hold it whole (either joining a compatible slot with room,
+ *  or a fresh slot); teams sharing a slot must fit together and be ready within its occupancy window.
+ *  When no single resource can hold the whole team, its people are SPLIT across fresh concurrent slots
+ *  (bin-packing the pool: 14 people → room A ×10 + room B ×4). The leftover seats those partial slots
+ *  expose are then filled by later small teams via the normal join path. Manual `assignments` pin a
+ *  (whole) team to a resource+slotTime. `unassignable` carries only the RESIDUAL people that no
+ *  capacity could seat (total pool < team size), never a whole team when the pool can hold it. Pure. */
 function assignDay(day: string, finishes: TeamFinish[], resources: Resource[], sizeOf: (team: string) => number, assignments: ResourceAssignment[]): { slotsByRes: Map<string, ResourceSlot[]>; unassignable: UnassignableTeam[] } {
   const slotsByRes = new Map<string, ResourceSlot[]>(resources.map((r) => [r.resourceId, []]));
   const byId = new Map(resources.map((r) => [r.resourceId, r]));
   const unassignable: UnassignableTeam[] = [];
   const pinned = new Map(assignments.filter((a) => a.day === day).map((a) => [a.team, a]));
 
-  const addTo = (r: Resource, time: string, f: TeamFinish, isPinned: boolean): void => {
+  // Add `persons` of team `f` to resource `r`'s slot at `time` (a portion may be less than the team's
+  // full size when it is split across resources). A team can appear once per resource this way.
+  const addTo = (r: Resource, time: string, f: TeamFinish, isPinned: boolean, persons: number): void => {
     const ss = slotsByRes.get(r.resourceId)!;
     let s = ss.find((x) => x.time === time);
     if (!s) { s = { time, teams: [], persons: 0, capacity: r.capacityPersons, overflow: false }; ss.push(s); }
-    s.teams.push({ team: f.team, categoryId: f.categoryId, size: sizeOf(f.team), ...(isPinned ? { pinned: true } : {}) });
-    s.persons += sizeOf(f.team);
+    s.teams.push({ team: f.team, categoryId: f.categoryId, size: persons, ...(isPinned ? { pinned: true } : {}) });
+    s.persons += persons;
   };
   const freeAt = (r: Resource): string | undefined => {
     const ss = slotsByRes.get(r.resourceId)!;
@@ -108,25 +114,43 @@ function assignDay(day: string, finishes: TeamFinish[], resources: Resource[], s
   for (const f of finishes) {
     const a = pinned.get(f.team); if (!a) continue;
     const r = byId.get(a.resourceId);
-    if (r) addTo(r, a.slotTime, f, true);
+    if (r) addTo(r, a.slotTime, f, true, sizeOf(f.team));
     else unassignable.push({ day, team: f.team, categoryId: f.categoryId, size: sizeOf(f.team) });
   }
-  // Auto-assign the rest, earliest-start-wins across the resources that fit.
+  // Auto-assign the rest.
   for (const f of finishes) {
     if (pinned.has(f.team)) continue;
     const size = sizeOf(f.team);
-    const cands = resources.filter((r) => size <= r.capacityPersons);
-    if (!cands.length) { unassignable.push({ day, team: f.team, categoryId: f.categoryId, size }); continue; }
-    let best: { r: Resource; time: string } | undefined;
-    for (const r of cands) {
+    // Per-resource best placement that could hold the WHOLE team: join a compatible slot with room, else
+    // a fresh slot (only if the room is big enough for the whole team).
+    const wholeCands: Array<{ r: Resource; time: string }> = [];
+    for (const r of resources) {
       const ready = addMinutes(f.finish, r.offsetMinutes);
       const ss = slotsByRes.get(r.resourceId)!;
       const last = ss[ss.length - 1];
       const canJoin = last && last.persons + size <= r.capacityPersons && ready.localeCompare(addMinutes(last.time, r.occupancyMinutes)) <= 0;
-      const time = canJoin ? last!.time : maxTime(ready, freeAt(r) ?? ready);
-      if (!best || time.localeCompare(best.time) < 0) best = { r, time };
+      if (canJoin) wholeCands.push({ r, time: last!.time });
+      else if (size <= r.capacityPersons) wholeCands.push({ r, time: maxTime(ready, freeAt(r) ?? ready) });
     }
-    addTo(best!.r, best!.time, f, false);
+    if (wholeCands.length) {
+      const best = wholeCands.reduce((a, b) => (b.time.localeCompare(a.time) < 0 ? b : a));
+      addTo(best.r, best.time, f, false, size);
+      continue;
+    }
+    // No single resource fits the whole team → split its people across fresh concurrent slots,
+    // earliest-start first, filling each room's capacity until the team is seated.
+    let remaining = size;
+    const fresh = resources
+      .map((r) => ({ r, time: maxTime(addMinutes(f.finish, r.offsetMinutes), freeAt(r) ?? addMinutes(f.finish, r.offsetMinutes)) }))
+      .sort((a, b) => a.time.localeCompare(b.time));
+    for (const c of fresh) {
+      if (remaining <= 0) break;
+      const p = Math.min(remaining, c.r.capacityPersons);
+      if (p <= 0) continue;
+      addTo(c.r, c.time, f, false, p);
+      remaining -= p;
+    }
+    if (remaining > 0) unassignable.push({ day, team: f.team, categoryId: f.categoryId, size: remaining });
   }
 
   for (const [, ss] of slotsByRes) { for (const s of ss) s.overflow = s.persons > s.capacity; ss.sort((a, b) => a.time.localeCompare(b.time)); }
