@@ -1,4 +1,4 @@
-import type { FixtureCategory, ScheduledMatch } from './domain.js';
+import type { FixtureCategory, MatchPhase, ScheduledMatch } from './domain.js';
 
 /** Every unordered pair (i<j) of a group's teams — a single round-robin. */
 function pairs(teams: string[]): Array<[string, string]> {
@@ -64,22 +64,16 @@ interface Slot { teams: Set<string>; count: number }
  *  ids `sm-${n}` in category → group → pair order. */
 const placeKey = (p: Placement): string => `${p.fields.join('|')}@${p.slotMinutes}`;
 
-export function buildFixtures(
-  eventId: string, startDate: string, endDate: string, dailyStart: string, cats: FixtureCategory[],
-): ScheduledMatch[] {
-  const raw: Array<{ categoryId: string; groupLabel: string; home: string; away: string; place: Placement }> = [];
-  for (const cat of cats) {
-    const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
-    const fields = cat.fields.length ? cat.fields : ['Campo 1'];
-    const place: Placement = { fields, slotMinutes };
-    for (const group of cat.groups) {
-      for (const [home, away] of pairs(group.teams)) {
-        raw.push({ categoryId: cat.id, groupLabel: group.label, home, away, place });
-        if (cat.legs === 'HOME_AWAY') raw.push({ categoryId: cat.id, groupLabel: group.label, home: away, away: home, place });
-      }
-    }
-  }
+/** A match to place: teams + its category's placement (fields + slot length), plus an optional phase
+ *  (group fixtures leave it absent; festival matches set 'FESTIVAL'). */
+interface RawMatch { categoryId: string; groupLabel: string; home: string; away: string; place: Placement; phase?: MatchPhase }
 
+/** Greedy first-fit placement over (time-slot → day → field), one team at most per (day, time).
+ *  Shared by the round-robin (buildFixtures) and festival (buildFestivalFixtures) paths; `phase` is
+ *  carried through to the emitted match. Deterministic; ids `sm-${n}` in input order. */
+export function placeMatches(
+  raw: RawMatch[], startDate: string, endDate: string, dailyStart: string, eventId: string,
+): ScheduledMatch[] {
   const days = dateRange(startDate, endDate);
   const D = days.length;
   // slots[`${signature}#${day}:${slot}`] = which teams + how many fields are already used there.
@@ -106,6 +100,25 @@ export function buildFixtures(
       id: `sm-${idx + 1}`, sportEventId: eventId, categoryId: r.categoryId, groupLabel: r.groupLabel,
       day: days[day]!, time: addMinutes(dailyStart, slot * r.place.slotMinutes),
       field: r.place.fields[field]!, home: r.home, away: r.away,
+      ...(r.phase ? { phase: r.phase } : {}),
     };
   });
+}
+
+export function buildFixtures(
+  eventId: string, startDate: string, endDate: string, dailyStart: string, cats: FixtureCategory[],
+): ScheduledMatch[] {
+  const raw: RawMatch[] = [];
+  for (const cat of cats) {
+    const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
+    const fields = cat.fields.length ? cat.fields : ['Campo 1'];
+    const place: Placement = { fields, slotMinutes };
+    for (const group of cat.groups) {
+      for (const [home, away] of pairs(group.teams)) {
+        raw.push({ categoryId: cat.id, groupLabel: group.label, home, away, place });
+        if (cat.legs === 'HOME_AWAY') raw.push({ categoryId: cat.id, groupLabel: group.label, home: away, away: home, place });
+      }
+    }
+  }
+  return placeMatches(raw, startDate, endDate, dailyStart, eventId);
 }
