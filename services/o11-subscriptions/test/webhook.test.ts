@@ -31,6 +31,12 @@ describe('handleStripeEvent', () => {
     await handleStripeEvent({ repo, stripe, priceToPlan: MAP, now })('{}', 'sig');
     expect(repo.m.get('org-1')).toMatchObject({ status: 'PAST_DUE' });
   });
+  it('trial_will_end → logs only, no repo write', async () => {
+    const repo = new Repo();
+    const out = await handleStripeEvent({ repo, stripe: gw({ type: 'customer.subscription.trial_will_end', object: subObj() as any }), priceToPlan: MAP, now })('{}', 'sig');
+    expect(out).toEqual({ handled: 'customer.subscription.trial_will_end' });
+    expect(repo.m.size).toBe(0);
+  });
   it('ignores unrelated event types', async () => {
     const repo = new Repo();
     const out = await handleStripeEvent({ repo, stripe: gw({ type: 'customer.created', object: subObj() as any }), priceToPlan: MAP, now })('{}', 'sig');

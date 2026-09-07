@@ -35,7 +35,7 @@ export const handleStripeEvent = (d: Deps) => async (rawBody: string, signature:
     case 'invoice.payment_failed': {
       const subId = obj?.subscription as string | undefined;
       const stripeSub = subId ? await d.stripe.getSubscription(subId) : undefined;
-      const orgId = (stripeSub as any)?.metadata?.organizationId;
+      const orgId = stripeSub?.metadata?.organizationId;
       if (!orgId || !stripeSub) return { handled: 'no-org' };
       await d.repo.save({ ...subscriptionFromStripe(orgId, stripeSub, d.priceToPlan), status: 'PAST_DUE' });
       return { handled: ev.type };
@@ -43,9 +43,14 @@ export const handleStripeEvent = (d: Deps) => async (rawBody: string, signature:
     case 'invoice.paid': {
       const subId = obj?.subscription as string | undefined;
       const stripeSub = subId ? await d.stripe.getSubscription(subId) : undefined;
-      const orgId = (stripeSub as any)?.metadata?.organizationId;
+      const orgId = stripeSub?.metadata?.organizationId;
       if (!orgId || !stripeSub) return { handled: 'no-org' };
       await d.repo.save(subscriptionFromStripe(orgId, stripeSub, d.priceToPlan));
+      return { handled: ev.type };
+    }
+    case 'customer.subscription.trial_will_end': {
+      // Log only — no domain state change; the actual lapse arrives later as subscription.deleted.
+      checkpoint('stripeWebhook', 'STOP', { type: ev.type });
       return { handled: ev.type };
     }
     default:

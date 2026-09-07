@@ -21,6 +21,10 @@ describe('renderSubscription', () => {
     const html = renderSubscription(sub({ plan: 'FREE', status: 'ACTIVE', trialDaysLeft: 0 }))
     expect(html).not.toContain('id="manage-billing"')
   })
+  it('active paid plan shows the manage-billing CTA', () => {
+    const html = renderSubscription(sub({ plan: 'CLUB', status: 'ACTIVE', trialDaysLeft: 0 }))
+    expect(html).toContain('id="manage-billing"')
+  })
 })
 
 describe('subscription mount', () => {

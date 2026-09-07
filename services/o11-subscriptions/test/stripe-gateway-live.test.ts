@@ -32,4 +32,7 @@ describe('makeLiveStripeGateway', () => {
     expect(s.webhooks.constructEvent).toHaveBeenCalledWith('{"a":1}', 'sig', 'wh');
     expect(ev.type).toBe('x');
   });
+  it('does not construct a Stripe client (and so does not throw on an empty secretKey) until a method is called', () => {
+    expect(() => makeLiveStripeGateway({ secretKey: '', webhookSecret: '', clubPriceId: '' })).not.toThrow();
+  });
 });

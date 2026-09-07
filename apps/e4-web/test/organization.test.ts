@@ -18,6 +18,12 @@ describe('renderOrganization', () => {
   it('handles a missing subscription', () => {
     expect(renderOrganization({ ...data, sub: null })).toContain('mai provisionata')
   })
+  it('shows Free (not an empty "rinnovo ") for an unprovisioned FREE org with no renewsOn', () => {
+    const freeSub: Subscription = { organizationId: 'org_a', plan: 'FREE', status: 'ACTIVE', renewsOn: '', trialDaysLeft: 0 }
+    const html = renderOrganization({ ...data, sub: freeSub })
+    expect(html).toContain('Free')
+    expect(html).not.toContain('rinnovo ')
+  })
   it('shows a resync action', () => { expect(renderOrganization(data)).toContain('data-resync="1"') })
 })
 

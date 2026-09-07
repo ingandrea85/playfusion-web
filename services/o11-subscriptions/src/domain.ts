@@ -24,6 +24,7 @@ export interface StripeSubShape {
   trial_end: number | null;         // unix seconds
   current_period_end: number | null; // unix seconds
   items: { data: Array<{ price: { id: string } }> };
+  metadata?: { organizationId?: string };
 }
 
 const isoDay = (unixSeconds: number | null): string =>

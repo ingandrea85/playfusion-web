@@ -23,8 +23,15 @@ function eventsCard(events: EventSummary[]): string {
 }
 
 function subscriptionCard(sub: Subscription | null): string {
+  const status = sub
+    ? sub.status === 'TRIAL'
+      ? `prova · ${sub.trialDaysLeft} giorni rimasti`
+      : sub.renewsOn
+        ? `rinnovo ${esc(sub.renewsOn)}`
+        : 'Free'
+    : ''
   const line = sub
-    ? `<p><span class="pf-badge">${esc(planLabel(sub))}</span> ${sub.status === 'TRIAL' ? `prova · ${sub.trialDaysLeft} giorni rimasti` : `rinnovo ${esc(sub.renewsOn)}`}</p>`
+    ? `<p><span class="pf-badge">${esc(planLabel(sub))}</span> ${status}</p>`
     : `<p class="pf-muted">Nessuna sottoscrizione (mai provisionata).</p>`
   return `<div class="pf-card"><div id="err"></div>
     <h2 class="pf-h3">Sottoscrizione</h2>${line}
