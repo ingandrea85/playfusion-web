@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="PlayFusion">
+  <polygon points="32,6 56,19 56,45 32,58 8,45 8,19" fill="none" stroke="#0b5fff" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M20 42 L32 24 L44 42" fill="none" stroke="#ff6b00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

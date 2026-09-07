@@ -1,0 +1,24 @@
+# PlayFusion
+
+> Software per organizzare tornei sportivi amatoriali: iscrizioni online, gironi, calendario, classifiche live, tabelloni finali e un portale pubblico per squadre e tifosi. Pensato per ASD, societa sportive e organizzatori di eventi (es. calcio a 5 e a 7).
+
+## Cosa fa
+- Iscrizioni squadre con un link, sorteggio e composizione dei gironi
+- Calendario automatico per campo e giornata, con riprogrammazioni
+- Classifiche live con criteri di spareggio configurabili
+- Tabelloni a eliminazione, gironi finali, piazzamenti, classifica finale
+- Avvisi e portale pubblico condivisibile (calendario, classifiche, tabellone)
+- Riscossione quote di iscrizione online (piano Club)
+- Direttori di campo: risultati inseriti a bordo campo da mobile
+
+## Prezzi
+- Free: 0 euro - 1 evento attivo, funzioni base, tabellone pubblico
+- Starter: 15 euro/mese (150 euro/anno) - eventi illimitati, finali e formule, avvisi
+- Club: 45 euro/mese (450 euro/anno) - riscossione quote, logistica post-partita, brand e sito evento
+- Enterprise: su preventivo - multi-societa, regia centralizzata, SSO
+- Prova gratuita: 14 giorni del piano Club completo, senza carta di credito
+
+## Link
+- Sito: https://playfusion.it/
+- App e accesso: https://playfusion.it/app/
+- Contatto: info@playfusion.it

@@ -3,16 +3,86 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PlayFusion — Gestione tornei sportivi</title>
-    <meta name="description" content="PlayFusion è la piattaforma per organizzare tornei sportivi: iscrizioni, gironi, calendario, classifiche, tabelloni e portale pubblico. Prova gratis 14 giorni." />
+    <title>PlayFusion — Software per gestire tornei sportivi (iscrizioni, gironi, classifiche)</title>
+    <meta name="description" content="PlayFusion è il software per organizzare tornei sportivi: iscrizioni online, gironi, calendario, classifiche live, tabelloni finali e portale pubblico. Prova gratis 14 giorni, senza carta." />
+    <link rel="canonical" href="https://playfusion.it/" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#0b5fff" />
+    <meta name="author" content="PlayFusion" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="PlayFusion" />
+    <meta property="og:title" content="PlayFusion — Software per gestire tornei sportivi" />
+    <meta property="og:description" content="Iscrizioni online, gironi, calendario, classifiche live, tabelloni finali e portale pubblico. Prova gratis 14 giorni, senza carta." />
+    <meta property="og:url" content="https://playfusion.it/" />
+    <meta property="og:locale" content="it_IT" />
+    <meta property="og:image" content="https://playfusion.it/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="PlayFusion — gestione tornei sportivi" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="PlayFusion — Software per gestire tornei sportivi" />
+    <meta name="twitter:description" content="Iscrizioni, gironi, classifiche live, tabelloni e portale pubblico. Prova gratis 14 giorni." />
+    <meta name="twitter:image" content="https://playfusion.it/og-image.png" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://playfusion.it/#organization",
+          "name": "PlayFusion",
+          "url": "https://playfusion.it/",
+          "logo": "https://playfusion.it/apple-touch-icon.png",
+          "email": "info@playfusion.it"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "PlayFusion",
+          "url": "https://playfusion.it/",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "inLanguage": "it",
+          "description": "Software per organizzare tornei sportivi: iscrizioni online, gironi, calendario, classifiche live, tabelloni finali e portale pubblico.",
+          "publisher": { "@id": "https://playfusion.it/#organization" },
+          "offers": [
+            { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "EUR", "description": "1 evento attivo, funzioni base, tabellone pubblico" },
+            { "@type": "Offer", "name": "Starter", "price": "15", "priceCurrency": "EUR", "description": "€15/mese o €150/anno — eventi illimitati, finali e formule, avvisi" },
+            { "@type": "Offer", "name": "Club", "price": "45", "priceCurrency": "EUR", "description": "€45/mese o €450/anno — riscossione quote, logistica post-partita, brand e sito evento" },
+            { "@type": "Offer", "name": "Enterprise", "description": "Su preventivo — multi-società, regia centralizzata, SSO" }
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            { "@type": "Question", "name": "Cos'è PlayFusion?", "acceptedAnswer": { "@type": "Answer", "text": "PlayFusion è un software web per organizzare tornei sportivi: iscrizioni online, gironi, calendario, classifiche live, tabelloni finali e un portale pubblico per squadre e tifosi." } },
+            { "@type": "Question", "name": "Per chi e per quali sport è pensato?", "acceptedAnswer": { "@type": "Answer", "text": "Per ASD, società sportive e organizzatori di eventi che gestiscono tornei amatoriali di squadra, ad esempio calcio a 5 e a 7." } },
+            { "@type": "Question", "name": "Quanto costa PlayFusion?", "acceptedAnswer": { "@type": "Answer", "text": "Free a 0€, Starter a 15€/mese (150€/anno), Club a 45€/mese (450€/anno), Enterprise su preventivo." } },
+            { "@type": "Question", "name": "C'è una prova gratuita?", "acceptedAnswer": { "@type": "Answer", "text": "Sì: 14 giorni del piano Club completo, senza carta di credito. Alla fine scegli il piano che preferisci." } },
+            { "@type": "Question", "name": "Le squadre possono pagare l'iscrizione online?", "acceptedAnswer": { "@type": "Answer", "text": "Sì, con la riscossione quote integrata, disponibile nel piano Club." } },
+            { "@type": "Question", "name": "Serve installare qualcosa?", "acceptedAnswer": { "@type": "Answer", "text": "No: è un'applicazione web, si usa dal browser su computer e mobile." } }
+          ]
+        }
+      ]
+    }
+    </script>
+
     <script type="module" src="/src/main.ts"></script>
   </head>
   <body>
     <header class="site-nav">
-      <a class="site-logo" href="/">play<b>fusion</b></a>
+      <a class="site-logo" href="/"><svg class="site-logo__mk" viewBox="0 0 64 64" aria-hidden="true"><polygon points="32,6 56,19 56,45 32,58 8,45 8,19" fill="none" stroke="#0b5fff" stroke-width="6" stroke-linejoin="round"/><path d="M20 42 L32 24 L44 42" fill="none" stroke="#ff6b00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>play<b>fusion</b></a>
       <nav class="site-nav__links">
         <a href="#funzionalita">Funzionalità</a>
         <a href="#prezzi">Prezzi</a>
+        <a href="#faq">FAQ</a>
         <a class="site-btn site-btn--ghost" href="/app/">Accedi</a>
         <a class="site-btn site-btn--primary" href="/app/?signup=1">Prova gratis</a>
       </nav>
@@ -55,6 +125,18 @@
         </div>
       </section>
 
+      <section id="faq" class="site-section">
+        <h2>Domande frequenti</h2>
+        <div class="site-faq">
+          <div class="site-faq__item"><h3>Cos'è PlayFusion?</h3><p>Un software web per organizzare tornei sportivi: iscrizioni online, gironi, calendario, classifiche live, tabelloni finali e un portale pubblico per squadre e tifosi.</p></div>
+          <div class="site-faq__item"><h3>Per chi e per quali sport è pensato?</h3><p>Per ASD, società sportive e organizzatori di eventi che gestiscono tornei amatoriali di squadra, ad esempio calcio a 5 e a 7.</p></div>
+          <div class="site-faq__item"><h3>Quanto costa PlayFusion?</h3><p>Free a 0€, Starter a 15€/mese (150€/anno), Club a 45€/mese (450€/anno), Enterprise su preventivo.</p></div>
+          <div class="site-faq__item"><h3>C'è una prova gratuita?</h3><p>Sì: 14 giorni del piano Club completo, senza carta di credito. Alla fine scegli il piano che preferisci.</p></div>
+          <div class="site-faq__item"><h3>Le squadre possono pagare l'iscrizione online?</h3><p>Sì, con la riscossione quote integrata, disponibile nel piano Club.</p></div>
+          <div class="site-faq__item"><h3>Serve installare qualcosa?</h3><p>No: è un'applicazione web, si usa dal browser su computer e mobile.</p></div>
+        </div>
+      </section>
+
       <section class="site-final">
         <h2>Pronto a organizzare il tuo prossimo torneo?</h2>
         <a class="site-btn site-btn--primary site-btn--lg" href="/app/?signup=1">Prova gratis 14 giorni</a>
@@ -62,7 +144,7 @@
     </main>
 
     <footer class="site-footer">
-      <span class="site-logo">play<b>fusion</b></span>
+      <span class="site-logo"><svg class="site-logo__mk" viewBox="0 0 64 64" aria-hidden="true"><polygon points="32,6 56,19 56,45 32,58 8,45 8,19" fill="none" stroke="#0b5fff" stroke-width="6" stroke-linejoin="round"/><path d="M20 42 L32 24 L44 42" fill="none" stroke="#ff6b00" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>play<b>fusion</b></span>
       <span class="site-muted">© <span id="year">2026</span> PlayFusion · <a href="/app/">Accedi all'app</a></span>
     </footer>
   </body>
