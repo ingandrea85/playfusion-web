@@ -40,7 +40,7 @@ export const createEventBody = z.object({
   sportId: z.string().optional(),
   sport: z.string().optional(),
   participantType: z.enum(['team', 'individual']).optional(),
-  format: z.enum(['groups', 'groups+bracket', 'bracket']).optional(),
+  format: z.enum(['groups', 'groups+bracket', 'bracket', 'festival']).optional(),
   categorie: z.array(z.string()),
   dates: z.object({ from: z.string(), to: z.string() }),
   name: z.string().optional(),

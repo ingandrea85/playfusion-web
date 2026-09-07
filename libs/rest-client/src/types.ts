@@ -27,7 +27,7 @@ export interface EventDetail {
 }
 
 export type ParticipantType = 'team' | 'individual'
-export type EventFormat = 'groups' | 'groups+bracket' | 'bracket'
+export type EventFormat = 'groups' | 'groups+bracket' | 'bracket' | 'festival'
 /** Frozen copy of the chosen SportProfile, stored on the event so the engine/UI read it locally. */
 export interface EventSportSnapshot { sportId: string; name: string; scoreLabel: string; points: SportPoints; tieBreak: SportTieBreak[] }
 export type EventSummary = EventDetail
