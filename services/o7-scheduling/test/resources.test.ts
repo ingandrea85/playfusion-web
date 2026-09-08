@@ -31,9 +31,19 @@ test('test_teamSizeOf_overrideElseDefaultElse14', () => {
 });
 
 // --- global assignment (the S17 redesign) ---
+// NOTE (Task A2, node-graph rewrite): with the S17-follow-up node graph, plain `resources` with no
+// `groups` are INDEPENDENT STAGES — a team visits every one of them (see
+// test_plan_ungroupedResources_areIndependentStages_teamVisitsBoth below), not alternatives sharing one
+// pool. The pool-sharing / bin-packing behavior these tests exercise now lives at the GROUP level (a
+// group's members share one pool, exactly like the old flat `resources` list did). So each test below
+// was updated to wrap its resources in a single-group config — this reproduces the exact original
+// assertions (same algorithm, `packArrivals`, now scoped to the group's pool) while staying correct
+// under the new independent-stage default for ungrouped resources.
 test('test_plan_assignsEachTeamOnce_distributedAcrossResources', () => {
-  // 4 teams of 14, two rooms of 20 → each team in exactly ONE room, load split 2+2 (not cloned).
-  const p = plan([m('A', 'B', '09:00'), m('C', 'D', '09:00')], { resources: [res('R1', 20), res('R2', 20)] }, ['A', 'B', 'C', 'D']);
+  // 4 teams of 14, two rooms of 20 grouped into one pool → each team in exactly ONE room, load split 2+2.
+  const p = plan([m('A', 'B', '09:00'), m('C', 'D', '09:00')],
+    { resources: [res('R1', 20), res('R2', 20)], groups: [{ groupId: 'pool', name: 'Pool', memberIds: ['R1', 'R2'] }] },
+    ['A', 'B', 'C', 'D']);
   expect(totalAssignments(p)).toBe(4);                       // was 8 (once per resource) before the fix
   expect(slotsOf(p, 'R1').reduce((n, s) => n + s.teams.length, 0)).toBe(2);
   expect(slotsOf(p, 'R2').reduce((n, s) => n + s.teams.length, 0)).toBe(2);
@@ -42,15 +52,19 @@ test('test_plan_assignsEachTeamOnce_distributedAcrossResources', () => {
 });
 
 test('test_plan_tooSmallRoomGetsNoTeam_bigRoomTakesThem', () => {
-  const p = plan([m('A', 'B', '09:00')], { resources: [res('SMALL', 10), res('BIG', 20)] }, ['A', 'B']);
+  const p = plan([m('A', 'B', '09:00')],
+    { resources: [res('SMALL', 10), res('BIG', 20)], groups: [{ groupId: 'pool', name: 'Pool', memberIds: ['SMALL', 'BIG'] }] },
+    ['A', 'B']);
   expect(slotsOf(p, 'SMALL')).toHaveLength(0);               // 14 > 10 → never placed here
   expect(totalAssignments(p)).toBe(2);
   expect(p.unassignable).toHaveLength(0);
 });
 
 test('test_plan_teamBiggerThanEveryRoom_splitsAcrossThePool', () => {
-  // 25 people, rooms of 10 + 20 (pool 30 ≥ 25) → split across BOTH rooms, nothing unassignable.
-  const p = plan([m('X', 'A', '09:00')], { resources: [res('R1', 10), res('R2', 20)], teamSizes: { X: 25 } }, ['X', 'A']);
+  // 25 people, rooms of 10 + 20 grouped into one pool (30 ≥ 25) → split across BOTH rooms, nothing unassignable.
+  const p = plan([m('X', 'A', '09:00')],
+    { resources: [res('R1', 10), res('R2', 20)], teamSizes: { X: 25 }, groups: [{ groupId: 'pool', name: 'Pool', memberIds: ['R1', 'R2'] }] },
+    ['X', 'A']);
   expect(p.unassignable).toHaveLength(0);
   const xInR1 = slotsOf(p, 'R1').flatMap((s) => s.teams).filter((t) => t.team === 'X');
   const xInR2 = slotsOf(p, 'R2').flatMap((s) => s.teams).filter((t) => t.team === 'X');
@@ -59,9 +73,11 @@ test('test_plan_teamBiggerThanEveryRoom_splitsAcrossThePool', () => {
 });
 
 test('test_plan_splitsBigTeam_thenSmallTeamFillsLeftoverSeats', () => {
-  // The reported case: two rooms of 10, a team of 14 and a team of 6 finishing together.
+  // The reported case: two rooms of 10 grouped into one pool, a team of 14 and a team of 6 finishing together.
   // 14 → 10 (room A) + 4 (room B); the 6 free seats in room B are then filled by the 6-team.
-  const p = plan([m('BIG', 'SMALL', '09:00')], { resources: [res('A', 10), res('B', 10)], teamSizes: { BIG: 14, SMALL: 6 } }, ['BIG', 'SMALL']);
+  const p = plan([m('BIG', 'SMALL', '09:00')],
+    { resources: [res('A', 10), res('B', 10)], teamSizes: { BIG: 14, SMALL: 6 }, groups: [{ groupId: 'pool', name: 'Pool', memberIds: ['A', 'B'] }] },
+    ['BIG', 'SMALL']);
   expect(p.unassignable).toHaveLength(0);
   const seats = (rid: string, team: string) => slotsOf(p, rid).flatMap((s) => s.teams).filter((t) => t.team === team).reduce((n, t) => n + t.size, 0);
   expect(seats('A', 'BIG')).toBe(10);
@@ -74,8 +90,10 @@ test('test_plan_splitsBigTeam_thenSmallTeamFillsLeftoverSeats', () => {
 });
 
 test('test_plan_poolTooSmall_residualPeopleUnassignable', () => {
-  // 14 people but the whole pool is only 5 + 5 = 10 → 10 seated (split), 4 unseated as residual.
-  const p = plan([m('X', 'A', '09:00')], { resources: [res('R1', 5), res('R2', 5)], teamSizes: { X: 14, A: 5 } }, ['X', 'A']);
+  // 14 people but the whole pool (grouped) is only 5 + 5 = 10 → 10 seated (split), 4 unseated as residual.
+  const p = plan([m('X', 'A', '09:00')],
+    { resources: [res('R1', 5), res('R2', 5)], teamSizes: { X: 14, A: 5 }, groups: [{ groupId: 'pool', name: 'Pool', memberIds: ['R1', 'R2'] }] },
+    ['X', 'A']);
   const xResidual = p.unassignable.filter((u) => u.team === 'X');
   expect(xResidual).toHaveLength(1);
   expect(xResidual[0]!.size).toBe(4);                         // residual people, not the whole team
@@ -138,4 +156,58 @@ test('test_plan_manualOverride_movesTeamAcrossResources', () => {
   expect(pinned.teams.map((t) => t.team)).toEqual(['A']);
   expect(pinned.teams[0]!.pinned).toBe(true);
   expect(slotsOf(p, 'R1').every((s) => !s.teams.some((t) => t.team === 'A'))).toBe(true); // no longer in R1
+});
+
+// --- Task A2: node-based computeResourcePlan (per-portion flow, join, generalized pack) ---
+const planRC = (matches: ScheduledMatch[], rc: RC, teams: string[]) =>
+  computeResourcePlan(matches, config, rc, new Map([['U10', teams]]));
+const teamAt = (p: ReturnType<typeof planRC>, rid: string) =>
+  p.turns.filter((t) => t.resourceId === rid).flatMap((t) => t.slots.flatMap((s) => s.teams));
+
+test('test_plan_exposesNodesInTopoOrder', () => {
+  const rc: RC = { resources: [R('docce'), R('mensa', { offsetMinutes: 5 })], relations: [{ from: 'docce', to: 'mensa' }] };
+  const p = planRC([m('A', 'B', '09:00')], rc, ['A', 'B']);
+  expect(p.nodes.map((n) => n.nodeId)).toEqual(['docce', 'mensa']);       // topo order
+  expect(p.nodes[1]!.predecessorIds).toEqual(['docce']);
+});
+
+test('test_plan_ungroupedResources_areIndependentStages_teamVisitsBoth', () => {
+  // No relations, no group: A visits BOTH resources (not alternatives).
+  const rc: RC = { resources: [R('docce', { capacityPersons: 20 }), R('mensa', { capacityPersons: 20 })] };
+  const p = planRC([m('A', 'B', '09:00')], rc, ['A', 'B']);
+  expect(teamAt(p, 'docce').some((t) => t.team === 'A')).toBe(true);
+  expect(teamAt(p, 'mensa').some((t) => t.team === 'A')).toBe(true);
+});
+
+test('test_plan_relationAnchorsSuccessorToPredecessorCompletion', () => {
+  // docce occ 30, offset 0 → A ready 09:50, slot 09:50, ends 10:20. mensa offset 5 → A at 10:25.
+  const rc: RC = { resources: [R('docce', { capacityPersons: 20, occupancyMinutes: 30 }), R('mensa', { capacityPersons: 20, occupancyMinutes: 30, offsetMinutes: 5 })], relations: [{ from: 'docce', to: 'mensa' }] };
+  const p = planRC([m('A', 'B', '09:00')], rc, ['A']);
+  const mensaSlot = p.turns.find((t) => t.resourceId === 'mensa')!.slots[0]!;
+  expect(mensaSlot.time).toBe('10:25');
+});
+
+test('test_plan_join_readyIsMaxOfPredecessors', () => {
+  // docce ends 10:20, premiazione (occ 60) ends 10:50 → mensa ready = 10:50 (+0).
+  const rc: RC = { resources: [R('docce', { capacityPersons: 20 }), R('premi', { capacityPersons: 20, occupancyMinutes: 60 }), R('mensa', { capacityPersons: 20 })],
+    relations: [{ from: 'docce', to: 'mensa' }, { from: 'premi', to: 'mensa' }] };
+  const p = planRC([m('A', 'B', '09:00')], rc, ['A']);
+  expect(p.turns.find((t) => t.resourceId === 'mensa')!.slots[0]!.time).toBe('10:50');
+});
+
+test('test_plan_groupBinPacksInternally', () => {
+  // group of two 10-rooms; a 14-team splits 10 + 4 inside the group.
+  const rc: RC = { resources: [R('s1', { capacityPersons: 10 }), R('s2', { capacityPersons: 10 })], groups: [{ groupId: 'docce', name: 'Docce', memberIds: ['s1', 's2'] }], teamSizes: { A: 14 } as any };
+  const p = planRC([m('A', 'B', '09:00')], { ...rc, teamSizes: { A: 14 } }, ['A']);
+  const s1 = teamAt(p, 's1').filter((t) => t.team === 'A').reduce((n, t) => n + t.size, 0);
+  const s2 = teamAt(p, 's2').filter((t) => t.team === 'A').reduce((n, t) => n + t.size, 0);
+  expect(s1 + s2).toBe(14);
+  expect(Math.max(s1, s2)).toBe(10);
+});
+
+test('test_plan_backwardCompat_singleResourceNoGroupsNoRelations', () => {
+  const rc: RC = { resources: [R('docce', { capacityPersons: 20 })] };
+  const p = planRC([m('A', 'B', '09:00')], rc, ['A', 'B']);
+  expect(teamAt(p, 'docce').map((t) => t.team).sort()).toEqual(['A', 'B']);
+  expect(p.unassignable).toHaveLength(0);
 });
