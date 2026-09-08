@@ -147,9 +147,13 @@ test('test_validateResourceConfig_flagsCycleMemberDupAndBadEdge', () => {
 });
 
 test('test_plan_manualOverride_movesTeamAcrossResources', () => {
+  // "Move across resources" is a within-pool operation: R1+R2 form ONE group node. Pinning A into
+  // member R2 excludes it from that node's automatic routing, so A no longer auto-lands in member R1.
+  // (Two UNGROUPED resources would be independent stages — A would visit both; see
+  // test_plan_pinAtOneNode_teamStillVisitsOtherIndependentNode.)
   const p = plan(
     [m('A', 'B', '09:00'), m('C', 'D', '09:00')],
-    { resources: [res('R1', 20), res('R2', 20)], assignments: [{ resourceId: 'R2', day: '2026-09-01', team: 'A', slotTime: '11:00' }] },
+    { resources: [res('R1', 20), res('R2', 20)], groups: [{ groupId: 'pool', name: 'Pool', memberIds: ['R1', 'R2'] }], assignments: [{ resourceId: 'R2', day: '2026-09-01', team: 'A', slotTime: '11:00' }] },
     ['A', 'B', 'C', 'D']);
   const r2 = slotsOf(p, 'R2');
   const pinned = r2.find((s) => s.time === '11:00')!;
@@ -210,4 +214,32 @@ test('test_plan_backwardCompat_singleResourceNoGroupsNoRelations', () => {
   const p = planRC([m('A', 'B', '09:00')], rc, ['A', 'B']);
   expect(teamAt(p, 'docce').map((t) => t.team).sort()).toEqual(['A', 'B']);
   expect(p.unassignable).toHaveLength(0);
+});
+
+test('test_plan_pinAtOneNode_teamStillVisitsOtherIndependentNode', () => {
+  // A pinned into R2 (an ungrouped node) must STILL get an automatic turn at the unrelated node R1.
+  const rc: RC = { resources: [R('R1', { capacityPersons: 20 }), R('R2', { capacityPersons: 20 })],
+    assignments: [{ resourceId: 'R2', day: '2026-09-01', team: 'A', slotTime: '11:00' }] };
+  const p = planRC([m('A', 'B', '09:00')], rc, ['A', 'B']);
+  // pinned at R2 exactly where asked
+  const pinned = teamAt(p, 'R2').find((t) => t.team === 'A')!;
+  expect(pinned.pinned).toBe(true);
+  expect(p.turns.find((t) => t.resourceId === 'R2')!.slots.find((s) => s.time === '11:00')!.teams.some((t) => t.team === 'A')).toBe(true);
+  // and STILL automatically served at the independent node R1 (not removed from the pipeline)
+  const atR1 = teamAt(p, 'R1').find((t) => t.team === 'A');
+  expect(atR1).toBeTruthy();
+  expect(atR1!.pinned).toBeFalsy();
+});
+
+test('test_plan_pinAtPredecessor_flowsDownstreamToSuccessor', () => {
+  // docce (occ 30) → mensa. A pinned into docce at 11:00 ⇒ completes 11:30 ⇒ mensa ready 11:30.
+  const rc: RC = { resources: [R('docce', { capacityPersons: 20, occupancyMinutes: 30 }), R('mensa', { capacityPersons: 20, occupancyMinutes: 30 })],
+    relations: [{ from: 'docce', to: 'mensa' }],
+    assignments: [{ resourceId: 'docce', day: '2026-09-01', team: 'A', slotTime: '11:00' }] };
+  const p = planRC([m('A', 'B', '09:00')], rc, ['A']);
+  const doccePin = teamAt(p, 'docce').find((t) => t.team === 'A')!;
+  expect(doccePin.pinned).toBe(true);
+  const mensaSlot = p.turns.find((t) => t.resourceId === 'mensa')!.slots.find((s) => s.teams.some((t) => t.team === 'A'))!;
+  expect(mensaSlot.time).toBe('11:30');                       // completion of the pinned turn feeds the successor
+  expect(mensaSlot.teams.find((t) => t.team === 'A')!.pinned).toBeFalsy(); // auto at the successor
 });

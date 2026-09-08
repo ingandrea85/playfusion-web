@@ -235,6 +235,9 @@ export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleC
   const nodes = topoOrder(buildPlanNodes(rc), rc.relations ?? []);
   const predOf = new Map<string, string[]>(nodes.map((n) => [n.nodeId, []]));
   for (const e of rc.relations ?? []) if (predOf.has(e.to)) predOf.get(e.to)!.push(e.from);
+  // Which node owns each member resource (a pin targets a resource → its owning node).
+  const nodeOfResource = new Map<string, string>();
+  for (const n of nodes) for (const r of n.pool) nodeOfResource.set(r.resourceId, n.nodeId);
 
   const turns: ResourceDayTurns[] = [];
   const unassignable: UnassignableTeam[] = [];
@@ -242,15 +245,20 @@ export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleC
   for (const day of days) {
     const finishes = finishesByDay[day] ?? [];
     const finishOf = new Map(finishes.map((f) => [f.team, f]));
+    // A pin fixes a team's slot at exactly ONE node (the one owning its target resource). The team is
+    // excluded from automatic routing ONLY at that node and pre-seeded there; at every OTHER node it
+    // flows normally (independent-stage root arrival, or per-portion/join flow from predecessors).
     const pinnedByTeam = new Map((rc.assignments ?? []).filter((a) => a.day === day).map((a) => [a.team, a]));
-    const seededPinTeams = new Set<string>();
+    const pinNodeOf = (team: string): string | undefined => {
+      const a = pinnedByTeam.get(team); return a ? nodeOfResource.get(a.resourceId) : undefined;
+    };
     // completion[nodeId] → team → produced portions (size+end)
     const completion = new Map<string, Map<string, Produced[]>>();
     for (const [i, node] of nodes.entries()) {
       const preds = predOf.get(node.nodeId)!;
       const arrivals: Arrival[] = [];
       for (const f of finishes) {
-        if (pinnedByTeam.has(f.team)) continue; // pinned teams are routed manually below, not automatically
+        if (pinNodeOf(f.team) === node.nodeId) continue; // pinned INTO this node → seeded manually below
         const size = sizeOf(f.team);
         if (!preds.length) {
           arrivals.push({ team: f.team, categoryId: f.categoryId, size, ready: addMinutes(f.finish, node.anchorOffset) });
@@ -264,12 +272,13 @@ export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleC
         }
       }
       const packed = packArrivals(node.pool, arrivals);
-      // Manual overrides: pin a team into one of this node's member resources at an exact slot time
-      // (pre-seeded here rather than routed through `arrivals`, which excludes pinned teams above).
+      // Manual overrides: pre-seed teams pinned INTO one of this node's member resources at the exact
+      // slot time, and record their produced portion so any successor node picks up their completion.
       for (const [team, a] of pinnedByTeam) {
-        const r = node.pool.find((x) => x.resourceId === a.resourceId);
+        if (pinNodeOf(team) !== node.nodeId) continue;
+        const r = node.pool.find((x) => x.resourceId === a.resourceId)!;
         const f = finishOf.get(team);
-        if (!r || !f) continue;
+        if (!f) continue;
         const size = sizeOf(team);
         const ss = packed.slotsByRes.get(r.resourceId)!;
         let s = ss.find((x) => x.time === a.slotTime);
@@ -279,18 +288,10 @@ export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleC
         s.overflow = s.persons > s.capacity;
         ss.sort((x, y) => x.time.localeCompare(y.time));
         const arr = packed.produced.get(team) ?? []; arr.push({ size, end: addMinutes(a.slotTime, r.occupancyMinutes) }); packed.produced.set(team, arr);
-        seededPinTeams.add(team);
       }
       completion.set(node.nodeId, packed.produced);
       for (const r of node.pool) turns.push({ resourceId: r.resourceId, day, nodeId: node.nodeId, topoIndex: i, slots: packed.slotsByRes.get(r.resourceId) ?? [] });
       for (const u of packed.unassignable) unassignable.push({ day, team: u.team, categoryId: u.categoryId, size: u.size });
-    }
-    // A pin whose target resource id doesn't exist in any node ⇒ the team never got seated (stale ref).
-    for (const team of pinnedByTeam.keys()) {
-      if (seededPinTeams.has(team)) continue;
-      const f = finishOf.get(team);
-      if (!f) continue;
-      unassignable.push({ day, team, categoryId: f.categoryId, size: sizeOf(team) });
     }
   }
 
