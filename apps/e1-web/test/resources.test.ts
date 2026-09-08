@@ -71,4 +71,17 @@ describe('S17 resources view', () => {
       turns: [{ resourceId: 's1', day: '2026-09-01', nodeId: 'docce', topoIndex: 0, slots: [] }] } };
     expect(renderResources(d as any)).toContain('<optgroup label="Docce">');
   })
+  it('shows a generate-steward-link control', () => {
+    expect(renderResources(base as any)).toContain('js-steward-link');
+  });
+  it('shows a per-node mode toggle (scheduled/free)', () => {
+    const d = { ...base, plan: { ...base.plan, nodes: [{ nodeId: 'mensa', kind: 'resource', label: 'Mensa', memberIds: ['mensa'], mode: 'free', topoIndex: 0, predecessorIds: [] }] } };
+    const html = renderResources(d as any);
+    expect(html).toContain('js-node-mode');
+    expect(html).toContain('Libera');
+  });
+  it('overlays a served tick on a checked-off turn row', () => {
+    const d = { ...base, plan: { ...base.plan, turns: [{ resourceId: 'r', day: '2026-09-01', nodeId: 'r', topoIndex: 0, slots: [{ time: '10:00', capacity: 10, persons: 10, overflow: false, teams: [{ team: 'Leoni', categoryId: '1', size: 10, served: true, servedAt: '10:05' }] }] }] } };
+    expect(renderResources(d as any)).toContain('✓');
+  });
 })
