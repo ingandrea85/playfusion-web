@@ -79,6 +79,9 @@ describe('S17 resources view', () => {
     const html = renderResources(d as any);
     expect(html).toContain('js-node-mode');
     expect(html).toContain('Libera');
+    // the active option must carry the established `.on` class so the selected mode is visible;
+    // for a free node the "Libera" button is the one marked on.
+    expect(html).toMatch(/<button[^>]*class="pf-segopt on"[^>]*data-mode="free"[^>]*>Libera<\/button>/);
   });
   it('overlays a served tick on a checked-off turn row', () => {
     const d = { ...base, plan: { ...base.plan, turns: [{ resourceId: 'r', day: '2026-09-01', nodeId: 'r', topoIndex: 0, slots: [{ time: '10:00', capacity: 10, persons: 10, overflow: false, teams: [{ team: 'Leoni', categoryId: '1', size: 10, served: true, servedAt: '10:05' }] }] }] } };

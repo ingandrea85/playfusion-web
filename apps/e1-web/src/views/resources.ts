@@ -110,7 +110,7 @@ function nodeModeCard(d: ResourcesData): string {
   const nodes = d.plan.nodes ?? []
   if (!nodes.length) return ''
   const rows = nodes.map((n) => {
-    const seg = (mode: NodeMode, label: string) => `<button type="button" class="pf-seg__opt${n.mode === mode ? ' pf-seg__opt--active' : ''}" data-mode="${mode}">${label}</button>`
+    const seg = (mode: NodeMode, label: string) => `<button type="button" class="pf-segopt${n.mode === mode ? ' on' : ''}" data-mode="${mode}">${label}</button>`
     return `<div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">
       <span>${n.icon ? `${esc(n.icon)} ` : ''}${esc(n.label)}</span>
       <span class="pf-seg js-node-mode" data-node="${esc(n.nodeId)}" data-kind="${esc(n.kind)}">
@@ -297,7 +297,7 @@ export const resourcesScreen: Screen<ResourcesData> = {
     // on the underlying resource, then save like any other config edit.
     root.querySelectorAll<HTMLElement>('.js-node-mode').forEach((seg) => {
       const nodeId = seg.dataset.node!, kind = seg.dataset.kind!
-      seg.querySelectorAll<HTMLButtonElement>('.pf-seg__opt').forEach((btn) => btn.addEventListener('click', () => {
+      seg.querySelectorAll<HTMLButtonElement>('.pf-segopt').forEach((btn) => btn.addEventListener('click', () => {
         const mode = btn.dataset.mode as NodeMode
         if (kind === 'group') {
           void save({ ...d.config, groups: (d.config.groups ?? []).map((g) => g.groupId === nodeId ? { ...g, mode } : g) })
