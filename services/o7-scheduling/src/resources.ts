@@ -105,7 +105,10 @@ export interface Checkoff { sportEventId: string; nodeId: string; day: string; t
 export const checkoffSk = (day: string, nodeId: string, team: string): string => `${day}#${nodeId}#${encodeURIComponent(team)}`;
 
 export interface TeamFinish { team: string; categoryId: string; finish: string }
-export interface TurnTeam { team: string; categoryId: string; size: number; pinned?: boolean }
+/** `served`/`servedAt` are set when a check-off overrode this team's slot (B3): the plan's computed
+ *  `time` is left untouched (that's where the pool put it), but the row is flagged with the REAL
+ *  check-off time so the UI can show the discrepancy. */
+export interface TurnTeam { team: string; categoryId: string; size: number; pinned?: boolean; served?: boolean; servedAt?: string }
 export interface ResourceSlot { time: string; teams: TurnTeam[]; persons: number; capacity: number; overflow: boolean }
 /** One resource's turns for one day. `nodeId`/`topoIndex` identify the plan node (group or ungrouped
  *  resource) this resource belongs to and its position in schedule order. */
@@ -113,6 +116,13 @@ export interface ResourceDayTurns { resourceId: string; day: string; nodeId: str
 export interface UnassignableTeam { day: string; team: string; categoryId: string; size: number }
 /** Read-model summary of one plan node, for UI rendering of the node graph alongside the plan. */
 export interface PlanNodeInfo { nodeId: string; kind: 'group' | 'resource'; label: string; icon?: string; memberIds: string[]; mode: NodeMode; topoIndex: number; predecessorIds: string[] }
+/** B3: a `mode: 'free'` node (e.g. a self-service buffet) has no capacity-driven slots — every team
+ *  that reaches it is just listed, with a `served` flag/`servedAt` time when a check-off exists for it. */
+export interface FreeNodeList { nodeId: string; day: string; teams: { team: string; categoryId: string; served?: boolean; servedAt?: string }[] }
+/** B3: a team that reached the pipeline (it has ≥1 predecessor at this node) but whose predecessor
+ *  completion is missing (e.g. stuck at an un-checked-off free node) — surfaced instead of silently
+ *  dropped, so the UI can show "waiting for X". */
+export interface PendingArrival { nodeId: string; day: string; team: string; categoryId: string; waitingFor: string }
 export interface ResourcePlan {
   days: string[];
   defaultTeamSize: number;
@@ -125,6 +135,10 @@ export interface ResourcePlan {
   finishesByDay: Record<string, TeamFinish[]>;
   /** The scheduling node graph (groups + ungrouped resources) in topo order, for UI display. */
   nodes: PlanNodeInfo[];
+  /** One entry per (day, free node) reached by ≥1 team — see `FreeNodeList`. */
+  freeLists: FreeNodeList[];
+  /** Teams stuck behind a missing predecessor completion — see `PendingArrival`. */
+  pending: PendingArrival[];
 }
 
 const toMinutes = (hhmm: string): number => { const [h, m] = hhmm.split(':').map(Number); return (h ?? 0) * 60 + (m ?? 0); };
@@ -230,7 +244,7 @@ function packArrivals(pool: Resource[], arrivals: Arrival[]): { slotsByRes: Map<
  *  raw match finish. `teamsByCat` are the confirmed teams from o5 (label → category). Manual
  *  `assignments` pin a team into one member resource's slot, excluding it from every node's automatic
  *  routing that day (see the pinning note in the o7 resources brief). Pure. */
-export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleConfig, rc: ResourceConfig, teamsByCat: Map<string, string[]>): ResourcePlan {
+export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleConfig, rc: ResourceConfig, teamsByCat: Map<string, string[]>, checkoffs: Checkoff[] = []): ResourcePlan {
   const catOf = new Map<string, string>();
   for (const [cat, list] of teamsByCat) for (const t of list) catOf.set(t, cat);
   const finishesByDay = teamFinishes(matches, config, new Set(catOf.keys()));
@@ -242,12 +256,17 @@ export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleC
   const nodes = topoOrder(buildPlanNodes(rc), rc.relations ?? []);
   const predOf = new Map<string, string[]>(nodes.map((n) => [n.nodeId, []]));
   for (const e of rc.relations ?? []) if (predOf.has(e.to)) predOf.get(e.to)!.push(e.from);
+  const labelOf = new Map(nodes.map((n) => [n.nodeId, n.label]));
   // Which node owns each member resource (a pin targets a resource → its owning node).
   const nodeOfResource = new Map<string, string>();
   for (const n of nodes) for (const r of n.pool) nodeOfResource.set(r.resourceId, n.nodeId);
+  // B3: check-offs keyed exactly like `checkoffSk`, for O(1) lookup while walking the plan.
+  const servedAtOf = new Map<string, string>(checkoffs.map((c) => [`${c.day}#${c.nodeId}#${c.team}`, c.servedAt]));
 
   const turns: ResourceDayTurns[] = [];
   const unassignable: UnassignableTeam[] = [];
+  const freeLists: FreeNodeList[] = [];
+  const pending: PendingArrival[] = [];
 
   for (const day of days) {
     const finishes = finishesByDay[day] ?? [];
@@ -278,7 +297,41 @@ export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleC
           arrivals.push({ team: f.team, categoryId: f.categoryId, size, ready: addMinutes(ends.reduce(maxTime), node.anchorOffset) });
         }
       }
+      if (node.mode === 'free') {
+        // B3: a free node has no capacity/slots — list every reaching team instead of packing. A
+        // team may have reached it as several upstream portions; dedupe to one list row per team.
+        const reaching = new Map<string, { team: string; categoryId: string }>();
+        for (const a of arrivals) if (!reaching.has(a.team)) reaching.set(a.team, { team: a.team, categoryId: a.categoryId });
+        const nodeCompletion = new Map<string, Produced[]>();
+        const listTeams: FreeNodeList['teams'] = [];
+        for (const { team, categoryId } of reaching.values()) {
+          const servedAt = servedAtOf.get(`${day}#${node.nodeId}#${team}`);
+          if (servedAt !== undefined) {
+            listTeams.push({ team, categoryId, served: true, servedAt });
+            nodeCompletion.set(team, [{ size: sizeOf(team), end: servedAt }]);
+          } else {
+            listTeams.push({ team, categoryId });
+          }
+        }
+        freeLists.push({ nodeId: node.nodeId, day, teams: listTeams });
+        completion.set(node.nodeId, nodeCompletion);
+        for (const r of node.pool) turns.push({ resourceId: r.resourceId, day, nodeId: node.nodeId, topoIndex: i, slots: [] });
+        continue;
+      }
+
       const packed = packArrivals(node.pool, arrivals);
+      // B3: a team checked off AT THIS node overrides its computed completion with the real, reported
+      // one (whole team, one portion) — this is what a successor anchors to — and its slot rows are
+      // flagged `served`/`servedAt` (the row's `time` stays where the plan packed it).
+      const arrivedTeams = new Set(arrivals.map((a) => a.team));
+      for (const f of finishes) {
+        if (pinNodeOf(f.team) === node.nodeId) continue;
+        const servedAt = servedAtOf.get(`${day}#${node.nodeId}#${f.team}`);
+        if (servedAt === undefined) continue;
+        packed.produced.set(f.team, [{ size: sizeOf(f.team), end: servedAt }]);
+        for (const ss of packed.slotsByRes.values())
+          for (const s of ss) for (const t of s.teams) if (t.team === f.team) { t.served = true; t.servedAt = servedAt; }
+      }
       // Manual overrides: pre-seed teams pinned INTO one of this node's member resources at the exact
       // slot time, and record their produced portion so any successor node picks up their completion.
       for (const [team, a] of pinnedByTeam) {
@@ -296,6 +349,17 @@ export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleC
         ss.sort((x, y) => x.time.localeCompare(y.time));
         const arr = packed.produced.get(team) ?? []; arr.push({ size, end: addMinutes(a.slotTime, r.occupancyMinutes) }); packed.produced.set(team, arr);
       }
+      // B3: pending — a team that reached the pipeline (this node has ≥1 predecessor) but for which no
+      // arrival was built (its predecessor's completion is missing, e.g. an un-checked-off free node),
+      // and which isn't itself directly checked off at this node.
+      if (preds.length) {
+        for (const f of finishes) {
+          if (pinNodeOf(f.team) === node.nodeId) continue;
+          if (arrivedTeams.has(f.team)) continue;
+          if (servedAtOf.has(`${day}#${node.nodeId}#${f.team}`)) continue;
+          pending.push({ nodeId: node.nodeId, day, team: f.team, categoryId: f.categoryId, waitingFor: labelOf.get(preds[0]!) ?? preds[0]! });
+        }
+      }
       completion.set(node.nodeId, packed.produced);
       for (const r of node.pool) turns.push({ resourceId: r.resourceId, day, nodeId: node.nodeId, topoIndex: i, slots: packed.slotsByRes.get(r.resourceId) ?? [] });
       for (const u of packed.unassignable) unassignable.push({ day, team: u.team, categoryId: u.categoryId, size: u.size });
@@ -303,5 +367,5 @@ export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleC
   }
 
   const nodeInfos: PlanNodeInfo[] = nodes.map((n, i) => ({ nodeId: n.nodeId, kind: n.kind, label: n.label, icon: n.icon, memberIds: n.memberIds, mode: n.mode, topoIndex: i, predecessorIds: predOf.get(n.nodeId)! }));
-  return { days, defaultTeamSize: rc.defaultTeamSize ?? DEFAULT_TEAM_SIZE, teams, turns, unassignable, finishesByDay, nodes: nodeInfos };
+  return { days, defaultTeamSize: rc.defaultTeamSize ?? DEFAULT_TEAM_SIZE, teams, turns, unassignable, finishesByDay, nodes: nodeInfos, freeLists, pending };
 }

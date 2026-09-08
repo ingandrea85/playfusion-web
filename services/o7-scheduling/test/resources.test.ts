@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { matchEnd, teamFinishes, teamSizeOf, computeResourcePlan, DEFAULT_TEAM_SIZE, buildPlanNodes, topoOrder, validateResourceConfig, type Resource, type ResourceConfig, type ResourceConfig as RC } from '../src/resources.js';
+import { matchEnd, teamFinishes, teamSizeOf, computeResourcePlan, DEFAULT_TEAM_SIZE, buildPlanNodes, topoOrder, validateResourceConfig, type Resource, type ResourceConfig, type ResourceConfig as RC, type Checkoff } from '../src/resources.js';
 import type { ScheduleConfig, ScheduledMatch } from '../src/domain.js';
 
 const config: ScheduleConfig = { fields: ['C'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', groupsCount: 1, legs: 'SINGLE' }; // slot = 50'
@@ -242,4 +242,37 @@ test('test_plan_pinAtPredecessor_flowsDownstreamToSuccessor', () => {
   const mensaSlot = p.turns.find((t) => t.resourceId === 'mensa')!.slots.find((s) => s.teams.some((t) => t.team === 'A'))!;
   expect(mensaSlot.time).toBe('11:30');                       // completion of the pinned turn feeds the successor
   expect(mensaSlot.teams.find((t) => t.team === 'A')!.pinned).toBeFalsy(); // auto at the successor
+});
+
+// --- Task B3: check-off overrides, free nodes, pending ---
+const co = (nodeId: string, team: string, servedAt: string): Checkoff => ({ sportEventId: 'e', nodeId, day: '2026-09-01', team, servedAt });
+
+test('test_plan_checkoffOverridesCompletion_successorReAnchors', () => {
+  const rc = { resources: [R('docce', { capacityPersons: 20 }), R('mensa', { capacityPersons: 20, offsetMinutes: 0 })], relations: [{ from: 'docce', to: 'mensa' }] };
+  const p = computeResourcePlan([m('A', 'B', '09:00')], config, rc as any, new Map([['U10', ['A']]]), [co('docce', 'A', '10:40')]);
+  // planned docce end would be 10:20; the check-off says 10:40 → mensa anchors to 10:40.
+  expect(p.turns.find((t) => t.resourceId === 'mensa')!.slots[0]!.time).toBe('10:40');
+});
+
+test('test_plan_freeNode_producesListNotSlots', () => {
+  const rc = { resources: [R('mensa', { capacityPersons: 40, mode: 'free' })] };
+  const p = computeResourcePlan([m('A', 'B', '09:00')], config, rc as any, new Map([['U10', ['A', 'B']]]), []);
+  expect(p.turns.find((t) => t.resourceId === 'mensa')!.slots).toHaveLength(0);
+  const list = p.freeLists.find((f) => f.nodeId === 'mensa')!;
+  expect(list.teams.map((t) => t.team).sort()).toEqual(['A', 'B']);
+});
+
+test('test_plan_freeNode_servedFlagFromCheckoff', () => {
+  const rc = { resources: [R('mensa', { capacityPersons: 40, mode: 'free' })] };
+  const p = computeResourcePlan([m('A', 'B', '09:00')], config, rc as any, new Map([['U10', ['A', 'B']]]), [co('mensa', 'A', '11:00')]);
+  const list = p.freeLists.find((f) => f.nodeId === 'mensa')!;
+  expect(list.teams.find((t) => t.team === 'A')!.served).toBe(true);
+  expect(list.teams.find((t) => t.team === 'B')!.served).toBeFalsy();
+});
+
+test('test_plan_pendingWhenFreePredecessorNotCheckedOff', () => {
+  const rc = { resources: [R('docce', { capacityPersons: 20, mode: 'free' }), R('mensa', { capacityPersons: 20 })], relations: [{ from: 'docce', to: 'mensa' }] };
+  const p = computeResourcePlan([m('A', 'B', '09:00')], config, rc as any, new Map([['U10', ['A']]]), []); // docce free, not served
+  expect(p.turns.find((t) => t.resourceId === 'mensa')!.slots).toHaveLength(0); // A not seated yet
+  expect(p.pending.some((x) => x.nodeId === 'mensa' && x.team === 'A')).toBe(true);
 });
