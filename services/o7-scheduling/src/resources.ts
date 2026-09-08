@@ -1,3 +1,4 @@
+import { DomainError } from '@playfusion/platform-lib';
 import { categoryConfig, type ScheduleConfig, type ScheduledMatch } from './domain.js';
 
 /** S17 — event resources & post-match logistics (docce, terzo tempo, …). A Resource has an
@@ -8,6 +9,8 @@ import { categoryConfig, type ScheduleConfig, type ScheduledMatch } from './doma
 
 export const DEFAULT_TEAM_SIZE = 14;
 
+export type NodeMode = 'scheduled' | 'free';
+
 export interface Resource {
   resourceId: string;
   name: string;
@@ -15,21 +18,94 @@ export interface Resource {
   occupancyMinutes: number;
   capacityPersons: number;
   offsetMinutes: number;
+  mode?: NodeMode;
 }
 /** A manual override: pin `team` into `resource`'s slot at `slotTime` on `day` (S17 "sposta"). */
 export interface ResourceAssignment { resourceId: string; day: string; team: string; slotTime: string }
+/** A named cluster of resources presented (and scheduled) as a single node — e.g. "Docce" grouping
+ *  several shower rooms. Anchor offset for scheduling purposes is the FIRST member's offsetMinutes. */
+export interface ResourceGroup { groupId: string; name: string; icon?: string; memberIds: string[]; mode?: NodeMode }
+/** A directed edge between two plan node ids (group or ungrouped resource), e.g. "Docce" → "Mensa". */
+export interface ResourceRelation { from: string; to: string }
 export interface ResourceConfig {
   resources: Resource[];
   defaultTeamSize?: number;
   teamSizes?: Record<string, number>;
   assignments?: ResourceAssignment[];
+  groups?: ResourceGroup[];
+  relations?: ResourceRelation[];
+}
+
+/** One node in the scheduling graph: either a ResourceGroup (pool = its members) or a single ungrouped
+ *  Resource (pool = itself). `anchorOffset` drives scheduling order/timing for the node as a whole. */
+export interface PlanNode { nodeId: string; kind: 'group' | 'resource'; label: string; icon?: string; pool: Resource[]; anchorOffset: number; mode: NodeMode; memberIds: string[] }
+
+/** Derive the scheduling nodes: one per non-empty group, plus every ungrouped resource. A grouped
+ *  resource is reachable only through its group. Group anchor offset = its first member's offset. */
+export function buildPlanNodes(rc: ResourceConfig): PlanNode[] {
+  const groups = rc.groups ?? [];
+  const byId = new Map(rc.resources.map((r) => [r.resourceId, r]));
+  const grouped = new Set(groups.flatMap((g) => g.memberIds));
+  const nodes: PlanNode[] = [];
+  for (const g of groups) {
+    const pool = g.memberIds.map((id) => byId.get(id)).filter((r): r is Resource => !!r);
+    if (!pool.length) continue; // empty group is not a node
+    nodes.push({ nodeId: g.groupId, kind: 'group', label: g.name, icon: g.icon, pool, anchorOffset: pool[0]!.offsetMinutes, mode: g.mode ?? 'scheduled', memberIds: g.memberIds });
+  }
+  for (const r of rc.resources) {
+    if (grouped.has(r.resourceId)) continue;
+    nodes.push({ nodeId: r.resourceId, kind: 'resource', label: r.name, icon: r.icon, pool: [r], anchorOffset: r.offsetMinutes, mode: r.mode ?? 'scheduled', memberIds: [r.resourceId] });
+  }
+  return nodes;
+}
+
+/** Kahn topological sort of the node graph; throws on a cycle. Edges referencing unknown nodes are
+ *  ignored here (validateResourceConfig rejects them earlier for the UI). */
+export function topoOrder(nodes: PlanNode[], relations: ResourceRelation[]): PlanNode[] {
+  const ids = new Set(nodes.map((n) => n.nodeId));
+  const edges = relations.filter((e) => ids.has(e.from) && ids.has(e.to));
+  const indeg = new Map(nodes.map((n) => [n.nodeId, 0] as [string, number]));
+  const adj = new Map(nodes.map((n) => [n.nodeId, [] as string[]]));
+  for (const e of edges) { adj.get(e.from)!.push(e.to); indeg.set(e.to, (indeg.get(e.to) ?? 0) + 1); }
+  const queue = nodes.filter((n) => (indeg.get(n.nodeId) ?? 0) === 0).map((n) => n.nodeId);
+  const order: string[] = [];
+  while (queue.length) {
+    const id = queue.shift()!; order.push(id);
+    for (const to of adj.get(id)!) { indeg.set(to, indeg.get(to)! - 1); if (indeg.get(to) === 0) queue.push(to); }
+  }
+  if (order.length !== nodes.length) throw new DomainError('resource-cycle', 'Le relazioni tra risorse contengono un ciclo.', 422);
+  const byId = new Map(nodes.map((n) => [n.nodeId, n]));
+  return order.map((id) => byId.get(id)!);
+}
+
+/** Pure config validation shared by the UI (live) and the handler (422). Returns an Italian error
+ *  message or null when valid. */
+export function validateResourceConfig(rc: ResourceConfig): string | null {
+  const groups = rc.groups ?? [];
+  const seen = new Set<string>();
+  for (const g of groups) for (const id of g.memberIds) {
+    if (seen.has(id)) return `Una risorsa non può stare in più di un gruppo.`;
+    seen.add(id);
+  }
+  const nodes = buildPlanNodes(rc);
+  const nodeIds = new Set(nodes.map((n) => n.nodeId));
+  for (const e of rc.relations ?? []) {
+    if (e.from === e.to) return `Una relazione non può collegare un nodo a sé stesso.`;
+    if (!nodeIds.has(e.from) || !nodeIds.has(e.to)) return `Una relazione fa riferimento a un nodo inesistente.`;
+  }
+  try { topoOrder(nodes, rc.relations ?? []); } catch { return `Le relazioni contengono un ciclo.`; }
+  return null;
 }
 
 export interface TeamFinish { team: string; categoryId: string; finish: string }
 export interface TurnTeam { team: string; categoryId: string; size: number; pinned?: boolean }
 export interface ResourceSlot { time: string; teams: TurnTeam[]; persons: number; capacity: number; overflow: boolean }
-export interface ResourceDayTurns { resourceId: string; day: string; slots: ResourceSlot[] }
+/** One resource's turns for one day. `nodeId`/`topoIndex` identify the plan node (group or ungrouped
+ *  resource) this resource belongs to and its position in schedule order. */
+export interface ResourceDayTurns { resourceId: string; day: string; nodeId: string; topoIndex: number; slots: ResourceSlot[] }
 export interface UnassignableTeam { day: string; team: string; categoryId: string; size: number }
+/** Read-model summary of one plan node, for UI rendering of the node graph alongside the plan. */
+export interface PlanNodeInfo { nodeId: string; kind: 'group' | 'resource'; label: string; icon?: string; memberIds: string[]; mode: NodeMode; topoIndex: number; predecessorIds: string[] }
 export interface ResourcePlan {
   days: string[];
   defaultTeamSize: number;
@@ -40,6 +116,8 @@ export interface ResourcePlan {
    *  is split across rooms first, and only the overflow beyond the pool surfaces here. */
   unassignable: UnassignableTeam[];
   finishesByDay: Record<string, TeamFinish[]>;
+  /** The scheduling node graph (groups + ungrouped resources) in topo order, for UI display. */
+  nodes: PlanNodeInfo[];
 }
 
 const toMinutes = (hhmm: string): number => { const [h, m] = hhmm.split(':').map(Number); return (h ?? 0) * 60 + (m ?? 0); };
@@ -81,99 +159,142 @@ export function teamFinishes(matches: ScheduledMatch[], config: ScheduleConfig, 
 
 const maxTime = (a: string, b: string): string => (a.localeCompare(b) >= 0 ? a : b);
 
-/** Assign each of a day's team-finishes to resource slots, distributing the load across the resources
- *  (they are alternatives, not parallel copies). Greedy by finish order, earliest-start wins.
- *  A team prefers a SINGLE resource that can hold it whole (either joining a compatible slot with room,
- *  or a fresh slot); teams sharing a slot must fit together and be ready within its occupancy window.
- *  When no single resource can hold the whole team, its people are SPLIT across fresh concurrent slots
- *  (bin-packing the pool: 14 people → room A ×10 + room B ×4). The leftover seats those partial slots
- *  expose are then filled by later small teams via the normal join path. Manual `assignments` pin a
- *  (whole) team to a resource+slotTime. `unassignable` carries only the RESIDUAL people that no
- *  capacity could seat (total pool < team size), never a whole team when the pool can hold it. Pure. */
-function assignDay(day: string, finishes: TeamFinish[], resources: Resource[], sizeOf: (team: string) => number, assignments: ResourceAssignment[]): { slotsByRes: Map<string, ResourceSlot[]>; unassignable: UnassignableTeam[] } {
-  const slotsByRes = new Map<string, ResourceSlot[]>(resources.map((r) => [r.resourceId, []]));
-  const byId = new Map(resources.map((r) => [r.resourceId, r]));
-  const unassignable: UnassignableTeam[] = [];
-  const pinned = new Map(assignments.filter((a) => a.day === day).map((a) => [a.team, a]));
+/** One portion of a team arriving at a node: a team may bring several arrivals (portions) into the
+ *  SAME node when it was itself split upstream (e.g. split across two group members, or split by a
+ *  join). `ready` is when this portion may start being served. */
+interface Arrival { team: string; categoryId: string; size: number; ready: string }
+/** One produced portion once a node has served an arrival: how many people, and when they're done
+ *  (`slotStart + memberOccupancy`) — feeds the next node's `ready` time downstream. */
+interface Produced { size: number; end: string }
 
-  // Add `persons` of team `f` to resource `r`'s slot at `time` (a portion may be less than the team's
-  // full size when it is split across resources). A team can appear once per resource this way.
-  const addTo = (r: Resource, time: string, f: TeamFinish, isPinned: boolean, persons: number): void => {
-    const ss = slotsByRes.get(r.resourceId)!;
-    let s = ss.find((x) => x.time === time);
-    if (!s) { s = { time, teams: [], persons: 0, capacity: r.capacityPersons, overflow: false }; ss.push(s); }
-    s.teams.push({ team: f.team, categoryId: f.categoryId, size: persons, ...(isPinned ? { pinned: true } : {}) });
-    s.persons += persons;
+/** Greedy bin-pack of one node's arrivals into its member pool (the algorithm formerly in `assignDay`,
+ *  generalized to per-arrival `ready` times instead of one shared team-finish). A team/arrival prefers a
+ *  SINGLE pool member that can hold it whole (joining a compatible slot with room, or a fresh slot);
+ *  arrivals sharing a slot must fit together and be ready within its occupancy window. When no single
+ *  member can hold it whole, it is SPLIT across fresh concurrent slots (bin-packing the pool: 14 people →
+ *  member A ×10 + member B ×4). The leftover seats those partial slots expose are then filled by later
+ *  small arrivals via the normal join path. `unassignable` carries only the RESIDUAL people the pool
+ *  could not seat at all. Pinned assignments are handled by the caller (pre/post-seeding), not here. Pure. */
+function packArrivals(pool: Resource[], arrivals: Arrival[]): { slotsByRes: Map<string, ResourceSlot[]>; produced: Map<string, Produced[]>; unassignable: { team: string; categoryId: string; size: number }[] } {
+  const slotsByRes = new Map<string, ResourceSlot[]>(pool.map((r) => [r.resourceId, []]));
+  const produced = new Map<string, Produced[]>();
+  const unassignable: { team: string; categoryId: string; size: number }[] = [];
+  const occ = new Map(pool.map((r) => [r.resourceId, r.occupancyMinutes]));
+  const record = (team: string, size: number, end: string) => {
+    const arr = produced.get(team) ?? []; arr.push({ size, end }); produced.set(team, arr);
   };
   const freeAt = (r: Resource): string | undefined => {
     const ss = slotsByRes.get(r.resourceId)!;
     return ss.length ? ss.map((s) => addMinutes(s.time, r.occupancyMinutes)).reduce(maxTime) : undefined;
   };
-
-  // Pinned teams first (manual overrides win; a stale resource id ⇒ unassignable).
-  for (const f of finishes) {
-    const a = pinned.get(f.team); if (!a) continue;
-    const r = byId.get(a.resourceId);
-    if (r) addTo(r, a.slotTime, f, true, sizeOf(f.team));
-    else unassignable.push({ day, team: f.team, categoryId: f.categoryId, size: sizeOf(f.team) });
-  }
-  // Auto-assign the rest.
-  for (const f of finishes) {
-    if (pinned.has(f.team)) continue;
-    const size = sizeOf(f.team);
-    // Per-resource best placement that could hold the WHOLE team: join a compatible slot with room, else
-    // a fresh slot (only if the room is big enough for the whole team).
-    const wholeCands: Array<{ r: Resource; time: string }> = [];
-    for (const r of resources) {
-      const ready = addMinutes(f.finish, r.offsetMinutes);
+  const addTo = (r: Resource, time: string, a: Arrival, persons: number) => {
+    const ss = slotsByRes.get(r.resourceId)!;
+    let s = ss.find((x) => x.time === time);
+    if (!s) { s = { time, teams: [], persons: 0, capacity: r.capacityPersons, overflow: false }; ss.push(s); }
+    s.teams.push({ team: a.team, categoryId: a.categoryId, size: persons });
+    s.persons += persons;
+    record(a.team, persons, addMinutes(time, occ.get(r.resourceId)!));
+  };
+  for (const a of arrivals) {
+    const size = a.size;
+    const whole: Array<{ r: Resource; time: string }> = [];
+    for (const r of pool) {
       const ss = slotsByRes.get(r.resourceId)!;
       const last = ss[ss.length - 1];
-      const canJoin = last && last.persons + size <= r.capacityPersons && ready.localeCompare(addMinutes(last.time, r.occupancyMinutes)) <= 0;
-      if (canJoin) wholeCands.push({ r, time: last!.time });
-      else if (size <= r.capacityPersons) wholeCands.push({ r, time: maxTime(ready, freeAt(r) ?? ready) });
+      const canJoin = last && last.persons + size <= r.capacityPersons && a.ready.localeCompare(addMinutes(last.time, r.occupancyMinutes)) <= 0;
+      if (canJoin) whole.push({ r, time: last!.time });
+      else if (size <= r.capacityPersons) whole.push({ r, time: maxTime(a.ready, freeAt(r) ?? a.ready) });
     }
-    if (wholeCands.length) {
-      const best = wholeCands.reduce((a, b) => (b.time.localeCompare(a.time) < 0 ? b : a));
-      addTo(best.r, best.time, f, false, size);
-      continue;
-    }
-    // No single resource fits the whole team → split its people across fresh concurrent slots,
-    // earliest-start first, filling each room's capacity until the team is seated.
+    if (whole.length) { const best = whole.reduce((x, y) => (y.time.localeCompare(x.time) < 0 ? y : x)); addTo(best.r, best.time, a, size); continue; }
     let remaining = size;
-    const fresh = resources
-      .map((r) => ({ r, time: maxTime(addMinutes(f.finish, r.offsetMinutes), freeAt(r) ?? addMinutes(f.finish, r.offsetMinutes)) }))
-      .sort((a, b) => a.time.localeCompare(b.time));
-    for (const c of fresh) {
-      if (remaining <= 0) break;
-      const p = Math.min(remaining, c.r.capacityPersons);
-      if (p <= 0) continue;
-      addTo(c.r, c.time, f, false, p);
-      remaining -= p;
-    }
-    if (remaining > 0) unassignable.push({ day, team: f.team, categoryId: f.categoryId, size: remaining });
+    const fresh = pool.map((r) => ({ r, time: maxTime(a.ready, freeAt(r) ?? a.ready) })).sort((x, y) => x.time.localeCompare(y.time));
+    for (const c of fresh) { if (remaining <= 0) break; const p = Math.min(remaining, c.r.capacityPersons); if (p <= 0) continue; addTo(c.r, c.time, a, p); remaining -= p; }
+    if (remaining > 0) unassignable.push({ team: a.team, categoryId: a.categoryId, size: remaining });
   }
-
-  for (const [, ss] of slotsByRes) { for (const s of ss) s.overflow = s.persons > s.capacity; ss.sort((a, b) => a.time.localeCompare(b.time)); }
-  return { slotsByRes, unassignable };
+  for (const [, ss] of slotsByRes) { for (const s of ss) s.overflow = s.persons > s.capacity; ss.sort((x, y) => x.time.localeCompare(y.time)); }
+  return { slotsByRes, produced, unassignable };
 }
 
-/** The full plan for one event: known teams (with sizes), scheduled days, every resource's turns per
- *  day (each team appears once, in one resource), and any teams that fit no resource. `teamsByCat` are
- *  the confirmed teams from o5 (label → category). Pure. */
+/** The full plan for one event: known teams (with sizes), scheduled days, every plan node's member
+ *  turns per day, and any people that fit no resource. Ungrouped resources are INDEPENDENT stages — a
+ *  team visits every one of them (they are no longer alternatives sharing a pool); a `ResourceGroup`'s
+ *  members share one pool (bin-packed together); `ResourceRelation`s chain nodes so a successor's
+ *  arrivals are anchored to its predecessor(s)' completion (join = max of predecessors) rather than the
+ *  raw match finish. `teamsByCat` are the confirmed teams from o5 (label → category). Manual
+ *  `assignments` pin a team into one member resource's slot, excluding it from every node's automatic
+ *  routing that day (see the pinning note in the o7 resources brief). Pure. */
 export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleConfig, rc: ResourceConfig, teamsByCat: Map<string, string[]>): ResourcePlan {
   const catOf = new Map<string, string>();
   for (const [cat, list] of teamsByCat) for (const t of list) catOf.set(t, cat);
   const finishesByDay = teamFinishes(matches, config, new Set(catOf.keys()));
   const days = Object.keys(finishesByDay).sort();
-  const sizeOf = (team: string): number => teamSizeOf(rc, team);
+  const sizeOf = (team: string) => teamSizeOf(rc, team);
   const teams = [...catOf].map(([team, categoryId]) => ({ team, categoryId, size: sizeOf(team) }))
     .sort((a, b) => a.categoryId.localeCompare(b.categoryId) || a.team.localeCompare(b.team));
+
+  const nodes = topoOrder(buildPlanNodes(rc), rc.relations ?? []);
+  const predOf = new Map<string, string[]>(nodes.map((n) => [n.nodeId, []]));
+  for (const e of rc.relations ?? []) if (predOf.has(e.to)) predOf.get(e.to)!.push(e.from);
+  // Which node owns each member resource (a pin targets a resource → its owning node).
+  const nodeOfResource = new Map<string, string>();
+  for (const n of nodes) for (const r of n.pool) nodeOfResource.set(r.resourceId, n.nodeId);
+
   const turns: ResourceDayTurns[] = [];
   const unassignable: UnassignableTeam[] = [];
+
   for (const day of days) {
-    const res = assignDay(day, finishesByDay[day] ?? [], rc.resources, sizeOf, rc.assignments ?? []);
-    unassignable.push(...res.unassignable);
-    for (const r of rc.resources) turns.push({ resourceId: r.resourceId, day, slots: res.slotsByRes.get(r.resourceId) ?? [] });
+    const finishes = finishesByDay[day] ?? [];
+    const finishOf = new Map(finishes.map((f) => [f.team, f]));
+    // A pin fixes a team's slot at exactly ONE node (the one owning its target resource). The team is
+    // excluded from automatic routing ONLY at that node and pre-seeded there; at every OTHER node it
+    // flows normally (independent-stage root arrival, or per-portion/join flow from predecessors).
+    const pinnedByTeam = new Map((rc.assignments ?? []).filter((a) => a.day === day).map((a) => [a.team, a]));
+    const pinNodeOf = (team: string): string | undefined => {
+      const a = pinnedByTeam.get(team); return a ? nodeOfResource.get(a.resourceId) : undefined;
+    };
+    // completion[nodeId] → team → produced portions (size+end)
+    const completion = new Map<string, Map<string, Produced[]>>();
+    for (const [i, node] of nodes.entries()) {
+      const preds = predOf.get(node.nodeId)!;
+      const arrivals: Arrival[] = [];
+      for (const f of finishes) {
+        if (pinNodeOf(f.team) === node.nodeId) continue; // pinned INTO this node → seeded manually below
+        const size = sizeOf(f.team);
+        if (!preds.length) {
+          arrivals.push({ team: f.team, categoryId: f.categoryId, size, ready: addMinutes(f.finish, node.anchorOffset) });
+        } else if (preds.length === 1) {
+          for (const p of completion.get(preds[0]!)?.get(f.team) ?? [])
+            arrivals.push({ team: f.team, categoryId: f.categoryId, size: p.size, ready: addMinutes(p.end, node.anchorOffset) });
+        } else {
+          const ends = preds.map((pid) => (completion.get(pid)?.get(f.team) ?? []).map((p) => p.end)).flat();
+          if (!ends.length) continue;
+          arrivals.push({ team: f.team, categoryId: f.categoryId, size, ready: addMinutes(ends.reduce(maxTime), node.anchorOffset) });
+        }
+      }
+      const packed = packArrivals(node.pool, arrivals);
+      // Manual overrides: pre-seed teams pinned INTO one of this node's member resources at the exact
+      // slot time, and record their produced portion so any successor node picks up their completion.
+      for (const [team, a] of pinnedByTeam) {
+        if (pinNodeOf(team) !== node.nodeId) continue;
+        const r = node.pool.find((x) => x.resourceId === a.resourceId)!;
+        const f = finishOf.get(team);
+        if (!f) continue;
+        const size = sizeOf(team);
+        const ss = packed.slotsByRes.get(r.resourceId)!;
+        let s = ss.find((x) => x.time === a.slotTime);
+        if (!s) { s = { time: a.slotTime, teams: [], persons: 0, capacity: r.capacityPersons, overflow: false }; ss.push(s); }
+        s.teams.push({ team, categoryId: f.categoryId, size, pinned: true });
+        s.persons += size;
+        s.overflow = s.persons > s.capacity;
+        ss.sort((x, y) => x.time.localeCompare(y.time));
+        const arr = packed.produced.get(team) ?? []; arr.push({ size, end: addMinutes(a.slotTime, r.occupancyMinutes) }); packed.produced.set(team, arr);
+      }
+      completion.set(node.nodeId, packed.produced);
+      for (const r of node.pool) turns.push({ resourceId: r.resourceId, day, nodeId: node.nodeId, topoIndex: i, slots: packed.slotsByRes.get(r.resourceId) ?? [] });
+      for (const u of packed.unassignable) unassignable.push({ day, team: u.team, categoryId: u.categoryId, size: u.size });
+    }
   }
-  return { days, defaultTeamSize: rc.defaultTeamSize ?? DEFAULT_TEAM_SIZE, teams, turns, unassignable, finishesByDay };
+
+  const nodeInfos: PlanNodeInfo[] = nodes.map((n, i) => ({ nodeId: n.nodeId, kind: n.kind, label: n.label, icon: n.icon, memberIds: n.memberIds, mode: n.mode, topoIndex: i, predecessorIds: predOf.get(n.nodeId)! }));
+  return { days, defaultTeamSize: rc.defaultTeamSize ?? DEFAULT_TEAM_SIZE, teams, turns, unassignable, finishesByDay, nodes: nodeInfos };
 }

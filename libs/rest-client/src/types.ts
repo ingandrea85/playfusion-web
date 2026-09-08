@@ -179,13 +179,17 @@ export interface CustomFinalsFormat { id: string; name: string; seeds: number; r
 export interface FinalsFormatInput { name: string; seeds: number; rounds: FinalsFormatRound[] }
 
 // S17 — event resources & post-match logistics.
-export interface Resource { resourceId: string; name: string; icon?: string; occupancyMinutes: number; capacityPersons: number; offsetMinutes: number }
+export type NodeMode = 'scheduled' | 'free'
+export interface Resource { resourceId: string; name: string; icon?: string; occupancyMinutes: number; capacityPersons: number; offsetMinutes: number; mode?: NodeMode }
 export interface ResourceAssignment { resourceId: string; day: string; team: string; slotTime: string }
-export interface ResourceConfig { resources: Resource[]; defaultTeamSize?: number; teamSizes?: Record<string, number>; assignments?: ResourceAssignment[] }
+export interface ResourceGroup { groupId: string; name: string; icon?: string; memberIds: string[]; mode?: NodeMode }
+export interface ResourceRelation { from: string; to: string }
+export interface ResourceConfig { resources: Resource[]; defaultTeamSize?: number; teamSizes?: Record<string, number>; assignments?: ResourceAssignment[]; groups?: ResourceGroup[]; relations?: ResourceRelation[] }
 export interface TurnTeam { team: string; categoryId: string; size: number; pinned?: boolean }
 export interface ResourceSlot { time: string; teams: TurnTeam[]; persons: number; capacity: number; overflow: boolean }
-export interface ResourceDayTurns { resourceId: string; day: string; slots: ResourceSlot[] }
+export interface ResourceDayTurns { resourceId: string; day: string; nodeId: string; topoIndex: number; slots: ResourceSlot[] }
 export interface UnassignableTeam { day: string; team: string; categoryId: string; size: number }
+export interface PlanNodeInfo { nodeId: string; kind: 'group' | 'resource'; label: string; icon?: string; memberIds: string[]; mode: NodeMode; topoIndex: number; predecessorIds: string[] }
 export interface ResourcePlan {
   days: string[]
   defaultTeamSize: number
@@ -193,6 +197,7 @@ export interface ResourcePlan {
   turns: ResourceDayTurns[]
   unassignable: UnassignableTeam[]
   finishesByDay: Record<string, { team: string; categoryId: string; finish: string }[]>
+  nodes: PlanNodeInfo[]
 }
 export interface GroupStanding {
   categoryId: string

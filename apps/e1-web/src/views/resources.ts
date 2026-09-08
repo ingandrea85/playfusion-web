@@ -1,5 +1,5 @@
 import { esc } from '@playfusion/app-shell'
-import type { EventDetail, ResourceConfig, ResourcePlan, Resource, ResourceSlot } from '@playfusion/rest-client'
+import type { EventDetail, ResourceConfig, ResourcePlan, Resource, ResourceSlot, ResourceGroup, ResourceRelation, PlanNodeInfo } from '@playfusion/rest-client'
 import { inlineError, lockCard, type Screen } from '../view.js'
 import { workspaceShell } from './workspace.js'
 
@@ -28,6 +28,79 @@ function resourceTable(config: ResourceConfig): string {
       <button class="pf-btn pf-btn--primary" data-addres>Aggiungi</button>
     </div>
     <p class="pf-muted">Occupazione = durata dello slot · Capienza = persone che condividono lo slot · Dopo fine partita = ritardo dall'ultima partita.</p></div>`
+}
+
+/** S17 Wave A — named pools ("Docce" = spogliatoio 1 + 2) and ordering ("Docce → Mensa"). Both live
+ *  on the same ResourceConfig; the plan graph (nodes/topo order) is computed server-side by o7. */
+function groupsCard(d: ResourcesData): string {
+  const groups = d.config.groups ?? []
+  const byId = new Map(d.config.resources.map((r) => [r.resourceId, r]))
+  const cards = groups.map((g) => {
+    const pool = g.memberIds.map((id) => byId.get(id)).filter(Boolean) as typeof d.config.resources
+    const cap = pool.reduce((n, r) => n + r.capacityPersons, 0)
+    const members = pool.map((r) => `<span class="pf-pill pf-pill--member">${esc(r.name)} · ${r.capacityPersons}</span>`).join('')
+    return `<div class="pf-group"><div class="pf-group__head"><span class="pf-group__name">${g.icon ? `${esc(g.icon)} ` : ''}${esc(g.name)}</span>
+      <button class="pf-btn pf-btn--ghost" data-delgroup="${esc(g.groupId)}">Rimuovi gruppo</button>
+      <span class="pf-group__cap">pool ${cap} posti</span></div>
+      <div class="pf-group__members">${members}</div></div>`
+  }).join('')
+  const free = d.config.resources.filter((r) => !groups.some((g) => g.memberIds.includes(r.resourceId)))
+  const opts = free.map((r) => `<option value="${esc(r.resourceId)}">${esc(r.name)}</option>`).join('')
+  return `<div class="pf-card"><h2 class="pf-h3">Gruppi (pool di capienza)</h2>
+    <p class="pf-muted">Risorse dello stesso tipo diventano un unico pool su cui le squadre vengono distribuite.</p>
+    ${cards}
+    <div class="pf-row" style="margin-top:10px">
+      <input id="g-icon" placeholder="🚿" style="width:3.2em" maxlength="2" />
+      <input id="g-name" placeholder="Nome gruppo" style="flex:1;min-width:9em" />
+      <select id="g-member" multiple size="3" style="min-width:10em">${opts}</select>
+      <button class="pf-btn pf-btn--primary" id="g-add">Crea gruppo</button>
+    </div></div>`
+}
+
+/** Linear rendering in topo order with arrows between consecutive nodes; a full DAG layout (columns by
+ *  rank) is overkill for the handful of nodes a real event has. */
+function pipelineMap(nodes: PlanNodeInfo[]): string {
+  const cells = nodes.map((n) => `<span class="pf-node${n.predecessorIds.length ? '' : ' pf-node--root'}">${n.icon ? `${esc(n.icon)} ` : ''}${esc(n.label)}</span>`)
+  return `<div class="pf-pipe">${cells.join('<span class="pf-arrow">→</span>')}</div>`
+}
+
+/** Kahn's algorithm over the current plan nodes + a candidate edge set, mirroring o7's
+ *  `validateResourceConfig` cycle check (not importable client-side from the service package). */
+function hasRelationCycle(nodes: PlanNodeInfo[], relations: ResourceRelation[]): boolean {
+  const ids = new Set(nodes.map((n) => n.nodeId))
+  const edges = relations.filter((e) => ids.has(e.from) && ids.has(e.to))
+  const indeg = new Map(nodes.map((n) => [n.nodeId, 0] as [string, number]))
+  const adj = new Map(nodes.map((n) => [n.nodeId, [] as string[]]))
+  for (const e of edges) { adj.get(e.from)!.push(e.to); indeg.set(e.to, (indeg.get(e.to) ?? 0) + 1) }
+  const queue = nodes.filter((n) => (indeg.get(n.nodeId) ?? 0) === 0).map((n) => n.nodeId)
+  let visited = 0
+  while (queue.length) {
+    const id = queue.shift()!
+    visited++
+    for (const to of adj.get(id)!) { indeg.set(to, indeg.get(to)! - 1); if (indeg.get(to) === 0) queue.push(to) }
+  }
+  return visited !== nodes.length
+}
+
+function relationsCard(d: ResourcesData): string {
+  const nodes = d.plan.nodes ?? []
+  const chips = (d.config.relations ?? []).map((e) => {
+    const f = nodes.find((n) => n.nodeId === e.from)?.label ?? e.from
+    const t = nodes.find((n) => n.nodeId === e.to)?.label ?? e.to
+    return `<span class="pf-rel-chip js-rel-chip">${esc(f)} → ${esc(t)} <button class="pf-rel-x" data-delrel="${esc(e.from)}|${esc(e.to)}">✕</button></span>`
+  }).join('')
+  const nodeOpts = nodes.map((n) => `<option value="${esc(n.nodeId)}">${esc(n.label)}</option>`).join('')
+  return `<div class="pf-card"><h2 class="pf-h3">Sequenza (relazioni)</h2>
+    <p class="pf-muted">"A → B": una squadra entra in B solo dopo aver finito A.</p>
+    ${nodes.length ? pipelineMap(nodes) : ''}
+    <div class="pf-rel-chips">${chips}</div>
+    <div id="rel-err" class="pf-muted" style="color:var(--color-feedback-danger)"></div>
+    <div class="pf-row" style="margin-top:12px">
+      <select id="rel-from"><option value="">Da…</option>${nodeOpts}</select>
+      <span class="pf-mono">→</span>
+      <select id="rel-to"><option value="">A…</option>${nodeOpts}</select>
+      <button class="pf-btn pf-btn--primary" id="rel-add">Aggiungi relazione</button>
+    </div></div>`
 }
 
 function sizeEditor(d: ResourcesData): string {
@@ -99,7 +172,17 @@ function turnsSection(d: ResourcesData): string {
   if (!d.plan.days.length) return `<div class="pf-card"><h2 class="pf-h3">Turni proposti</h2><p class="pf-muted">Genera prima il calendario: i turni si calcolano dagli orari di fine partita.</p></div>`
   const day0 = d.plan.days[0]!, res0 = d.config.resources[0]!.resourceId
   const dayOpts = d.plan.days.map((x) => `<option value="${esc(x)}">${esc(x)}</option>`).join('')
-  const resOpts = d.config.resources.map((r) => `<option value="${esc(r.resourceId)}">${resName(r)}</option>`).join('')
+  const nodes = d.plan.nodes ?? []
+  const byId = new Map(d.config.resources.map((r) => [r.resourceId, r]))
+  // Group the resource selector by plan node (topo order): each optgroup is a group ("Docce") or an
+  // ungrouped resource, containing that node's member resources by name.
+  const resOpts = nodes.length
+    ? nodes.map((n) => {
+      const opts = n.memberIds.map((id) => byId.get(id)).filter((r): r is Resource => !!r)
+        .map((r) => `<option value="${esc(r.resourceId)}">${resName(r)}</option>`).join('')
+      return `<optgroup label="${esc(n.label)}">${opts}</optgroup>`
+    }).join('')
+    : d.config.resources.map((r) => `<option value="${esc(r.resourceId)}">${resName(r)}</option>`).join('')
   return `<div class="pf-card"><h2 class="pf-h3">Turni proposti</h2>
     <p class="pf-muted">Ogni squadra è assegnata a una sola risorsa; usa "sposta" per spostarla su un'altra risorsa/orario.</p>
     <div class="pf-row"><label>Giornata</label><select id="r-day">${dayOpts}</select>
@@ -109,7 +192,7 @@ function turnsSection(d: ResourcesData): string {
 
 export function renderResources(d: ResourcesData): string {
   if (d.locked) return workspaceShell(d.event, 'resources', lockCard('Risorse & logistica'))
-  return workspaceShell(d.event, 'resources', `<div id="err"></div>${resourceTable(d.config)}${sizeEditor(d)}${unassignableCard(d)}${turnsSection(d)}`)
+  return workspaceShell(d.event, 'resources', `<div id="err"></div>${resourceTable(d.config)}${groupsCard(d)}${relationsCard(d)}${sizeEditor(d)}${unassignableCard(d)}${turnsSection(d)}`)
 }
 
 function num(root: ParentNode, sel: string): number | undefined { const v = root.querySelector<HTMLInputElement>(sel)?.value ?? ''; const n = Number(v); return v !== '' && n > 0 ? Math.floor(n) : undefined }
@@ -141,6 +224,42 @@ export const resourcesScreen: Screen<ResourcesData> = {
     root.querySelectorAll<HTMLButtonElement>('[data-delres]').forEach((b) => b.addEventListener('click', () => {
       const rid = b.dataset.delres!
       void save({ ...d.config, resources: d.config.resources.filter((r) => r.resourceId !== rid), assignments: (d.config.assignments ?? []).filter((a) => a.resourceId !== rid) })
+    }))
+
+    // Groups: pool several same-kind resources ("Docce" = spogliatoio 1 + 2) into a single plan node.
+    root.querySelector('#g-add')?.addEventListener('click', () => {
+      const icon = (root.querySelector<HTMLInputElement>('#g-icon')?.value ?? '').trim() || undefined
+      const name = (root.querySelector<HTMLInputElement>('#g-name')?.value ?? '').trim()
+      const memberIds = Array.from(root.querySelector<HTMLSelectElement>('#g-member')?.selectedOptions ?? []).map((o) => o.value)
+      if (!name || !memberIds.length) { fail('Indica un nome e almeno una risorsa per il gruppo.'); return }
+      const group: ResourceGroup = { groupId: crypto.randomUUID(), name, icon, memberIds }
+      void save({ ...d.config, groups: [...(d.config.groups ?? []), group] })
+    })
+    root.querySelectorAll<HTMLButtonElement>('[data-delgroup]').forEach((b) => b.addEventListener('click', () => {
+      const gid = b.dataset.delgroup!
+      void save({
+        ...d.config,
+        groups: (d.config.groups ?? []).filter((g) => g.groupId !== gid),
+        relations: (d.config.relations ?? []).filter((e) => e.from !== gid && e.to !== gid),
+      })
+    }))
+
+    // Relations: order plan nodes ("Docce → Mensa"). Validated client-side (cycle/self-loop) before
+    // saving so the organizer gets an inline error instead of a round-trip 422.
+    root.querySelector('#rel-add')?.addEventListener('click', () => {
+      const relErr = root.querySelector<HTMLElement>('#rel-err')
+      if (relErr) relErr.textContent = ''
+      const from = root.querySelector<HTMLSelectElement>('#rel-from')?.value ?? ''
+      const to = root.querySelector<HTMLSelectElement>('#rel-to')?.value ?? ''
+      if (!from || !to) { if (relErr) relErr.textContent = 'Seleziona i due nodi.'; return }
+      if (from === to) { if (relErr) relErr.textContent = 'Una relazione non può collegare un nodo a sé stesso.'; return }
+      const relations = [...(d.config.relations ?? []), { from, to }]
+      if (hasRelationCycle(d.plan.nodes ?? [], relations)) { if (relErr) relErr.textContent = 'Le relazioni contengono un ciclo.'; return }
+      void save({ ...d.config, relations })
+    })
+    root.querySelectorAll<HTMLButtonElement>('[data-delrel]').forEach((b) => b.addEventListener('click', () => {
+      const [from, to] = b.dataset.delrel!.split('|')
+      void save({ ...d.config, relations: (d.config.relations ?? []).filter((e) => !(e.from === from && e.to === to)) })
     }))
     root.querySelector('[data-setdefault]')?.addEventListener('click', () => {
       void save({ ...d.config, defaultTeamSize: num(root, '#r-default') })
