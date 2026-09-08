@@ -9,6 +9,7 @@ import {
   bearerToken, verifyMagicLink, signMagicLink, ForbiddenError, UnauthorizedError, DomainError,
 } from '@playfusion/platform-lib';
 import { DIRECTOR_ROLE, DIRECTOR_PURPOSE, directorSubject, parseDirectorScope } from './director-token.js';
+import { STEWARD_ROLE, STEWARD_PURPOSE, stewardSubject, parseStewardScope } from './resource-steward-token.js';
 import { DynamoDbScheduleRepository } from './adapters/dynamodb-schedule-repository.js';
 import { DynamoDbMatchRepository } from './adapters/dynamodb-match-repository.js';
 import { DynamoDbTieOverrideRepository } from './adapters/dynamodb-tie-override-repository.js';
@@ -207,6 +208,28 @@ app.post('/events/:id/director-token', organizer, async (c) => {
   const token = signMagicLink({ subject: directorSubject(sportEventId, field), roles: [DIRECTOR_ROLE], purpose: DIRECTOR_PURPOSE, ttlSeconds });
   return c.json({ field, token });
 });
+
+// B4: mint a resource-steward link (organizer). Scoped to one event; the steward then checks
+// resources in/out for that event only (S17 post-match logistics — check-off endpoints land in B5).
+app.post('/events/:id/resource-steward-token', organizer, async (c) => {
+  const sportEventId = c.req.param('id');
+  const ttlSeconds = 60 * 60 * 24 * 30;
+  const token = signMagicLink({ subject: stewardSubject(sportEventId), roles: [STEWARD_ROLE], purpose: STEWARD_PURPOSE, ttlSeconds });
+  return c.json({ token });
+});
+
+// B4: who may act as a resource steward for an event — a steward magic link scoped to that event,
+// or the organizer (Auth0 JWT), falling back like requireResultReporter does for the director role.
+const requireSteward = async (c: any, next: () => Promise<unknown>) => {
+  const token = bearerToken(c);
+  const magic = verifyMagicLink(token, { purpose: STEWARD_PURPOSE });
+  if (magic && magic.roles.includes(STEWARD_ROLE)) {
+    const scope = parseStewardScope(magic.subject);
+    if (!scope || scope.eventId !== c.req.param('id')) throw new ForbiddenError('token addetto non valido per questo evento');
+    return next();
+  }
+  return organizer(c, next);
+};
 
 // S17: event resources & post-match logistics. GET config / plan are public reads; PUT is organizer.
 const resourceItem = z.object({ resourceId: z.string().min(1), name: z.string().min(1), icon: z.string().optional(), occupancyMinutes: z.number().int().positive(), capacityPersons: z.number().int().positive(), offsetMinutes: z.number().int().min(0), mode: z.enum(['scheduled', 'free']).optional() });
