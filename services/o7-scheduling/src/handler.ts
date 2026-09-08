@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import {
   withCorrelation, currentCorrelationId, checkpoint, makeDocClient, toHttpError,
   auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, requireOwner, getIdentity,
-  bearerToken, verifyMagicLink, signMagicLink, ForbiddenError, UnauthorizedError,
+  bearerToken, verifyMagicLink, signMagicLink, ForbiddenError, UnauthorizedError, DomainError,
 } from '@playfusion/platform-lib';
 import { DIRECTOR_ROLE, DIRECTOR_PURPOSE, directorSubject, parseDirectorScope } from './director-token.js';
 import { DynamoDbScheduleRepository } from './adapters/dynamodb-schedule-repository.js';
@@ -14,6 +14,7 @@ import { DynamoDbMatchRepository } from './adapters/dynamodb-match-repository.js
 import { DynamoDbTieOverrideRepository } from './adapters/dynamodb-tie-override-repository.js';
 import { DynamoDbResourceRepository } from './adapters/dynamodb-resource-repository.js';
 import { getResources, saveResources, getResourcePlan } from './application/resources.js';
+import { validateResourceConfig } from './resources.js';
 import { HttpEventSource, HttpTeamSource } from './adapters/http-sources.js';
 import { generateSchedule } from './application/generate-schedule.js';
 import { approveSchedule, publishSchedule } from './application/change-status.js';
@@ -208,18 +209,25 @@ app.post('/events/:id/director-token', organizer, async (c) => {
 });
 
 // S17: event resources & post-match logistics. GET config / plan are public reads; PUT is organizer.
-const resourceItem = z.object({ resourceId: z.string().min(1), name: z.string().min(1), icon: z.string().optional(), occupancyMinutes: z.number().int().positive(), capacityPersons: z.number().int().positive(), offsetMinutes: z.number().int().min(0) });
+const resourceItem = z.object({ resourceId: z.string().min(1), name: z.string().min(1), icon: z.string().optional(), occupancyMinutes: z.number().int().positive(), capacityPersons: z.number().int().positive(), offsetMinutes: z.number().int().min(0), mode: z.enum(['scheduled', 'free']).optional() });
 const assignmentItem = z.object({ resourceId: z.string().min(1), day: z.string().min(1), team: z.string().min(1), slotTime: z.string().min(1) });
-const resourceConfigBody = z.object({
+const groupItem = z.object({ groupId: z.string().min(1), name: z.string().min(1), icon: z.string().optional(), memberIds: z.array(z.string().min(1)), mode: z.enum(['scheduled', 'free']).optional() });
+const relationItem = z.object({ from: z.string().min(1), to: z.string().min(1) });
+export const resourceConfigBody = z.object({
   resources: z.array(resourceItem),
   defaultTeamSize: z.number().int().positive().optional(),
   teamSizes: z.record(z.number().int().positive()).optional(),
   assignments: z.array(assignmentItem).optional(),
+  groups: z.array(groupItem).optional(),
+  relations: z.array(relationItem).optional(),
 });
 app.get('/events/:id/resources', async (c) => c.json(await getResources(resourceRepo)(c.req.param('id'))));
 app.put('/events/:id/resources', organizer, async (c) => {
   await assertPro(c); // S17 resources are a Pro feature
-  return c.json(await saveResources(resourceRepo)(c.req.param('id'), resourceConfigBody.parse(await c.req.json())));
+  const cfg = resourceConfigBody.parse(await c.req.json());
+  const err = validateResourceConfig(cfg);
+  if (err) throw new DomainError('invalid-resource-config', err, 422);
+  return c.json(await saveResources(resourceRepo)(c.req.param('id'), cfg));
 });
 app.get('/events/:id/resource-plan', async (c) =>
   c.json(await getResourcePlan({ resources: resourceRepo, matches, schedules, teams })(c.req.param('id'))));
