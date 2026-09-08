@@ -20,9 +20,25 @@ This spec adds two concepts:
 2. **Sequencing relations** — directed "after" edges between nodes (resource or
    group), e.g. *Docce → Mensa*: a team enters Mensa only after finishing Docce.
    Relations form a general **DAG** (fork/join allowed).
+3. **Resource steward role** — a magic-link view (like the S25 field director)
+   the organizer mints, event-scoped, that shows the resource board and lets the
+   steward **check off** teams as they consume each resource. A check-off is the
+   team's **real completion** at that node and re-anchors downstream nodes.
+4. **Free mode (per node)** — a node can be *scheduled* (turns, as above) or
+   *free*: no calendar, just a check-off list of the teams that pass through it.
 
 The motivating scenario: two 10-seat changing rooms grouped as *Docce* (pool of
-20), a *Mensa*, and the rule that a team eats only after showering.
+20), a *Mensa*, and the rule that a team eats only after showering; on match day a
+steward opens a magic link and ticks teams off as they shower and eat.
+
+## Delivery in two waves
+
+One spec, two implementation waves (the plan sequences them):
+- **Wave A** — groups + relations: the node-graph engine and the reworked E1
+  tab. Purely planned/on-read (§4–§10).
+- **Wave B** — steward role + check-off store (check-off drives the sequence) +
+  per-node free mode + the steward E3 view + E1 link generation / free-mode
+  toggle (§11–§14).
 
 ## 2. Goals / Non-Goals
 
@@ -36,6 +52,9 @@ The motivating scenario: two 10-seat changing rooms grouped as *Docce* (pool of
   single resource.
 - Rework the E1 Risorse tab: create groups, define relations (with a visual
   pipeline map), turns grouped per node/stage.
+- A magic-link **resource steward** view (event-scoped) that checks teams off;
+  the check-off is a team's real completion and re-anchors downstream nodes.
+- A per-node **free mode** (no schedule, check-off list only).
 
 **Non-Goals (explicitly out of scope for this slice)**
 - Per-category or per-team pipelines (the DAG is event-wide; every known team
@@ -43,6 +62,9 @@ The motivating scenario: two 10-seat changing rooms grouped as *Docce* (pool of
 - Resource membership in more than one group.
 - Weighted / priority relations, time budgets, or "soft" ordering.
 - Automatic conflict resolution beyond the greedy on-read pack.
+- Per-resource (not per-node) or per-team check-off granularity — a check-off is
+  one team at one node.
+- Steward-driven capacity changes, no-show handling, or resource reassignment.
 
 ## 3. Confirmed decisions (from brainstorming)
 
@@ -57,6 +79,16 @@ The motivating scenario: two 10-seat changing rooms grouped as *Docce* (pool of
 5. **Join semantics**: at a node with multiple predecessors, portions
    **recompact** — the team's ready time = `max(predecessor completions) + offset`
    (must have finished ALL predecessors).
+6. **Steward link = event-scoped**: one magic link sees/checks off all resources
+   of the event; the organizer mints as many as needed (all equivalent, handed to
+   different people).
+7. **Check-off drives the sequence**: marking team T done at node N records a real
+   completion (server timestamp); downstream nodes re-anchor to it. Unmarked → the
+   planned time is used (fallback). Granularity = one `(team, node)`, whole team.
+8. **Free mode is per node**: each node is `scheduled` (default) or `free`. A free
+   node has no slots — only a check-off list; its completion for a team is the
+   check-off timestamp (unknown until marked). A scheduled node that follows a
+   not-yet-marked (free or scheduled) predecessor shows its arrival as *pending*.
 
 ## 4. Data model
 
@@ -69,11 +101,17 @@ export interface ResourceGroup {
   name: string;
   icon?: string;
   memberIds: string[];        // resourceId of members; a resource is in ≤1 group
+  mode?: 'scheduled' | 'free'; // default 'scheduled' (Wave B)
 }
 
 export interface ResourceRelation {  // directed "after" edge: `to` follows `from`
   from: string;               // nodeId (resourceId | groupId)
   to: string;                 // nodeId (resourceId | groupId)
+}
+
+export interface Resource {   // existing; gains an optional per-node mode (Wave B)
+  // …capacityPersons, occupancyMinutes, offsetMinutes, name, icon…
+  mode?: 'scheduled' | 'free'; // used only when the resource is an ungrouped node
 }
 
 export interface ResourceConfig {
@@ -85,6 +123,9 @@ export interface ResourceConfig {
   assignments?: ResourceAssignment[];
 }
 ```
+
+`mode` lives on the **node** (a `ResourceGroup`, or an ungrouped `Resource`). A
+grouped resource's own `mode` is ignored (the group's `mode` wins).
 
 **Node** = a group, or a resource NOT belonging to any group. A grouped resource
 is reachable only through its group (the group is the scheduling unit; members
@@ -181,13 +222,37 @@ For each day (days come from `teamFinishes`, unchanged):
 - `assignments` (manual "sposta" override) still pins a whole team into a member
   `resourceId` at a `slotTime`; it applies within that member's node.
 
+### 5.5 Check-off overrides & free nodes (Wave B)
+
+`computeResourcePlan` gains an optional `checkoffs` input (persisted, §12):
+`{ nodeId, day, team, servedAt }[]`. It is DATA passed in — the function stays
+pure (no `Date.now()`).
+
+- **Actual completion**: if team `T` is checked off at node `N`, `T`'s completion
+  at `N` = `servedAt` (a single time for the whole team, replacing the planned
+  per-portion ends). Successor arrivals re-anchor to it (`ready = servedAt +
+  successorOffset`).
+- **Free node** (`mode: 'free'`): no packing, no slots. Its team list = all known
+  teams that reach it (event-wide pipeline). A team's completion at a free node is
+  its `servedAt` if checked off, else **undefined**.
+- **Pending arrivals**: a scheduled node whose predecessor completion is undefined
+  (a free predecessor not yet checked off, or a scheduled predecessor whose team
+  had residual) cannot be planned for that team → the team is listed as
+  **pending** at that node (surfaced in the plan, not seated). Once the
+  predecessor is checked off, a re-read seats it.
+- A checked-off team carries a `served: true` (+ `servedAt`) flag on its slot/list
+  entry so the board and the steward view render the ✓.
+
 ## 6. Persistence & API
 
-No new endpoints. `groups` and `relations` ride on the existing "save the whole
-resource config" mutation and its zod schema (o7 handler). Server-side validation
-mirrors the UI: edge endpoints exist, member in ≤1 group, acyclic (422 with a
-message on a cycle). `@playfusion/rest-client` mirrors `ResourceGroup` /
-`ResourceRelation` and the extended `ResourcePlan.nodes`.
+**Wave A** — no new endpoints. `groups`, `relations` and per-node `mode` ride on
+the existing "save the whole resource config" mutation and its zod schema (o7
+handler). Server-side validation mirrors the UI: edge endpoints exist, member in
+≤1 group, acyclic (422 with a message on a cycle). `@playfusion/rest-client`
+mirrors `ResourceGroup` / `ResourceRelation` and the extended `ResourcePlan.nodes`.
+
+**Wave B** — new o7 endpoints (see §11–§12): mint a steward magic link, list
+check-offs, mark / unmark a `(team, node, day)`. Details in those sections.
 
 ## 7. UI (E1 Risorse tab — `apps/e1-web/src/views/resources.ts`)
 
@@ -260,3 +325,106 @@ Three stacked blocks inside the existing tab (no new page):
   map, node-grouped turns selector + stage labels; wiring for create/remove group,
   add/remove relation with live cycle validation.
 - Tests as in §8.
+
+Wave B files are listed in §14.
+
+---
+
+# Wave B — Resource steward role, check-off, free mode
+
+## 11. Resource steward role (magic link)
+
+Mirrors the S25 field-director pattern (`o7.getDirectorToken` → E3 `/director`
+view via `magicLinkAuthProvider`), but **event-scoped** and for resource
+check-off.
+
+- **Token**: a magic link (`signMagicLink`, shared-kernel HMAC) with
+  `purpose: 'resource-steward'`, `roles: ['ResourceSteward']`, and the event id
+  in the subject/claim. Minted by the organizer.
+- **Mint endpoint** (organizer-only): `POST /o7/events/:id/resource-steward-token`
+  → `{ token }`. The organizer generates as many as needed (all equivalent,
+  event-scoped); the E1 tab shows a "genera link addetto" button + copy, like the
+  director links. No per-link persistence (a token is self-contained), matching
+  the director model.
+- **Guard**: check-off mutations accept the steward magic link (`requireMagicLink`
+  with `purpose: 'resource-steward'`) OR an organizer JWT. Read of the board is
+  allowed with either too.
+
+## 12. Check-off store (drives the sequence)
+
+A checked-off record is the only persisted per-team resource state.
+
+- **Item**: `{ sportEventId, nodeId, day, team, servedAt }`. Stored in the o7
+  resources table (same table family as the resource config; a distinct
+  `sk` prefix, e.g. `CHECKOFF#<day>#<nodeId>#<team>`). No new table.
+- **Endpoints** (steward or organizer):
+  - `POST /o7/events/:id/resource-checkoffs` `{ nodeId, day, team }` → records
+    `servedAt = <server now>` (201). Idempotent on `(nodeId, day, team)`.
+  - `DELETE /o7/events/:id/resource-checkoffs/:nodeId/:day/:team` → 204 (unmark).
+  - `GET /o7/events/:id/resource-checkoffs` → the list (read by the board and the
+    steward view).
+- `servedAt` is stamped server-side at write time; `computeResourcePlan` receives
+  the list as `checkoffs` input (§5.5) and stays pure.
+- A check-off is a team's real completion at that node → downstream nodes
+  re-anchor (§5.5). Unmark reverts to the planned time on the next read.
+
+## 13. Free mode & the steward view (E3)
+
+**Free node** (§5.5): no slots; the plan carries, per free node, the list of
+teams that reach it with `served`/`servedAt`. Relations still apply for
+sequencing successors (a free predecessor gates a scheduled successor until
+checked off), but the free node itself is never scheduled.
+
+**Steward view** — new E3 route `#/events/:id/resources` (steward), gated on the
+`resource-steward` magic link. Event-scoped: shows every node, ordered by the
+pipeline (topological order):
+
+- **Scheduled node** → its turns/slots (times + the split display), each team row
+  with a **check-off toggle** (✓ servita / annulla). Pending arrivals shown greyed
+  ("in attesa di <predecessore>").
+- **Free node** → a flat check-off list of its teams (no times), with a
+  served/total counter.
+- Optimistic toggle → `POST`/`DELETE` check-off → re-fetch the board. Reuses the
+  E3 magic-link client + `renderCalendar`/slot styles already in `app-shell`.
+
+The organizer (E1) sees the same served ✓ overlay on the Risorse turns (read of
+check-offs), so they can monitor progress; and a per-node **"modalità"** control
+(scheduled / libero) in the node's config.
+
+## 14. Wave B testing & files
+
+**Engine**
+- check-off overrides a team's completion at a node; successor re-anchors to
+  `servedAt`.
+- free node produces no slots, only a team list; its completion is `servedAt` or
+  undefined.
+- pending: a scheduled node after a not-yet-checked free predecessor lists the
+  team as pending; after check-off it seats on re-read.
+- unmark reverts to planned time.
+
+**API / auth**
+- steward token mints with `purpose: 'resource-steward'` + event claim; a token
+  for another event is rejected on the check-off routes.
+- check-off POST stamps `servedAt`, idempotent; DELETE removes; organizer JWT also
+  accepted.
+
+**UI**
+- E3 steward view renders nodes in pipeline order; scheduled node shows toggles,
+  free node shows a flat list + counter; pending rows greyed.
+- E1 shows the "genera link addetto" control and the per-node modalità toggle; the
+  served ✓ overlay appears on turns.
+
+**Files (Wave B)**
+- `services/o7-scheduling/src/resources.ts` — `checkoffs` input, actual-completion
+  override, free-node handling, `pending` + `served` in the plan output.
+- `services/o7-scheduling/src/handler.ts` — steward-token mint, check-off
+  POST/DELETE/GET, `requireMagicLink('resource-steward')` guard, `mode` zod.
+- `services/o7-scheduling/src/ports.ts` / repo — persist & read check-off items.
+- `libs/platform-lib` — reuse `signMagicLink`/`requireMagicLink` (no change beyond
+  a new purpose string).
+- `libs/rest-client/src/types.ts` + o7 client — steward token, check-off calls,
+  `mode`, `served`/`pending` plan fields.
+- `apps/e3-web/src/views/resource-steward.ts` (new) + route in `apps/e3-web/src/main.ts`.
+- `apps/e1-web/src/views/resources.ts` — steward-link generator, per-node modalità
+  toggle, served ✓ overlay.
+
