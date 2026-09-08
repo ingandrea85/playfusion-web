@@ -25,9 +25,9 @@ export interface O7Api {
   getResources(eventId: string): Promise<ResourceConfig>
   saveResources(eventId: string, config: ResourceConfig): Promise<ResourceConfig>
   getResourcePlan(eventId: string): Promise<ResourcePlan>
-  stewardToken(eventId: string): Promise<{ field: string; token: string }>
+  stewardToken(eventId: string): Promise<{ token: string }>
   listCheckoffs(eventId: string): Promise<Checkoff[]>
-  markCheckoff(eventId: string, body: Checkoff): Promise<Checkoff>
+  markCheckoff(eventId: string, body: Checkoff): Promise<void>
   unmarkCheckoff(eventId: string, nodeId: string, day: string, team: string): Promise<void>
   // SP1: global custom finals-format catalog (list = organizer; writes = platform admin).
   listFinalsFormats(): Promise<CustomFinalsFormat[]>
