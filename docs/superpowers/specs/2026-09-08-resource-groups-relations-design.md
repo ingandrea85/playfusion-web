@@ -47,9 +47,12 @@ One spec, two implementation waves (the plan sequences them):
 - Sequence nodes with a DAG of "after" relations; fork and join supported.
 - Per-portion flow: a sub-group that has finished a predecessor proceeds to a
   successor without waiting for the rest of its team.
-- Everything stays on-read (pure `computeResourcePlan`), no new tables, no data
-  migration. Configs without groups/relations behave exactly as today for a
-  single resource.
+- Everything stays on-read (pure `computeResourcePlan`), no data migration.
+  Configs without groups/relations behave exactly as today for a single resource.
+  Wave A adds **no new tables**; Wave B adds **one** small table for the check-off
+  log (`o7-resources` has only a `sportEventId` partition key, so a per-`(team,
+  node)` log cannot live in it — DynamoDB cannot add a sort key to an existing
+  table).
 - Rework the E1 Risorse tab: create groups, define relations (with a visual
   pipeline map), turns grouped per node/stage.
 - A magic-link **resource steward** view (event-scoped) that checks teams off;
@@ -354,9 +357,11 @@ check-off.
 
 A checked-off record is the only persisted per-team resource state.
 
-- **Item**: `{ sportEventId, nodeId, day, team, servedAt }`. Stored in the o7
-  resources table (same table family as the resource config; a distinct
-  `sk` prefix, e.g. `CHECKOFF#<day>#<nodeId>#<team>`). No new table.
+- **Item**: `{ sportEventId, sk, nodeId, day, team, servedAt }` in a **new table
+  `o7-checkoffs`** — partition key `sportEventId`, sort key
+  `sk = <day>#<nodeId>#<team>`. A dedicated table (not the single-PK
+  `o7-resources` config item) so concurrent stewards each write their own item
+  without a read-modify-write race, and a per-event `GET` is one Query.
 - **Endpoints** (steward or organizer):
   - `POST /o7/events/:id/resource-checkoffs` `{ nodeId, day, team }` → records
     `servedAt = <server now>` (201). Idempotent on `(nodeId, day, team)`.
@@ -419,7 +424,10 @@ check-offs), so they can monitor progress; and a per-node **"modalità"** contro
   override, free-node handling, `pending` + `served` in the plan output.
 - `services/o7-scheduling/src/handler.ts` — steward-token mint, check-off
   POST/DELETE/GET, `requireMagicLink('resource-steward')` guard, `mode` zod.
-- `services/o7-scheduling/src/ports.ts` / repo — persist & read check-off items.
+- `services/o7-scheduling/src/ports.ts` + `adapters/dynamodb-checkoff-repository.ts`
+  (new) — persist & read check-off items.
+- `infra/cdk/lib/data-stack.ts` — new `o7-checkoffs` table (PK `sportEventId`, SK
+  `sk`); `infra/cdk/lib/api-stack.ts` — grant o7 access to it.
 - `libs/platform-lib` — reuse `signMagicLink`/`requireMagicLink` (no change beyond
   a new purpose string).
 - `libs/rest-client/src/types.ts` + o7 client — steward token, check-off calls,
