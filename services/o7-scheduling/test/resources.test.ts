@@ -276,3 +276,17 @@ test('test_plan_pendingWhenFreePredecessorNotCheckedOff', () => {
   expect(p.turns.find((t) => t.resourceId === 'mensa')!.slots).toHaveLength(0); // A not seated yet
   expect(p.pending.some((x) => x.nodeId === 'mensa' && x.team === 'A')).toBe(true);
 });
+
+// --- Task B5: application layer threads checkoffs from the repository into the engine ---
+test('test_getResourcePlan_passesCheckoffsToEngine', async () => {
+  const { getResourcePlan } = await import('../src/application/resources.js');
+  const fake = {
+    resources: { get: async () => ({ resources: [{ resourceId: 'mensa', name: 'M', occupancyMinutes: 30, capacityPersons: 40, offsetMinutes: 0, mode: 'free' }] }) },
+    matches: { list: async () => [m('A', 'B', '09:00')] },
+    schedules: { get: async () => ({ config }) },
+    teams: { confirmedByCategory: async () => new Map([['U10', ['A']]]) },
+    checkoffs: { list: async () => [{ sportEventId: 'e', nodeId: 'mensa', day: '2026-09-01', team: 'A', servedAt: '11:00' }] },
+  } as any;
+  const plan = await getResourcePlan(fake)('e');
+  expect(plan.freeLists[0]!.teams.find((t: any) => t.team === 'A')!.served).toBe(true);
+});

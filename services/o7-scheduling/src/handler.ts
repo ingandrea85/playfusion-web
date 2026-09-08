@@ -14,6 +14,7 @@ import { DynamoDbScheduleRepository } from './adapters/dynamodb-schedule-reposit
 import { DynamoDbMatchRepository } from './adapters/dynamodb-match-repository.js';
 import { DynamoDbTieOverrideRepository } from './adapters/dynamodb-tie-override-repository.js';
 import { DynamoDbResourceRepository } from './adapters/dynamodb-resource-repository.js';
+import { DynamoDbCheckoffRepository } from './adapters/dynamodb-checkoff-repository.js';
 import { getResources, saveResources, getResourcePlan } from './application/resources.js';
 import { validateResourceConfig } from './resources.js';
 import { HttpEventSource, HttpTeamSource } from './adapters/http-sources.js';
@@ -33,6 +34,7 @@ const schedules = new DynamoDbScheduleRepository(db);
 const matches = new DynamoDbMatchRepository(db);
 const overrides = new DynamoDbTieOverrideRepository(db);
 const resourceRepo = new DynamoDbResourceRepository(db);
+const checkoffRepo = new DynamoDbCheckoffRepository(db);
 const events = new HttpEventSource();
 const teams = new HttpTeamSource();
 const finalsFormats = new DynamoDbFinalsFormatRepository(db);
@@ -253,7 +255,25 @@ app.put('/events/:id/resources', organizer, async (c) => {
   return c.json(await saveResources(resourceRepo)(c.req.param('id'), cfg));
 });
 app.get('/events/:id/resource-plan', async (c) =>
-  c.json(await getResourcePlan({ resources: resourceRepo, matches, schedules, teams })(c.req.param('id'))));
+  c.json(await getResourcePlan({ resources: resourceRepo, matches, schedules, teams, checkoffs: checkoffRepo })(c.req.param('id'))));
+
+// B5: post-match check-offs — an addetto (resource steward) or the organizer records/reads/clears the
+// actual "served at" time per (node, day, team). GET/POST/DELETE are all steward-guarded; the plan
+// (above) reads these back on the next GET to override planned completion times / free-node served flags.
+const checkoffBody = z.object({ nodeId: z.string().min(1), day: z.string().min(1), team: z.string().min(1) });
+app.get('/events/:id/resource-checkoffs', requireSteward, async (c) => c.json(await checkoffRepo.list(c.req.param('id'))));
+app.post('/events/:id/resource-checkoffs', requireSteward, async (c) => {
+  const b = checkoffBody.parse(await c.req.json());
+  // Handler-side side-effect (NOT inside the pure engine): stamp the actual check-off time as
+  // server-side HH:MM, comparable with the plan's `addMinutes` HH:MM arithmetic.
+  const servedAt = new Date().toISOString().slice(11, 16);
+  await checkoffRepo.put({ sportEventId: c.req.param('id'), ...b, servedAt });
+  return c.body(null, 201);
+});
+app.delete('/events/:id/resource-checkoffs/:nodeId/:day/:team', requireSteward, async (c) => {
+  await checkoffRepo.delete(c.req.param('id'), c.req.param('day'), c.req.param('nodeId'), decodeURIComponent(c.req.param('team')));
+  return c.body(null, 204);
+});
 
 // S10/S11: live standings computed from results, ranked by the event's tie-break policy with
 // manual overrides applied (public).
