@@ -97,6 +97,13 @@ export function validateResourceConfig(rc: ResourceConfig): string | null {
   return null;
 }
 
+/** B1/B2: a check-off record — a team was marked served at a plan node on a given day. Keyed in
+ *  DynamoDB by (sportEventId, sk) where sk = checkoffSk(day, nodeId, team). */
+export interface Checkoff { sportEventId: string; nodeId: string; day: string; team: string; servedAt: string }
+/** The `sk` for one check-off: day#nodeId#encodeURIComponent(team) — team is URI-encoded since it may
+ *  contain spaces/punctuation that would otherwise collide with the `#` separator. */
+export const checkoffSk = (day: string, nodeId: string, team: string): string => `${day}#${nodeId}#${encodeURIComponent(team)}`;
+
 export interface TeamFinish { team: string; categoryId: string; finish: string }
 export interface TurnTeam { team: string; categoryId: string; size: number; pinned?: boolean }
 export interface ResourceSlot { time: string; teams: TurnTeam[]; persons: number; capacity: number; overflow: boolean }
