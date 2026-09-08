@@ -1,5 +1,5 @@
 import type { ResolvedGroup, Schedule, ScheduledMatch, TieBreakCriterion, TieOverride } from './domain.js';
-import type { ResourceConfig } from './resources.js';
+import type { Checkoff, ResourceConfig } from './resources.js';
 import type { CustomFinalsFormat } from './finals-format.js';
 
 /** SP1: persistence seam for the GLOBAL custom finals-format catalog (not per-tenant). */
@@ -22,6 +22,15 @@ export interface ScheduleRepository {
 export interface ResourceRepository {
   get(sportEventId: string): Promise<ResourceConfig | undefined>;
   save(sportEventId: string, config: ResourceConfig): Promise<void>;
+}
+
+/** B2: persistence seam for check-offs (a team marked served at a plan node on a given day). Stored
+ *  one item per (day, nodeId, team) under the event's partition — `list` returns every check-off for
+ *  the event so the UI can derive per-day/per-node state. */
+export interface CheckoffRepository {
+  list(sportEventId: string): Promise<Checkoff[]>;
+  put(c: Checkoff): Promise<void>;
+  delete(sportEventId: string, day: string, nodeId: string, team: string): Promise<void>;
 }
 
 /** Persistence seam for the generated fixtures. Stored as one item per event, so a

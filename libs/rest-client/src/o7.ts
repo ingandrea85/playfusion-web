@@ -1,5 +1,5 @@
 import { request, type HttpConfig } from './http.js'
-import type { CategoryFinalStanding, CustomFinalsFormat, FinalsFormatInput, GroupStanding, ResourceConfig, ResourcePlan, ScheduleConfig, ScheduleView, ScheduledMatchView } from './types.js'
+import type { CategoryFinalStanding, Checkoff, CustomFinalsFormat, FinalsFormatInput, GroupStanding, ResourceConfig, ResourcePlan, ScheduleConfig, ScheduleView, ScheduledMatchView } from './types.js'
 
 export interface O7Api {
   getSchedule(eventId: string): Promise<ScheduleView>
@@ -25,6 +25,10 @@ export interface O7Api {
   getResources(eventId: string): Promise<ResourceConfig>
   saveResources(eventId: string, config: ResourceConfig): Promise<ResourceConfig>
   getResourcePlan(eventId: string): Promise<ResourcePlan>
+  stewardToken(eventId: string): Promise<{ token: string }>
+  listCheckoffs(eventId: string): Promise<Checkoff[]>
+  markCheckoff(eventId: string, body: Checkoff): Promise<void>
+  unmarkCheckoff(eventId: string, nodeId: string, day: string, team: string): Promise<void>
   // SP1: global custom finals-format catalog (list = organizer; writes = platform admin).
   listFinalsFormats(): Promise<CustomFinalsFormat[]>
   getFinalsFormat(id: string): Promise<CustomFinalsFormat>
@@ -51,6 +55,10 @@ export const o7 = (cfg: HttpConfig): O7Api => ({
   getResources: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/resources`),
   saveResources: (id, config) => request(cfg, 'PUT', `/o7/events/${encodeURIComponent(id)}/resources`, config),
   getResourcePlan: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/resource-plan`),
+  stewardToken: (eventId) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(eventId)}/resource-steward-token`, {}),
+  listCheckoffs: (eventId) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(eventId)}/resource-checkoffs`),
+  markCheckoff: (eventId, body) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(eventId)}/resource-checkoffs`, body),
+  unmarkCheckoff: (eventId, nodeId, day, team) => request(cfg, 'DELETE', `/o7/events/${encodeURIComponent(eventId)}/resource-checkoffs/${encodeURIComponent(nodeId)}/${encodeURIComponent(day)}/${encodeURIComponent(team)}`),
   listFinalsFormats: () => request(cfg, 'GET', '/o7/finals-formats'),
   getFinalsFormat: (id) => request(cfg, 'GET', `/o7/finals-formats/${encodeURIComponent(id)}`),
   saveFinalsFormat: (input) => request(cfg, 'POST', '/o7/finals-formats', input),

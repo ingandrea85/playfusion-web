@@ -28,7 +28,9 @@ test('test_getResourcePlan_integrates_matches_schedule_teams', async () => {
   await schedules.save({ sportEventId: 'e', organizationId: 'o', status: 'GENERATED', config });
   await saveResources(resources)('e', { resources: [shower], teamSizes: { A: 8, B: 8 } });
 
-  const plan = await getResourcePlan({ resources, matches, schedules, teams })('e');
+  // B5 added a `checkoffs` dep to getResourcePlan (the handler always supplies a real repo); stub it.
+  const checkoffs = { list: async () => [], put: async () => {}, delete: async () => {} };
+  const plan = await getResourcePlan({ resources, matches, schedules, teams, checkoffs })('e');
   expect(plan.days).toEqual(['2026-09-01']);
   expect(plan.turns.find((t) => t.resourceId === 'r')!.slots[0]!.persons).toBe(16); // A+B share the shower
 });

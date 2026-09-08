@@ -10,6 +10,7 @@ import { renderPublicStandings, wirePublicStandings } from './views/standings.js
 import { renderPublicBracket, wirePublicBracket } from './views/bracket.js'
 import { renderPublicFormula } from './views/formula.js'
 import { renderDirector, wireDirector, directorScopeFromToken } from './views/director.js'
+import { renderResourceSteward, wireResourceSteward } from './views/resource-steward.js'
 import { renderApply, buildApplyInput } from './views/apply.js'
 import { renderPublicAvvisi, wirePublicAvvisi } from './views/avvisi.js'
 import { captureMagicLink, magicLinkAuthProvider, storedToken, clearToken } from './auth/magic-link.js'
@@ -83,6 +84,14 @@ new HashRouter()
       const [ev, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getMatches(id)])
       await applyEventBrand(ev)
       app.innerHTML = renderDirector(ev, scope.field, matches); wireDirector(app, client.o7, id, scope.field, matches)
+    } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
+  })
+  .on('#/events/:id/resources', async ({ id }) => {
+    try {
+      const [ev, plan] = await Promise.all([client.o3.getEvent(id), client.o7.getResourcePlan(id)])
+      await applyEventBrand(ev)
+      const day = plan.days[0] ?? ''
+      app.innerHTML = renderResourceSteward(ev, plan, day); wireResourceSteward(app, client.o7, id, day, plan)
     } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/standings', async ({ id }) => {

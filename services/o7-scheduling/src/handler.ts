@@ -9,10 +9,12 @@ import {
   bearerToken, verifyMagicLink, signMagicLink, ForbiddenError, UnauthorizedError, DomainError,
 } from '@playfusion/platform-lib';
 import { DIRECTOR_ROLE, DIRECTOR_PURPOSE, directorSubject, parseDirectorScope } from './director-token.js';
+import { STEWARD_ROLE, STEWARD_PURPOSE, stewardSubject, parseStewardScope } from './resource-steward-token.js';
 import { DynamoDbScheduleRepository } from './adapters/dynamodb-schedule-repository.js';
 import { DynamoDbMatchRepository } from './adapters/dynamodb-match-repository.js';
 import { DynamoDbTieOverrideRepository } from './adapters/dynamodb-tie-override-repository.js';
 import { DynamoDbResourceRepository } from './adapters/dynamodb-resource-repository.js';
+import { DynamoDbCheckoffRepository } from './adapters/dynamodb-checkoff-repository.js';
 import { getResources, saveResources, getResourcePlan } from './application/resources.js';
 import { validateResourceConfig } from './resources.js';
 import { HttpEventSource, HttpTeamSource } from './adapters/http-sources.js';
@@ -32,6 +34,7 @@ const schedules = new DynamoDbScheduleRepository(db);
 const matches = new DynamoDbMatchRepository(db);
 const overrides = new DynamoDbTieOverrideRepository(db);
 const resourceRepo = new DynamoDbResourceRepository(db);
+const checkoffRepo = new DynamoDbCheckoffRepository(db);
 const events = new HttpEventSource();
 const teams = new HttpTeamSource();
 const finalsFormats = new DynamoDbFinalsFormatRepository(db);
@@ -208,6 +211,28 @@ app.post('/events/:id/director-token', organizer, async (c) => {
   return c.json({ field, token });
 });
 
+// B4: mint a resource-steward link (organizer). Scoped to one event; the steward then checks
+// resources in/out for that event only (S17 post-match logistics — check-off endpoints land in B5).
+app.post('/events/:id/resource-steward-token', organizer, async (c) => {
+  const sportEventId = c.req.param('id');
+  const ttlSeconds = 60 * 60 * 24 * 30;
+  const token = signMagicLink({ subject: stewardSubject(sportEventId), roles: [STEWARD_ROLE], purpose: STEWARD_PURPOSE, ttlSeconds });
+  return c.json({ token });
+});
+
+// B4: who may act as a resource steward for an event — a steward magic link scoped to that event,
+// or the organizer (Auth0 JWT), falling back like requireResultReporter does for the director role.
+const requireSteward = async (c: any, next: () => Promise<unknown>) => {
+  const token = bearerToken(c);
+  const magic = verifyMagicLink(token, { purpose: STEWARD_PURPOSE });
+  if (magic && magic.roles.includes(STEWARD_ROLE)) {
+    const scope = parseStewardScope(magic.subject);
+    if (!scope || scope.eventId !== c.req.param('id')) throw new ForbiddenError('token addetto non valido per questo evento');
+    return next();
+  }
+  return organizer(c, next);
+};
+
 // S17: event resources & post-match logistics. GET config / plan are public reads; PUT is organizer.
 const resourceItem = z.object({ resourceId: z.string().min(1), name: z.string().min(1), icon: z.string().optional(), occupancyMinutes: z.number().int().positive(), capacityPersons: z.number().int().positive(), offsetMinutes: z.number().int().min(0), mode: z.enum(['scheduled', 'free']).optional() });
 const assignmentItem = z.object({ resourceId: z.string().min(1), day: z.string().min(1), team: z.string().min(1), slotTime: z.string().min(1) });
@@ -230,7 +255,30 @@ app.put('/events/:id/resources', organizer, async (c) => {
   return c.json(await saveResources(resourceRepo)(c.req.param('id'), cfg));
 });
 app.get('/events/:id/resource-plan', async (c) =>
-  c.json(await getResourcePlan({ resources: resourceRepo, matches, schedules, teams })(c.req.param('id'))));
+  c.json(await getResourcePlan({ resources: resourceRepo, matches, schedules, teams, checkoffs: checkoffRepo })(c.req.param('id'))));
+
+// B5: post-match check-offs — an addetto (resource steward) or the organizer records/reads/clears the
+// actual "served at" time per (node, day, team). GET/POST/DELETE are all steward-guarded; the plan
+// (above) reads these back on the next GET to override planned completion times / free-node served flags.
+const checkoffBody = z.object({ nodeId: z.string().min(1), day: z.string().min(1), team: z.string().min(1), servedAt: z.string().regex(/^\d{2}:\d{2}$/).optional() });
+app.get('/events/:id/resource-checkoffs', requireSteward, async (c) => c.json(await checkoffRepo.list(c.req.param('id'))));
+app.post('/events/:id/resource-checkoffs', requireSteward, async (c) => {
+  const { servedAt: clientServedAt, ...b } = checkoffBody.parse(await c.req.json());
+  // Handler-side side-effect (NOT inside the pure engine): stamp the actual check-off time as
+  // EVENT-LOCAL HH:MM (Europe/Rome) — plan times (teamFinishes/addMinutes) are naive event-local
+  // HH:MM the organizer typed, not UTC, so a bare `toISOString` stamp here would re-anchor
+  // downstream nodes hours early/late outside CET/CEST. Prefer a client-supplied `servedAt`: the
+  // steward's browser is physically at the event, so its local clock is the authoritative one.
+  const servedAt = clientServedAt ?? new Date().toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', hour12: false });
+  await checkoffRepo.put({ sportEventId: c.req.param('id'), ...b, servedAt });
+  return c.body(null, 201);
+});
+app.delete('/events/:id/resource-checkoffs/:nodeId/:day/:team', requireSteward, async (c) => {
+  // Hono already URL-decodes path params once; decoding again here corrupted (or threw on) a team
+  // name containing a literal '%'.
+  await checkoffRepo.delete(c.req.param('id'), c.req.param('day'), c.req.param('nodeId'), c.req.param('team'));
+  return c.body(null, 204);
+});
 
 // S10/S11: live standings computed from results, ranked by the event's tie-break policy with
 // manual overrides applied (public).

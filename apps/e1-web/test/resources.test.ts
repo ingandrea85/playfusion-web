@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { renderResources, type ResourcesData } from '../src/views/resources'
+// @vitest-environment jsdom
+import { describe, it, expect, vi } from 'vitest'
+import { renderResources, resourcesScreen, type ResourcesData } from '../src/views/resources'
 import type { ResourcePlan } from '@playfusion/rest-client'
 
 const event = { sportEventId: 'e1', sport: 'calcio', categorie: ['U10'], dates: { from: '2026-09-01', to: '2026-09-01' }, status: 'Published' as const, playbook: 'PB-2' as const }
@@ -70,5 +71,37 @@ describe('S17 resources view', () => {
     const d = { ...base, plan: { ...base.plan, nodes: [{ nodeId: 'docce', kind: 'group', label: 'Docce', memberIds: ['s1', 's2'], mode: 'scheduled', topoIndex: 0, predecessorIds: [] }],
       turns: [{ resourceId: 's1', day: '2026-09-01', nodeId: 'docce', topoIndex: 0, slots: [] }] } };
     expect(renderResources(d as any)).toContain('<optgroup label="Docce">');
+  })
+  it('shows a generate-steward-link control', () => {
+    expect(renderResources(base as any)).toContain('js-steward-link');
+  });
+  it('shows a per-node mode toggle (scheduled/free)', () => {
+    const d = { ...base, plan: { ...base.plan, nodes: [{ nodeId: 'mensa', kind: 'resource', label: 'Mensa', memberIds: ['mensa'], mode: 'free', topoIndex: 0, predecessorIds: [] }] } };
+    const html = renderResources(d as any);
+    expect(html).toContain('js-node-mode');
+    expect(html).toContain('Libera');
+    // the active option must carry the established `.on` class so the selected mode is visible;
+    // for a free node the "Libera" button is the one marked on.
+    expect(html).toMatch(/<button[^>]*class="pf-segopt on"[^>]*data-mode="free"[^>]*>Libera<\/button>/);
+  });
+  it('overlays a served tick on a checked-off turn row', () => {
+    const d = { ...base, plan: { ...base.plan, turns: [{ resourceId: 'r', day: '2026-09-01', nodeId: 'r', topoIndex: 0, slots: [{ time: '10:00', capacity: 10, persons: 10, overflow: false, teams: [{ team: 'Leoni', categoryId: '1', size: 10, served: true, servedAt: '10:05' }] }] }] } };
+    expect(renderResources(d as any)).toContain('✓');
+  });
+  it('deleting a resource that is a relation endpoint also drops that relation from the saved config', async () => {
+    // Mirrors data-delgroup's existing relation pruning: "r" (Docce) -> "mensa" must be dropped
+    // when "r" itself is deleted, or the next save 422s with "nodo inesistente" and the organizer
+    // can never remove the resource.
+    const saveResources = vi.fn().mockResolvedValue({})
+    const ctx = { client: { o7: { saveResources } } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh: vi.fn() }
+    const d: ResourcesData = { ...base, config: { ...base.config, relations: [{ from: 'r', to: 'mensa' }] } }
+    const root = document.createElement('div')
+    root.innerHTML = renderResources(d)
+    resourcesScreen.mount!(root, ctx as any, d)
+    root.querySelector<HTMLButtonElement>('[data-delres="r"]')!.click()
+    await vi.waitFor(() => expect(saveResources).toHaveBeenCalled())
+    const saved = saveResources.mock.calls[0]![1]
+    expect(saved.resources.find((x: any) => x.resourceId === 'r')).toBeUndefined()
+    expect(saved.relations).toEqual([])
   })
 })

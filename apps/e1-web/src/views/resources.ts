@@ -1,5 +1,5 @@
-import { esc } from '@playfusion/app-shell'
-import type { EventDetail, ResourceConfig, ResourcePlan, Resource, ResourceSlot, ResourceGroup, ResourceRelation, PlanNodeInfo } from '@playfusion/rest-client'
+import { esc, copyToClipboard } from '@playfusion/app-shell'
+import type { EventDetail, ResourceConfig, ResourcePlan, Resource, ResourceSlot, ResourceGroup, ResourceRelation, PlanNodeInfo, NodeMode } from '@playfusion/rest-client'
 import { inlineError, lockCard, type Screen } from '../view.js'
 import { workspaceShell } from './workspace.js'
 
@@ -103,6 +103,38 @@ function relationsCard(d: ResourcesData): string {
     </div></div>`
 }
 
+/** S17 Wave B — per-node modalità: "Calendario" (turni pianificati dai fine-partita) vs "Libera"
+ *  (coda a scorrimento senza orari, per lo steward). Stored on the group (if the node is a group)
+ *  or on the resource itself, then re-saved like any other config edit. */
+function nodeModeCard(d: ResourcesData): string {
+  const nodes = d.plan.nodes ?? []
+  if (!nodes.length) return ''
+  const rows = nodes.map((n) => {
+    const seg = (mode: NodeMode, label: string) => `<button type="button" class="pf-segopt${n.mode === mode ? ' on' : ''}" data-mode="${mode}">${label}</button>`
+    return `<div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">
+      <span>${n.icon ? `${esc(n.icon)} ` : ''}${esc(n.label)}</span>
+      <span class="pf-seg js-node-mode" data-node="${esc(n.nodeId)}" data-kind="${esc(n.kind)}">
+        ${seg('scheduled', 'Calendario')}${seg('free', 'Libera')}
+      </span>
+    </div>`
+  }).join('')
+  return `<div class="pf-card"><h2 class="pf-h3">Modalità</h2>
+    <p class="pf-muted">Calendario = turni pianificati dai fine-partita; Libera = coda a scorrimento senza orari fissi (per lo steward).</p>
+    <div class="pf-stack">${rows}</div></div>`
+}
+
+/** S17 Wave B — steward link: a single event-wide token (not per-field like the director links)
+ *  that lets the steward check off served teams from `/e3/…#/events/:id/resources` without an
+ *  organizer login. Mirrors the director-link generator in schedule.ts. */
+function stewardLinkCard(): string {
+  return `<div class="pf-card"><h2 class="pf-h3">Link steward</h2>
+    <p class="pf-muted">Condividi questo link con lo steward: potrà segnare le squadre servite dal telefono, senza accesso all'area organizzatore.</p>
+    <div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">
+      <button type="button" class="pf-btn js-steward-link">Genera link steward</button>
+      <span class="js-steward-copied pf-muted"></span>
+    </div></div>`
+}
+
 function sizeEditor(d: ResourcesData): string {
   const def = d.config.defaultTeamSize ?? d.plan.defaultTeamSize
   const rows = d.plan.teams.length
@@ -146,7 +178,7 @@ const slotHtml = (s: ResourceSlot, d: ResourcesData, day: string): string => {
       <span class="pf-res-gauge"><span class="pf-res-gauge__bar" style="width:${pct}%"></span></span>
       <span class="pf-mono">${s.persons}/${s.capacity}${s.overflow ? ' ⚠' : ''}</span></div>
     <ul class="pf-res-slot__teams">${s.teams.map((t) => { const full = fullSizeOf(t.team); const partial = full != null && t.size < full; return `<li>
-      <span>${esc(t.team)} <span class="pf-muted pf-mono">${esc(t.categoryId)} · ${t.size}p${partial ? ` di ${full}` : ''}${t.pinned ? ' · fissato' : ''}</span></span>
+      <span>${esc(t.team)} <span class="pf-muted pf-mono">${esc(t.categoryId)} · ${t.size}p${partial ? ` di ${full}` : ''}${t.pinned ? ' · fissato' : ''}</span>${t.served ? ` <span class="pf-pill pf-pill--served">✓ ${esc(t.servedAt ?? '')}</span>` : ''}</span>
       <select class="pf-res-move" data-day="${esc(day)}" data-team="${esc(t.team)}">${moveOptions(d, day, t.team)}</select>
     </li>` }).join('')}</ul>
   </div>`
@@ -192,7 +224,7 @@ function turnsSection(d: ResourcesData): string {
 
 export function renderResources(d: ResourcesData): string {
   if (d.locked) return workspaceShell(d.event, 'resources', lockCard('Risorse & logistica'))
-  return workspaceShell(d.event, 'resources', `<div id="err"></div>${resourceTable(d.config)}${groupsCard(d)}${relationsCard(d)}${sizeEditor(d)}${unassignableCard(d)}${turnsSection(d)}`)
+  return workspaceShell(d.event, 'resources', `<div id="err"></div>${resourceTable(d.config)}${groupsCard(d)}${relationsCard(d)}${nodeModeCard(d)}${stewardLinkCard()}${sizeEditor(d)}${unassignableCard(d)}${turnsSection(d)}`)
 }
 
 function num(root: ParentNode, sel: string): number | undefined { const v = root.querySelector<HTMLInputElement>(sel)?.value ?? ''; const n = Number(v); return v !== '' && n > 0 ? Math.floor(n) : undefined }
@@ -223,7 +255,18 @@ export const resourcesScreen: Screen<ResourcesData> = {
     })
     root.querySelectorAll<HTMLButtonElement>('[data-delres]').forEach((b) => b.addEventListener('click', () => {
       const rid = b.dataset.delres!
-      void save({ ...d.config, resources: d.config.resources.filter((r) => r.resourceId !== rid), assignments: (d.config.assignments ?? []).filter((a) => a.resourceId !== rid) })
+      // Same relation pruning as data-delgroup below: an ungrouped resource can itself be a
+      // relation endpoint ("Docce" -> "r"), so deleting it must drop those relations too, or the
+      // next save fails validateResourceConfig ("nodo inesistente") and the resource is stuck.
+      // Same relation pruning as data-delgroup below: an ungrouped resource can itself be a
+      // relation endpoint ("Docce" -> "r"), so deleting it must drop those relations too, or the
+      // next save fails validateResourceConfig ("nodo inesistente") and the resource is stuck.
+      void save({
+        ...d.config,
+        resources: d.config.resources.filter((r) => r.resourceId !== rid),
+        assignments: (d.config.assignments ?? []).filter((a) => a.resourceId !== rid),
+        relations: (d.config.relations ?? []).filter((e) => e.from !== rid && e.to !== rid),
+      })
     }))
 
     // Groups: pool several same-kind resources ("Docce" = spogliatoio 1 + 2) into a single plan node.
@@ -261,6 +304,32 @@ export const resourcesScreen: Screen<ResourcesData> = {
       const [from, to] = b.dataset.delrel!.split('|')
       void save({ ...d.config, relations: (d.config.relations ?? []).filter((e) => !(e.from === from && e.to === to)) })
     }))
+    // Per-node modalità (Wave B): patch the node's mode on its group (if it's a grouped node) or
+    // on the underlying resource, then save like any other config edit.
+    root.querySelectorAll<HTMLElement>('.js-node-mode').forEach((seg) => {
+      const nodeId = seg.dataset.node!, kind = seg.dataset.kind!
+      seg.querySelectorAll<HTMLButtonElement>('.pf-segopt').forEach((btn) => btn.addEventListener('click', () => {
+        const mode = btn.dataset.mode as NodeMode
+        if (kind === 'group') {
+          void save({ ...d.config, groups: (d.config.groups ?? []).map((g) => g.groupId === nodeId ? { ...g, mode } : g) })
+        } else {
+          void save({ ...d.config, resources: d.config.resources.map((r) => r.resourceId === nodeId ? { ...r, mode } : r) })
+        }
+      }))
+    })
+
+    // S17 Wave B — steward link: one event-wide token, minted on demand and copied to the
+    // clipboard (mirrors the per-field director-link generator in schedule.ts).
+    root.querySelector<HTMLButtonElement>('.js-steward-link')?.addEventListener('click', async () => {
+      const note = root.querySelector<HTMLElement>('.js-steward-copied')
+      try {
+        const { token } = await ctx.client.o7.stewardToken(id)
+        const url = `${ctx.e3BaseUrl}/e3/?token=${encodeURIComponent(token)}#/events/${encodeURIComponent(id)}/resources`
+        const ok = await copyToClipboard(url)
+        if (note) note.textContent = ok ? 'Copiato ✓' : 'Copia manuale'
+      } catch { if (note) note.textContent = 'Errore, riprova' }
+    })
+
     root.querySelector('[data-setdefault]')?.addEventListener('click', () => {
       void save({ ...d.config, defaultTeamSize: num(root, '#r-default') })
     })
