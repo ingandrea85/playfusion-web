@@ -1,3 +1,4 @@
+import { DomainError } from '@playfusion/platform-lib';
 import { categoryConfig, type ScheduleConfig, type ScheduledMatch } from './domain.js';
 
 /** S17 — event resources & post-match logistics (docce, terzo tempo, …). A Resource has an
@@ -8,6 +9,8 @@ import { categoryConfig, type ScheduleConfig, type ScheduledMatch } from './doma
 
 export const DEFAULT_TEAM_SIZE = 14;
 
+export type NodeMode = 'scheduled' | 'free';
+
 export interface Resource {
   resourceId: string;
   name: string;
@@ -15,14 +18,83 @@ export interface Resource {
   occupancyMinutes: number;
   capacityPersons: number;
   offsetMinutes: number;
+  mode?: NodeMode;
 }
 /** A manual override: pin `team` into `resource`'s slot at `slotTime` on `day` (S17 "sposta"). */
 export interface ResourceAssignment { resourceId: string; day: string; team: string; slotTime: string }
+/** A named cluster of resources presented (and scheduled) as a single node — e.g. "Docce" grouping
+ *  several shower rooms. Anchor offset for scheduling purposes is the FIRST member's offsetMinutes. */
+export interface ResourceGroup { groupId: string; name: string; icon?: string; memberIds: string[]; mode?: NodeMode }
+/** A directed edge between two plan node ids (group or ungrouped resource), e.g. "Docce" → "Mensa". */
+export interface ResourceRelation { from: string; to: string }
 export interface ResourceConfig {
   resources: Resource[];
   defaultTeamSize?: number;
   teamSizes?: Record<string, number>;
   assignments?: ResourceAssignment[];
+  groups?: ResourceGroup[];
+  relations?: ResourceRelation[];
+}
+
+/** One node in the scheduling graph: either a ResourceGroup (pool = its members) or a single ungrouped
+ *  Resource (pool = itself). `anchorOffset` drives scheduling order/timing for the node as a whole. */
+export interface PlanNode { nodeId: string; kind: 'group' | 'resource'; label: string; icon?: string; pool: Resource[]; anchorOffset: number; mode: NodeMode; memberIds: string[] }
+
+/** Derive the scheduling nodes: one per non-empty group, plus every ungrouped resource. A grouped
+ *  resource is reachable only through its group. Group anchor offset = its first member's offset. */
+export function buildPlanNodes(rc: ResourceConfig): PlanNode[] {
+  const groups = rc.groups ?? [];
+  const byId = new Map(rc.resources.map((r) => [r.resourceId, r]));
+  const grouped = new Set(groups.flatMap((g) => g.memberIds));
+  const nodes: PlanNode[] = [];
+  for (const g of groups) {
+    const pool = g.memberIds.map((id) => byId.get(id)).filter((r): r is Resource => !!r);
+    if (!pool.length) continue; // empty group is not a node
+    nodes.push({ nodeId: g.groupId, kind: 'group', label: g.name, icon: g.icon, pool, anchorOffset: pool[0]!.offsetMinutes, mode: g.mode ?? 'scheduled', memberIds: g.memberIds });
+  }
+  for (const r of rc.resources) {
+    if (grouped.has(r.resourceId)) continue;
+    nodes.push({ nodeId: r.resourceId, kind: 'resource', label: r.name, icon: r.icon, pool: [r], anchorOffset: r.offsetMinutes, mode: r.mode ?? 'scheduled', memberIds: [r.resourceId] });
+  }
+  return nodes;
+}
+
+/** Kahn topological sort of the node graph; throws on a cycle. Edges referencing unknown nodes are
+ *  ignored here (validateResourceConfig rejects them earlier for the UI). */
+export function topoOrder(nodes: PlanNode[], relations: ResourceRelation[]): PlanNode[] {
+  const ids = new Set(nodes.map((n) => n.nodeId));
+  const edges = relations.filter((e) => ids.has(e.from) && ids.has(e.to));
+  const indeg = new Map(nodes.map((n) => [n.nodeId, 0] as [string, number]));
+  const adj = new Map(nodes.map((n) => [n.nodeId, [] as string[]]));
+  for (const e of edges) { adj.get(e.from)!.push(e.to); indeg.set(e.to, (indeg.get(e.to) ?? 0) + 1); }
+  const queue = nodes.filter((n) => (indeg.get(n.nodeId) ?? 0) === 0).map((n) => n.nodeId);
+  const order: string[] = [];
+  while (queue.length) {
+    const id = queue.shift()!; order.push(id);
+    for (const to of adj.get(id)!) { indeg.set(to, indeg.get(to)! - 1); if (indeg.get(to) === 0) queue.push(to); }
+  }
+  if (order.length !== nodes.length) throw new DomainError('resource-cycle', 'Le relazioni tra risorse contengono un ciclo.', 422);
+  const byId = new Map(nodes.map((n) => [n.nodeId, n]));
+  return order.map((id) => byId.get(id)!);
+}
+
+/** Pure config validation shared by the UI (live) and the handler (422). Returns an Italian error
+ *  message or null when valid. */
+export function validateResourceConfig(rc: ResourceConfig): string | null {
+  const groups = rc.groups ?? [];
+  const seen = new Set<string>();
+  for (const g of groups) for (const id of g.memberIds) {
+    if (seen.has(id)) return `Una risorsa non può stare in più di un gruppo.`;
+    seen.add(id);
+  }
+  const nodes = buildPlanNodes(rc);
+  const nodeIds = new Set(nodes.map((n) => n.nodeId));
+  for (const e of rc.relations ?? []) {
+    if (e.from === e.to) return `Una relazione non può collegare un nodo a sé stesso.`;
+    if (!nodeIds.has(e.from) || !nodeIds.has(e.to)) return `Una relazione fa riferimento a un nodo inesistente.`;
+  }
+  try { topoOrder(nodes, rc.relations ?? []); } catch { return `Le relazioni contengono un ciclo.`; }
+  return null;
 }
 
 export interface TeamFinish { team: string; categoryId: string; finish: string }

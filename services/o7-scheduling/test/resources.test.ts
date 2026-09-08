@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { matchEnd, teamFinishes, teamSizeOf, computeResourcePlan, DEFAULT_TEAM_SIZE, type Resource, type ResourceConfig } from '../src/resources.js';
+import { matchEnd, teamFinishes, teamSizeOf, computeResourcePlan, DEFAULT_TEAM_SIZE, buildPlanNodes, topoOrder, validateResourceConfig, type Resource, type ResourceConfig, type ResourceConfig as RC } from '../src/resources.js';
 import type { ScheduleConfig, ScheduledMatch } from '../src/domain.js';
 
 const config: ScheduleConfig = { fields: ['C'], periods: 2, periodMinutes: 20, breakMinutes: 10, dailyStart: '09:00', groupsCount: 1, legs: 'SINGLE' }; // slot = 50'
@@ -87,6 +87,45 @@ test('test_plan_smallTeamsShareASlot_whenCapacityAllows', () => {
   expect(slots).toHaveLength(1);
   expect(slots[0]!.persons).toBe(16);
   expect(slots[0]!.overflow).toBe(false);
+});
+
+// --- resource groups & relations node graph (S17 follow-up) ---
+const R = (resourceId: string, over: Partial<Resource> = {}) =>
+  ({ resourceId, name: resourceId, occupancyMinutes: 30, capacityPersons: 10, offsetMinutes: 0, ...over });
+
+test('test_buildPlanNodes_groupIsOneNode_ungroupedAreOwnNodes', () => {
+  const rc: RC = { resources: [R('s1'), R('s2'), R('mensa', { offsetMinutes: 5 })],
+    groups: [{ groupId: 'docce', name: 'Docce', memberIds: ['s1', 's2'] }] };
+  const nodes = buildPlanNodes(rc);
+  expect(nodes.map((n) => n.nodeId).sort()).toEqual(['docce', 'mensa']);
+  const docce = nodes.find((n) => n.nodeId === 'docce')!;
+  expect(docce.kind).toBe('group');
+  expect(docce.pool.map((r) => r.resourceId)).toEqual(['s1', 's2']);
+  expect(docce.anchorOffset).toBe(0);         // first member's offset
+  expect(nodes.find((n) => n.nodeId === 'mensa')!.anchorOffset).toBe(5);
+});
+
+test('test_buildPlanNodes_emptyGroupIsNotANode', () => {
+  const rc: RC = { resources: [R('a')], groups: [{ groupId: 'g', name: 'G', memberIds: [] }] };
+  expect(buildPlanNodes(rc).map((n) => n.nodeId)).toEqual(['a']);
+});
+
+test('test_topoOrder_ordersPredecessorsFirst', () => {
+  const rc: RC = { resources: [R('docce'), R('mensa')], relations: [{ from: 'docce', to: 'mensa' }] };
+  const order = topoOrder(buildPlanNodes(rc), rc.relations!);
+  expect(order.map((n) => n.nodeId)).toEqual(['docce', 'mensa']);
+});
+
+test('test_topoOrder_throwsOnCycle', () => {
+  const rc: RC = { resources: [R('a'), R('b')], relations: [{ from: 'a', to: 'b' }, { from: 'b', to: 'a' }] };
+  expect(() => topoOrder(buildPlanNodes(rc), rc.relations!)).toThrow(/ciclo/i);
+});
+
+test('test_validateResourceConfig_flagsCycleMemberDupAndBadEdge', () => {
+  expect(validateResourceConfig({ resources: [R('a'), R('b')], relations: [{ from: 'a', to: 'b' }, { from: 'b', to: 'a' }] })).toMatch(/ciclo/i);
+  expect(validateResourceConfig({ resources: [R('a'), R('b')], groups: [{ groupId: 'g1', name: 'G1', memberIds: ['a'] }, { groupId: 'g2', name: 'G2', memberIds: ['a'] }] })).toMatch(/gruppo/i);
+  expect(validateResourceConfig({ resources: [R('a')], relations: [{ from: 'a', to: 'ghost' }] })).toMatch(/nodo/i);
+  expect(validateResourceConfig({ resources: [R('a'), R('b')], relations: [{ from: 'a', to: 'b' }] })).toBeNull();
 });
 
 test('test_plan_manualOverride_movesTeamAcrossResources', () => {
