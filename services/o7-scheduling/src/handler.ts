@@ -260,18 +260,23 @@ app.get('/events/:id/resource-plan', async (c) =>
 // B5: post-match check-offs — an addetto (resource steward) or the organizer records/reads/clears the
 // actual "served at" time per (node, day, team). GET/POST/DELETE are all steward-guarded; the plan
 // (above) reads these back on the next GET to override planned completion times / free-node served flags.
-const checkoffBody = z.object({ nodeId: z.string().min(1), day: z.string().min(1), team: z.string().min(1) });
+const checkoffBody = z.object({ nodeId: z.string().min(1), day: z.string().min(1), team: z.string().min(1), servedAt: z.string().regex(/^\d{2}:\d{2}$/).optional() });
 app.get('/events/:id/resource-checkoffs', requireSteward, async (c) => c.json(await checkoffRepo.list(c.req.param('id'))));
 app.post('/events/:id/resource-checkoffs', requireSteward, async (c) => {
-  const b = checkoffBody.parse(await c.req.json());
+  const { servedAt: clientServedAt, ...b } = checkoffBody.parse(await c.req.json());
   // Handler-side side-effect (NOT inside the pure engine): stamp the actual check-off time as
-  // server-side HH:MM, comparable with the plan's `addMinutes` HH:MM arithmetic.
-  const servedAt = new Date().toISOString().slice(11, 16);
+  // EVENT-LOCAL HH:MM (Europe/Rome) — plan times (teamFinishes/addMinutes) are naive event-local
+  // HH:MM the organizer typed, not UTC, so a bare `toISOString` stamp here would re-anchor
+  // downstream nodes hours early/late outside CET/CEST. Prefer a client-supplied `servedAt`: the
+  // steward's browser is physically at the event, so its local clock is the authoritative one.
+  const servedAt = clientServedAt ?? new Date().toLocaleTimeString('it-IT', { timeZone: 'Europe/Rome', hour: '2-digit', minute: '2-digit', hour12: false });
   await checkoffRepo.put({ sportEventId: c.req.param('id'), ...b, servedAt });
   return c.body(null, 201);
 });
 app.delete('/events/:id/resource-checkoffs/:nodeId/:day/:team', requireSteward, async (c) => {
-  await checkoffRepo.delete(c.req.param('id'), c.req.param('day'), c.req.param('nodeId'), decodeURIComponent(c.req.param('team')));
+  // Hono already URL-decodes path params once; decoding again here corrupted (or threw on) a team
+  // name containing a literal '%'.
+  await checkoffRepo.delete(c.req.param('id'), c.req.param('day'), c.req.param('nodeId'), c.req.param('team'));
   return c.body(null, 204);
 });
 

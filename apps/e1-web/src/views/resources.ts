@@ -255,7 +255,18 @@ export const resourcesScreen: Screen<ResourcesData> = {
     })
     root.querySelectorAll<HTMLButtonElement>('[data-delres]').forEach((b) => b.addEventListener('click', () => {
       const rid = b.dataset.delres!
-      void save({ ...d.config, resources: d.config.resources.filter((r) => r.resourceId !== rid), assignments: (d.config.assignments ?? []).filter((a) => a.resourceId !== rid) })
+      // Same relation pruning as data-delgroup below: an ungrouped resource can itself be a
+      // relation endpoint ("Docce" -> "r"), so deleting it must drop those relations too, or the
+      // next save fails validateResourceConfig ("nodo inesistente") and the resource is stuck.
+      // Same relation pruning as data-delgroup below: an ungrouped resource can itself be a
+      // relation endpoint ("Docce" -> "r"), so deleting it must drop those relations too, or the
+      // next save fails validateResourceConfig ("nodo inesistente") and the resource is stuck.
+      void save({
+        ...d.config,
+        resources: d.config.resources.filter((r) => r.resourceId !== rid),
+        assignments: (d.config.assignments ?? []).filter((a) => a.resourceId !== rid),
+        relations: (d.config.relations ?? []).filter((e) => e.from !== rid && e.to !== rid),
+      })
     }))
 
     // Groups: pool several same-kind resources ("Docce" = spogliatoio 1 + 2) into a single plan node.

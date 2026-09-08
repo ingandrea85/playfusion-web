@@ -31,12 +31,26 @@ function scheduledSlot(nodeId: string, day: string, slot: ResourceSlot, plan: Re
   </div>`
 }
 
+/** A team gated at this node (predecessor completion missing) is in NO slot — the engine simply
+ *  never builds an `Arrival` for it (see `computeResourcePlan`'s "pending" block in o7). Render it
+ *  as its own greyed row after the slots, keyed only by nodeId+day (not tied to any slot). */
+function pendingNodeRow(nodeId: string, day: string, plan: ResourcePlan): string {
+  return plan.pending
+    .filter((p) => p.nodeId === nodeId && p.day === day)
+    .map((p) => `<li class="pf-checkoff-row pf-checkoff-row--pending">
+      <span>${esc(p.team)} <span class="pf-muted pf-mono">${esc(p.categoryId)}</span></span>
+      <span class="pf-muted pf-mono">in attesa · ${esc(p.waitingFor)}</span>
+    </li>`).join('')
+}
+
 function scheduledNode(node: PlanNodeInfo, day: string, plan: ResourcePlan): string {
   const slots = plan.turns.filter((t) => t.nodeId === node.nodeId && t.day === day).flatMap((t) => t.slots)
   const body = slots.length
     ? slots.map((s) => scheduledSlot(node.nodeId, day, s, plan)).join('')
     : `<p class="pf-muted">Nessun turno per questa giornata.</p>`
-  return `<div class="pf-card"><h2 class="pf-h3">${node.icon ? `${esc(node.icon)} ` : ''}${esc(node.label)}</h2>${body}</div>`
+  const pendingRows = pendingNodeRow(node.nodeId, day, plan)
+  const pendingBlock = pendingRows ? `<ul class="pf-res-slot__teams" style="list-style:none;padding:0">${pendingRows}</ul>` : ''
+  return `<div class="pf-card"><h2 class="pf-h3">${node.icon ? `${esc(node.icon)} ` : ''}${esc(node.label)}</h2>${body}${pendingBlock}</div>`
 }
 
 function freeNode(node: PlanNodeInfo, day: string, plan: ResourcePlan): string {
