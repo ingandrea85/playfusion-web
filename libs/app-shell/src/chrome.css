@@ -275,6 +275,22 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-res-slot__teams li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); font-size: 13px; }
 .pf-res-move { font: inherit; font-size: 12px; }
 
+/* Resource groups (pools) & relations (sequence) — S17 Wave A */
+.pf-pill { display: inline-flex; align-items: center; font-size: 12px; padding: 3px 9px; border-radius: var(--radius-pill); background: var(--color-surface-sunken, rgba(127,127,127,0.14)); }
+.pf-pill--member { color: var(--color-text-muted); }
+.pf-group { border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: var(--space-xs); }
+.pf-group__head { display: flex; align-items: center; gap: var(--space-sm); }
+.pf-group__name { font-weight: 650; }
+.pf-group__cap { margin-left: auto; color: var(--color-text-muted); font-size: 12px; font-family: var(--font-mono); }
+.pf-group__members { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--space-xs); }
+.pf-pipe { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); margin: var(--space-sm) 0; }
+.pf-node { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid var(--color-border-default); font-size: 13px; }
+.pf-node--root { border-color: var(--color-action-accent); color: var(--color-action-accent); font-weight: 650; }
+.pf-arrow { color: var(--color-text-muted); }
+.pf-rel-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--space-xs) 0; }
+.pf-rel-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 6px 3px 9px; border-radius: var(--radius-pill); background: var(--color-surface-sunken, rgba(127,127,127,0.14)); }
+.pf-rel-x { border: none; background: none; cursor: pointer; color: var(--color-text-muted); font-size: 11px; padding: 0 2px; }
+
 /* ---------- Final ranking (S13) ---------- */
 .pf-finrank { list-style: none; margin: var(--space-sm) 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-xs); }
 .pf-finrank__row { display: flex; align-items: center; gap: var(--space-md); padding: 6px 10px; border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); }
