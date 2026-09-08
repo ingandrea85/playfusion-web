@@ -26,4 +26,18 @@ describe('e3 resource steward', () => {
   it('greys out a pending team', () => {
     expect(renderResourceSteward(ev, plan, '2026-09-10')).toContain('in attesa');
   });
+  it('greys out a pending team on a SCHEDULED node (predecessor not yet done)', () => {
+    // Docce is scheduled and gated behind a predecessor; "Orsi" is scheduled into a slot but
+    // still waiting for its predecessor, so it must render greyed / "in attesa", not a toggle.
+    const p = {
+      ...plan,
+      turns: [{ resourceId: 's1', day: '2026-09-10', nodeId: 'docce', topoIndex: 0, slots: [{ time: '10:30', capacity: 10, persons: 5, overflow: false, teams: [{ team: 'Orsi', categoryId: '1', size: 5 }] }] }],
+      pending: [{ nodeId: 'docce', day: '2026-09-10', team: 'Orsi', categoryId: '1', waitingFor: 'Riscaldamento' }],
+    } as any;
+    const html = renderResourceSteward(ev, p, '2026-09-10');
+    expect(html).toContain('pf-checkoff-row--pending');
+    expect(html).toContain('in attesa · Riscaldamento');
+    // A pending scheduled team has no active toggle button.
+    expect(html).not.toContain('data-team="Orsi"');
+  });
 });

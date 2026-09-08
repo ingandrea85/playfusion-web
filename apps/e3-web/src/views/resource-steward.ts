@@ -111,8 +111,11 @@ export function wireResourceSteward(root: ParentNode, o7: O7Api, eventId: string
           } else {
             await o7.markCheckoff(eventId, { sportEventId: eventId, nodeId, day, team, servedAt: new Date().toISOString() })
           }
-          const [freshPlan] = await Promise.all([o7.getResourcePlan(eventId), o7.listCheckoffs(eventId)])
-          current = freshPlan
+          // Re-fetch ONLY the plan: it already carries served/servedAt on turns[].slots[].teams
+          // and freeLists[].teams, and re-resolves pending → active downstream. A separate
+          // listCheckoffs here would be redundant and, if it failed after a successful
+          // mark/unmark, would falsely revert the (already-persisted) optimistic UI.
+          current = await o7.getResourcePlan(eventId)
           draw()
         } catch {
           // Revert the optimistic flip.

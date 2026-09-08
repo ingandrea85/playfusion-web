@@ -275,6 +275,13 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-res-slot__teams li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); font-size: 13px; }
 .pf-res-move { font: inherit; font-size: 12px; }
 
+/* B7 — E3 resource steward check-off rows. A pending team (waiting on a predecessor) is dimmed;
+   a served team is accent-tinted with a leading ✓ so the steward sees state at a glance. */
+.pf-checkoff-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); font-size: 13px; padding: 2px 0; }
+.pf-checkoff-row--pending { opacity: 0.5; color: var(--color-text-muted, #6b7280); }
+.pf-checkoff-row--served { background: color-mix(in srgb, var(--color-action-accent) 9%, transparent); border-radius: var(--radius-sm); padding: 2px 6px; }
+.pf-checkoff-row--served > span:first-child::before { content: '✓ '; color: var(--color-action-accent); font-weight: 700; }
+
 /* Resource groups (pools) & relations (sequence) — S17 Wave A */
 .pf-pill { display: inline-flex; align-items: center; font-size: 12px; padding: 3px 9px; border-radius: var(--radius-pill); background: var(--color-surface-sunken, rgba(127,127,127,0.14)); }
 .pf-pill--member { color: var(--color-text-muted); }
