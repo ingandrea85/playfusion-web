@@ -84,6 +84,15 @@ export class DataStack extends Stack {
     this.tables['o7-matches'] = table('o7-matches', 'sportEventId');
     this.tables['o7-tie-overrides'] = table('o7-tie-overrides', 'sportEventId');
     this.tables['o7-resources'] = table('o7-resources', 'sportEventId'); // S17
+    // Wave B (steward check-off): composite key (event, sk) — the `table()` helper only
+    // supports a single partition key, so this one is constructed inline.
+    this.tables['o7-checkoffs'] = new Table(this, 'o7-checkoffs', {
+      tableName: resourceName('o7-checkoffs', env),
+      partitionKey: { name: 'sportEventId', type: AttributeType.STRING },
+      sortKey: { name: 'sk', type: AttributeType.STRING },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+      removalPolicy,
+    });
     this.tables['o7-finals-formats'] = table('o7-finals-formats', 'formatId'); // SP1: global custom finals formats
     this.tables['o3-sports'] = table('o3-sports', 'sportId'); // Epic #143: global sport catalog
 
