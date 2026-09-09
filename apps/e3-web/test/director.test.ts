@@ -75,6 +75,33 @@ describe('e3 director view (S26 lifecycle)', () => {
   })
 })
 
+describe('director in a festival (non-competitive): no score, only "giocata"', () => {
+  const fest = (over: Partial<ScheduledMatchView> = {}): ScheduledMatchView =>
+    ({ id: 'ft1', sportEventId: 'e1', categoryId: 'U10', groupLabel: '', day: '2026-09-01', time: '09:00', field: 'Campo A', home: 'A', away: 'B', phase: 'FESTIVAL', ...over })
+  it('shows no score/vs in the list and opens a "Segna come giocata" action → finishMatch', async () => {
+    const o7 = { finishMatch: vi.fn().mockResolvedValue({ ...fest(), status: 'FINISHED' }) } as any
+    const root = document.createElement('div')
+    root.innerHTML = renderDirector(event, 'U10', [fest()])
+    wireDirector(root, o7, 'e1', 'U10', [fest()])
+    const body = root.querySelector('#dir-body')!.innerHTML
+    expect(body).not.toContain('<b>vs</b>')            // no competitive middle
+    root.querySelector<HTMLButtonElement>('.js-dirmatch')!.click()
+    expect(root.querySelector('#dir-played')).not.toBeNull()   // "Segna come giocata"
+    expect(root.querySelector('[data-step="home"]')).toBeNull() // no score stepper
+    root.querySelector<HTMLButtonElement>('#dir-played')!.click()
+    await vi.waitFor(() => expect(o7.finishMatch).toHaveBeenCalledWith('e1', 'ft1'))
+  })
+  it('a played festival match is read-only "✓ giocata"', () => {
+    const root = document.createElement('div')
+    root.innerHTML = renderDirector(event, 'U10', [fest({ status: 'FINISHED' })])
+    wireDirector(root, {} as any, 'e1', 'U10', [fest({ status: 'FINISHED' })])
+    expect(root.querySelector('#dir-body')!.innerHTML).toContain('✓ giocata')
+    root.querySelector<HTMLButtonElement>('.js-dirmatch')!.click()
+    expect(root.querySelector('#dir-played')).toBeNull()       // already played, no action
+    expect(root.querySelector('#dir-close')).not.toBeNull()
+  })
+})
+
 describe('director shows finals (S12)', () => {
   const fin: ScheduledMatchView = { id: 'fm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-09-02', time: '10:00', field: 'Campo A', home: '1ª Girone A', away: '2ª Girone A', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'Finale', order: 1, homeResolved: 'Alfa', awayResolved: 'Bravo' }
   it('lists a FINAL match on the field with resolved names + round label', () => {

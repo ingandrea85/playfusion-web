@@ -121,12 +121,17 @@ export function renderCalendar(matches: CalendarMatch[], catName: (id: string) =
         const badge = opts.hideScheduledBadge && st === 'SCHEDULED' ? '' : matchStatusBadge(m)
         // Festival matches have no group/finale label — show just the category (no dangling "· ").
         const label = m.phase === 'FINAL' ? `${m.bracketLabel ?? 'Finali'}${m.round ? ` · ${roundLabel(m.round)}` : ''}` : m.groupLabel
+        // Festival is non-competitive: no score, ever. Show "✓ giocata" once finished, "·" otherwise.
+        const festival = m.phase === 'FESTIVAL'
+        const middle = festival
+          ? (st === 'FINISHED' ? '<span class="pf-match__played">✓ giocata</span>' : '<span class="pf-muted">·</span>')
+          : `<b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b>`
         return `<li class="pf-match${st === 'CANCELLED' ? ' pf-match--cancelled' : ''}">
         <span class="pf-match__time pf-mono">${esc(m.time)}</span>
         <span class="pf-match__field pf-mono">${esc(m.field)}</span>
         <span class="pf-match__cat">${esc(catName(m.categoryId))}${label ? ` · ${esc(label)}` : ''}${m.phase === 'FINAL' && m.placementFrom != null && m.placementTo === m.placementFrom + 1 ? ` <span class="pf-brk__pos">${m.placementFrom}º/${m.placementTo}º</span>` : ''} ${badge}${decideBadge(m)}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
-        <span class="pf-match__teams">${esc(m.homeResolved ?? m.home)} <b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b> ${esc(m.awayResolved ?? m.away)}</span>
-        ${editable ? `<span class="pf-match__actions"><button type="button" class="pf-btn pf-btn--ghost js-resultmatch" data-match="${esc(m.id ?? '')}">Risultato</button><button type="button" class="pf-btn pf-btn--ghost js-editmatch" data-match="${esc(m.id ?? '')}">Modifica</button></span>` : ''}
+        <span class="pf-match__teams">${esc(m.homeResolved ?? m.home)} ${middle} ${esc(m.awayResolved ?? m.away)}</span>
+        ${editable ? `<span class="pf-match__actions">${festival ? '' : `<button type="button" class="pf-btn pf-btn--ghost js-resultmatch" data-match="${esc(m.id ?? '')}">Risultato</button>`}<button type="button" class="pf-btn pf-btn--ghost js-editmatch" data-match="${esc(m.id ?? '')}">Modifica</button></span>` : ''}
       </li>`
       }).join('')
     return `<div class="pf-calday"><div class="pf-calday__head pf-mono">${esc(day)}</div><ul class="pf-callist">${rows}</ul></div>`

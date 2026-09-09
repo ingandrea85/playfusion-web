@@ -34,6 +34,12 @@ const dHome = (m: ScheduledMatchView): string => m.homeResolved ?? m.home
 const dAway = (m: ScheduledMatchView): string => m.awayResolved ?? m.away
 const dLabel = (m: ScheduledMatchView): string =>
   m.phase === 'FINAL' ? `${m.bracketLabel ?? 'Finali'}${m.round ? ` · ${m.round}` : ''}` : m.groupLabel
+const isFestival = (m: ScheduledMatchView): boolean => m.phase === 'FESTIVAL'
+/** Festival (non-competitive): no score. "✓ giocata" once finished, "·" otherwise. Else the score/vs. */
+const dMiddle = (m: ScheduledMatchView): string =>
+  isFestival(m)
+    ? (displayStatus(m) === 'FINISHED' ? '<span class="pf-match__played">✓ giocata</span>' : '<span class="pf-muted">·</span>')
+    : `<b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b>`
 
 /** Compact, mobile-first list of the director's field matches — grouped by day, each a tappable
  *  row that opens the score bottom-sheet. Each row carries the S26 status badge + delay. */
@@ -48,8 +54,8 @@ function listBody(matches: ScheduledMatchView[], now: Date): string {
       return `
       <button type="button" class="pf-dirmatch js-dirmatch${cls}" data-match="${esc(m.id)}">
         <span class="pf-mono">${esc(m.time)}</span>
-        <span class="pf-dirmatch__teams">${esc(dHome(m))} <b>${played(m) ? `${esc(m.homeScore)}–${esc(m.awayScore)}` : 'vs'}</b> ${esc(dAway(m))}</span>
-        <span class="pf-dirmatch__cat">${esc(m.categoryId)} · ${esc(dLabel(m))} ${matchStatusBadge(m)}${needsWinnerDecision(m) ? '<span class="pf-mstatus pf-mstatus--decide">⚠ Chi passa?</span>' : ''}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
+        <span class="pf-dirmatch__teams">${esc(dHome(m))} ${dMiddle(m)} ${esc(dAway(m))}</span>
+        <span class="pf-dirmatch__cat">${esc(m.categoryId)}${dLabel(m) ? ` · ${esc(dLabel(m))}` : ''} ${matchStatusBadge(m)}${needsWinnerDecision(m) ? '<span class="pf-mstatus pf-mstatus--decide">⚠ Chi passa?</span>' : ''}${delay ? `<span class="pf-delay">${esc(delay)}</span>` : ''}</span>
       </button>`
     }).join('')
     return `<div class="pf-calday"><div class="pf-calday__head pf-mono">${esc(day)}</div>${rows}</div>`
@@ -149,7 +155,28 @@ export function wireDirector(root: ParentNode, o7: O7Api, eventId: string, categ
     clearError()
     const st = displayStatus(m)
     const head = `<h3 class="pf-h4" style="margin-top:0">${esc(dHome(m))} vs ${esc(dAway(m))}</h3>
-      <div class="pf-mono pf-muted" style="margin-bottom:var(--space-md)">${esc(m.time)} · ${esc(m.categoryId)} · ${esc(dLabel(m))} ${matchStatusBadge(m)}</div>`
+      <div class="pf-mono pf-muted" style="margin-bottom:var(--space-md)">${esc(m.time)} · ${esc(m.categoryId)}${dLabel(m) ? ` · ${esc(dLabel(m))}` : ''} ${matchStatusBadge(m)}</div>`
+
+    // Festival is non-competitive: no score. The director only marks a match as PLAYED.
+    if (isFestival(m)) {
+      if (st === 'FINISHED') {
+        const { close } = openSheet(sheet, `${head}<p class="pf-muted" style="text-align:center"><span class="pf-match__played">✓ giocata</span></p>
+          <div class="pf-row" style="justify-content:center;margin-top:var(--space-md)"><button type="button" class="pf-btn" id="dir-close">Chiudi</button></div>`)
+        sheet.querySelector('#dir-close')!.addEventListener('click', close)
+        return
+      }
+      const { close } = openSheet(sheet, `${head}<p class="pf-muted" style="text-align:center">Quando la partita è finita, segnala come giocata.</p>
+        <div class="pf-row" style="justify-content:center;gap:var(--space-sm);margin-top:var(--space-md)">
+          <button type="button" class="pf-btn pf-btn--primary pf-btn--lg" id="dir-played">Segna come giocata</button>
+          <button type="button" class="pf-btn" id="dir-cancel">Chiudi</button></div>`)
+      sheet.querySelector('#dir-cancel')!.addEventListener('click', close)
+      sheet.querySelector('#dir-played')!.addEventListener('click', async (e) => {
+        const btn = e.currentTarget as HTMLButtonElement; btn.disabled = true
+        try { const u = await o7.finishMatch(eventId, matchId); upsert(u); draw(); close() }
+        catch { showError(); close() }
+      })
+      return
+    }
 
     if (st === 'CANCELLED') {
       const { close } = openSheet(sheet, `${head}<p class="pf-muted">Gara annullata dall'organizzazione.</p>
