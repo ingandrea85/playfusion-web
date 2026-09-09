@@ -44,10 +44,21 @@ function pendingNodeRow(nodeId: string, day: string, plan: ResourcePlan): string
 }
 
 function scheduledNode(node: PlanNodeInfo, day: string, plan: ResourcePlan): string {
-  const slots = plan.turns.filter((t) => t.nodeId === node.nodeId && t.day === day).flatMap((t) => t.slots)
-  const body = slots.length
-    ? slots.map((s) => scheduledSlot(node.nodeId, day, s, plan)).join('')
-    : `<p class="pf-muted">Nessun turno per questa giornata.</p>`
+  const turns = plan.turns.filter((t) => t.nodeId === node.nodeId && t.day === day)
+  // For a GROUP node the pool has several member resources (e.g. Spogliatoio 1 / 2): label each
+  // member's slots with its name so the steward sees the specific resource a team is assigned to.
+  // A single-resource node needs no such sub-label (the card title already names it).
+  const showMember = node.kind === 'group'
+  const sections = turns
+    .filter((t) => t.slots.length)
+    .map((t) => {
+      const slotsHtml = t.slots.map((s) => scheduledSlot(node.nodeId, day, s, plan)).join('')
+      return showMember
+        ? `<div class="pf-res-member"><div class="pf-res-member__name pf-mono">${esc(t.resourceName)}</div>${slotsHtml}</div>`
+        : slotsHtml
+    })
+    .join('')
+  const body = sections || `<p class="pf-muted">Nessun turno per questa giornata.</p>`
   const pendingRows = pendingNodeRow(node.nodeId, day, plan)
   const pendingBlock = pendingRows ? `<ul class="pf-res-slot__teams" style="list-style:none;padding:0">${pendingRows}</ul>` : ''
   return `<div class="pf-card"><h2 class="pf-h3">${node.icon ? `${esc(node.icon)} ` : ''}${esc(node.label)}</h2>${body}${pendingBlock}</div>`

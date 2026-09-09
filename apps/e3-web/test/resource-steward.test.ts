@@ -8,7 +8,7 @@ const plan = {
     { nodeId: 'docce', kind: 'group', label: 'Docce', memberIds: ['s1'], mode: 'scheduled', topoIndex: 0, predecessorIds: [] },
     { nodeId: 'mensa', kind: 'resource', label: 'Mensa', memberIds: ['mensa'], mode: 'free', topoIndex: 1, predecessorIds: ['docce'] },
   ],
-  turns: [{ resourceId: 's1', day: '2026-09-10', nodeId: 'docce', topoIndex: 0, slots: [{ time: '10:30', capacity: 10, persons: 10, overflow: false, teams: [{ team: 'Leoni', categoryId: '1', size: 10 }] }] }],
+  turns: [{ resourceId: 's1', resourceName: 'Spogliatoio 1', day: '2026-09-10', nodeId: 'docce', topoIndex: 0, slots: [{ time: '10:30', capacity: 10, persons: 10, overflow: false, teams: [{ team: 'Leoni', categoryId: '1', size: 10 }] }] }],
   freeLists: [{ nodeId: 'mensa', day: '2026-09-10', teams: [{ team: 'Leoni', categoryId: '1', served: true, servedAt: '11:00' }, { team: 'Aquile', categoryId: '1' }] }],
   pending: [{ nodeId: 'mensa', day: '2026-09-10', team: 'Aquile', categoryId: '1', waitingFor: 'Docce' }],
 } as any;
@@ -19,6 +19,11 @@ describe('e3 resource steward', () => {
     expect(html.indexOf('Docce')).toBeLessThan(html.indexOf('Mensa'));
     expect(html).toContain('js-checkoff');            // toggle control
     expect(html).toContain('Leoni');
+  });
+  it('labels the specific member resource for a group node', () => {
+    const html = renderResourceSteward(ev, plan, '2026-09-10');
+    expect(html).toContain('pf-res-member__name');
+    expect(html).toContain('Spogliatoio 1');          // the assigned resource within the Docce group
   });
   it('renders a free node as a flat list with a served/total counter', () => {
     const html = renderResourceSteward(ev, plan, '2026-09-10');
