@@ -291,6 +291,16 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-pill--member { color: var(--color-text-muted); }
 .pf-pill--served { color: var(--color-action-accent); background: color-mix(in srgb, var(--color-action-accent) 12%, transparent); font-weight: 600; }
 
+/* Global top progress bar — activity feedback for slow serverless calls (rest-client onActivity). */
+.pf-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: var(--color-action-accent); box-shadow: 0 0 8px color-mix(in srgb, var(--color-action-accent) 60%, transparent); z-index: 10000; opacity: 0; transition: width 0.2s ease, opacity 0.3s ease; pointer-events: none; }
+.pf-progress--on { opacity: 1; }
+
+/* Per-button pending spinner (withPending) — feedback right where the user clicked. */
+.pf-btn--loading { pointer-events: none; opacity: 0.8; }
+.pf-btn--loading::before { content: ''; display: inline-block; width: 0.85em; height: 0.85em; margin-right: 0.4em; vertical-align: -0.1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: pf-spin 0.6s linear infinite; }
+@keyframes pf-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pf-btn--loading::before { animation: none; } .pf-progress { transition: opacity 0.3s ease; } }
+
 /* Shared share-link control (enrollment / director / steward) — one uniform graphic. */
 .pf-sharelink { margin-top: var(--space-sm); }
 .pf-sharelink + .pf-sharelink { margin-top: var(--space-md); }

@@ -1,4 +1,4 @@
-import { esc, renderCalendar, renderTabs, categoryKeys, renderStepper, wireSteppers, readStepper, displayStatus, matchStatusBadge, calendarGironeTabs, filterCalendarMatches, finalsPhaseTabs, FINALS_TAB, renderBracket, renderShareLink, wireShareLinks } from '@playfusion/app-shell'
+import { esc, renderCalendar, renderTabs, categoryKeys, renderStepper, wireSteppers, readStepper, displayStatus, matchStatusBadge, calendarGironeTabs, filterCalendarMatches, finalsPhaseTabs, FINALS_TAB, renderBracket, renderShareLink, wireShareLinks, withPending } from '@playfusion/app-shell'
 import type { CategorySchedule, CustomFinalsFormat, EventDetail, FinalsType, ScheduleConfig, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
 import { previewDraws, formatExplainer, type FormulaInput } from '@playfusion/finals-format'
 
@@ -287,9 +287,8 @@ export const scheduleScreen: Screen<ScheduleData> = {
       const btn = e.currentTarget as HTMLButtonElement
       const { config, error } = buildConfig()
       if (error || !config) { err.innerHTML = inlineError(error ?? 'Configurazione non valida.'); return }
-      btn.disabled = true
-      try { await ctx.client.o7.generateSchedule(id, config); ctx.refresh() }
-      catch { err.innerHTML = inlineError('Generazione non riuscita. Riprova.'); btn.disabled = false }
+      try { await withPending(btn, () => ctx.client.o7.generateSchedule(id, config)); ctx.refresh() }
+      catch { err.innerHTML = inlineError('Generazione non riuscita. Riprova.') }
     })
     wireFormula()
     wireStatus()
@@ -298,14 +297,12 @@ export const scheduleScreen: Screen<ScheduleData> = {
       const approve = root.querySelector<HTMLButtonElement>('#approve')
       const publish = root.querySelector<HTMLButtonElement>('#publish')
       if (approve && !approve.disabled) approve.addEventListener('click', async () => {
-        approve.disabled = true
-        try { await ctx.client.o7.approveSchedule(id); ctx.refresh() }
-        catch { err.innerHTML = inlineError('Approvazione non riuscita.'); approve.disabled = false }
+        try { await withPending(approve, () => ctx.client.o7.approveSchedule(id)); ctx.refresh() }
+        catch { err.innerHTML = inlineError('Approvazione non riuscita.') }
       })
       if (publish && !publish.disabled) publish.addEventListener('click', async () => {
-        publish.disabled = true
-        try { await ctx.client.o7.publishSchedule(id); ctx.refresh() }
-        catch { err.innerHTML = inlineError('Pubblicazione non riuscita.'); publish.disabled = false }
+        try { await withPending(publish, () => ctx.client.o7.publishSchedule(id)); ctx.refresh() }
+        catch { err.innerHTML = inlineError('Pubblicazione non riuscita.') }
       })
     }
 

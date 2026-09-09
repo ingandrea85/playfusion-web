@@ -36,4 +36,17 @@ describe('request()', () => {
     await expect(request({ baseUrl: 'https://api/prod', fetch: fetchMock }, 'GET', '/o3/events/x'))
       .rejects.toMatchObject({ status: 404, code: 'EventNotFound' } satisfies Partial<RestError>)
   })
+
+  it('signals activity +1 at start and -1 when settled (success)', async () => {
+    const onActivity = vi.fn()
+    await request({ baseUrl: 'https://api/prod', fetch: vi.fn().mockResolvedValue(okJson({ ok: true })), onActivity }, 'GET', '/x')
+    expect(onActivity.mock.calls.map((c) => c[0])).toEqual([1, -1])
+  })
+
+  it('still signals -1 when the request fails (finally)', async () => {
+    const onActivity = vi.fn()
+    await expect(request({ baseUrl: 'https://api/prod', fetch: vi.fn().mockResolvedValue(okJson({ error: 'X' }, 500)), onActivity }, 'GET', '/x'))
+      .rejects.toBeInstanceOf(RestError)
+    expect(onActivity.mock.calls.map((c) => c[0])).toEqual([1, -1])
+  })
 })
