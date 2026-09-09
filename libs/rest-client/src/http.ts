@@ -7,6 +7,9 @@ export interface HttpConfig {
   orgId?: string
   correlationId?: () => string
   fetch?: typeof fetch       // injectable for tests; defaults to global fetch
+  /** Called +1 when a request starts and -1 when it settles (incl. errors). Wire to a global
+   *  activity indicator (top progress bar) so slow serverless calls feel responsive. */
+  onActivity?: (delta: 1 | -1) => void
 }
 
 const genId = () => (globalThis.crypto?.randomUUID?.() ?? `cid-${Date.now()}`)
@@ -19,19 +22,24 @@ export async function request<T>(cfg: HttpConfig, method: string, path: string, 
   const authHeader = cfg.auth ? await cfg.auth() : null
   if (authHeader) headers[authHeader.name] = authHeader.value
 
-  const res = await doFetch(`${cfg.baseUrl}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-  })
+  cfg.onActivity?.(1)
+  try {
+    const res = await doFetch(`${cfg.baseUrl}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
 
-  const text = await res.text()
-  const parsed: unknown = text ? safeJson(text) : undefined
-  if (!res.ok) {
-    const code = codeOf(parsed) ?? res.statusText ?? 'Error'
-    throw new RestError(res.status, code, `${method} ${path} -> ${res.status} ${code}`, parsed)
+    const text = await res.text()
+    const parsed: unknown = text ? safeJson(text) : undefined
+    if (!res.ok) {
+      const code = codeOf(parsed) ?? res.statusText ?? 'Error'
+      throw new RestError(res.status, code, `${method} ${path} -> ${res.status} ${code}`, parsed)
+    }
+    return parsed as T
+  } finally {
+    cfg.onActivity?.(-1)
   }
-  return parsed as T
 }
 
 const safeJson = (t: string): unknown => { try { return JSON.parse(t) } catch { return t } }

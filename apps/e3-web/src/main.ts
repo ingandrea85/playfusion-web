@@ -1,7 +1,7 @@
 import '@playfusion/tokens/tokens.css'
 import '@playfusion/app-shell/chrome.css'
 import '@playfusion/ui'
-import { HashRouter, applyBrand } from '@playfusion/app-shell'
+import { HashRouter, applyBrand, trackActivity } from '@playfusion/app-shell'
 import { createClient, resolveEventSite, eventLabels } from '@playfusion/rest-client'
 import { readConfig } from './config.js'
 import { renderLanding, renderParticipants, wireParticipants } from './views/landing.js'
@@ -35,7 +35,7 @@ async function applyEventBrand(ev: { organizationId?: string }): Promise<void> {
 // in sessionStorage is only a same-tab convenience; the URL is the source of truth.
 const token = captureMagicLink(new URL(window.location.href), sessionStorage)
 void token
-const client = createClient({ baseUrl: cfg.apiBaseUrl, auth: magicLinkAuthProvider(sessionStorage) })
+const client = createClient({ baseUrl: cfg.apiBaseUrl, auth: magicLinkAuthProvider(sessionStorage), onActivity: trackActivity })
 
 // Optional: confirm the link once and surface an invalid-link notice.
 if (storedToken(sessionStorage)) {

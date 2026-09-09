@@ -79,7 +79,7 @@ describe('schedule generate', () => {
     // groupsCount is no longer a calendar input — it's preserved from the stored config (1).
     expect(config).toMatchObject({ groupsCount: 1, legs: 'HOME_AWAY', fields: ['Campo A', 'Campo B'] })
     expect(config.byCategory).toBeUndefined()
-    expect(refresh).toHaveBeenCalled()
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalled()) // withPending adds a microtask before refresh
   })
 
   it('does not render a groupsCount input (gironi are set in the Gironi tab)', () => {

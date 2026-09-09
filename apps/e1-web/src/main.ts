@@ -1,7 +1,7 @@
 import '@playfusion/tokens/tokens.css'
 import '@playfusion/app-shell/chrome.css'
 import '@playfusion/ui'
-import { HashRouter } from '@playfusion/app-shell'
+import { HashRouter, trackActivity } from '@playfusion/app-shell'
 import { createClient } from '@playfusion/rest-client'
 import { readConfig } from './config.js'
 import { runScreen, errorCard, type ViewCtx, type Screen } from './view.js'
@@ -37,7 +37,7 @@ async function boot() {
     const port = createAuth0Adapter(cfg.auth0)
     if (!(await ensureAuthenticated(port))) return // redirecting to Auth0
     const orgId = (await port.getOrgId()) ?? cfg.orgId
-    const client = createClient({ baseUrl: cfg.apiBaseUrl, orgId, auth: authProviderFrom(port) })
+    const client = createClient({ baseUrl: cfg.apiBaseUrl, orgId, auth: authProviderFrom(port), onActivity: trackActivity })
 
     // S18: apply the tenant brand (colours + wordmark) once, before routing. Best-effort.
     applyBrand(await client.o1.getBrand(orgId).catch(() => null))
