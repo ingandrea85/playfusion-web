@@ -222,6 +222,42 @@ function unassignableCard(d: ResourcesData): string {
     <ul class="pf-stack" style="list-style:none;padding:0">${items}</ul></div>`
 }
 
+/** Served/total for one node across all days (a check-off is per node+day+team). Scheduled: distinct
+ *  (day,team) across the node's slots, served when any slot row is served. Free: from the check-off
+ *  lists. */
+function nodeProgress(d: ResourcesData, node: PlanNodeInfo): { served: number; total: number } {
+  if (node.mode === 'free') {
+    let served = 0, total = 0
+    for (const f of d.plan.freeLists ?? []) if (f.nodeId === node.nodeId) for (const t of f.teams) { total++; if (t.served) served++ }
+    return { served, total }
+  }
+  const all = new Set<string>(), done = new Set<string>()
+  for (const t of d.plan.turns) if (t.nodeId === node.nodeId) for (const s of t.slots) for (const tm of s.teams) {
+    const k = `${t.day}|${tm.team}`; all.add(k); if (tm.served) done.add(k)
+  }
+  return { served: done.size, total: all.size }
+}
+
+/** Top-of-tab at-a-glance monitor: one row per node (topo order) with a served/total progress bar, so
+ *  the organizer sees every resource's advancement without changing the day/resource selects. */
+function progressCard(d: ResourcesData): string {
+  const nodes = [...(d.plan.nodes ?? [])].sort((a, b) => a.topoIndex - b.topoIndex)
+  if (!nodes.length || !d.plan.days.length) return ''
+  const rows = nodes.map((n) => {
+    const { served, total } = nodeProgress(d, n)
+    const pct = total ? Math.round((served / total) * 100) : 0
+    const done = total > 0 && served === total
+    return `<li class="pf-checkoff-row">
+      <span>${n.icon ? `${esc(n.icon)} ` : ''}${esc(n.label)}${n.mode === 'free' ? ' <span class="pf-muted pf-mono" style="font-size:11px">libera</span>' : ''}</span>
+      <span class="pf-row" style="gap:8px;align-items:center;flex:0 0 auto">
+        <span class="pf-res-gauge" style="flex:0 0 auto;width:120px">${total ? `<span class="pf-res-gauge__bar" style="width:${pct}%"></span>` : ''}</span>
+        <span class="pf-mono${done ? ' pf-pill pf-pill--served' : ' pf-muted'}">${served}/${total}</span></span>
+    </li>`
+  }).join('')
+  return `<div class="pf-card"><h2 class="pf-h3">Avanzamento risorse</h2>
+    <ul class="pf-res-slot__teams" style="list-style:none;padding:0">${rows}</ul></div>`
+}
+
 function turnsSection(d: ResourcesData): string {
   if (!d.config.resources.length) return `<div class="pf-card"><h2 class="pf-h3">Turni proposti</h2><p class="pf-muted">Aggiungi almeno una risorsa.</p></div>`
   if (!d.plan.days.length) return `<div class="pf-card"><h2 class="pf-h3">Turni proposti</h2><p class="pf-muted">Genera prima il calendario: i turni si calcolano dagli orari di fine partita.</p></div>`
@@ -247,7 +283,7 @@ function turnsSection(d: ResourcesData): string {
 
 export function renderResources(d: ResourcesData): string {
   if (d.locked) return workspaceShell(d.event, 'resources', lockCard('Risorse & logistica'))
-  return workspaceShell(d.event, 'resources', `<div id="err"></div>${resourceTable(d.config)}${groupsCard(d)}${relationsCard(d)}${nodeModeCard(d)}${stewardLinkCard()}${sizeEditor(d)}${unassignableCard(d)}${turnsSection(d)}`)
+  return workspaceShell(d.event, 'resources', `<div id="err"></div>${progressCard(d)}${resourceTable(d.config)}${groupsCard(d)}${relationsCard(d)}${nodeModeCard(d)}${stewardLinkCard()}${sizeEditor(d)}${unassignableCard(d)}${turnsSection(d)}`)
 }
 
 function num(root: ParentNode, sel: string): number | undefined { const v = root.querySelector<HTMLInputElement>(sel)?.value ?? ''; const n = Number(v); return v !== '' && n > 0 ? Math.floor(n) : undefined }

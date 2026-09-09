@@ -47,6 +47,22 @@ describe('S17 resources view', () => {
     expect(html).toContain('da servire');          // Volpi not yet
     expect(html).not.toContain('js-checkoff');     // organizer view is read-only (no mark button)
   });
+  it('shows a top-of-tab per-node progress summary (served/total)', () => {
+    const d: ResourcesData = { ...base,
+      plan: { ...plan,
+        nodes: [
+          { nodeId: 'r', kind: 'resource', label: 'Docce', icon: '🚿', memberIds: ['r'], mode: 'scheduled', topoIndex: 0, predecessorIds: [] },
+          { nodeId: 'mensa', kind: 'resource', label: 'Mensa', memberIds: ['mensa'], mode: 'free', topoIndex: 1, predecessorIds: ['r'] },
+        ],
+        // Docce: Aquile served, Volpi not → 1/2
+        turns: [{ resourceId: 'r', day: '2026-09-01', nodeId: 'r', topoIndex: 0, slots: [{ time: '10:00', capacity: 16, persons: 16, overflow: false, teams: [{ team: 'Aquile', categoryId: 'U10', size: 8, served: true, servedAt: '10:20' }, { team: 'Volpi', categoryId: 'U10', size: 8 }] }] }],
+        freeLists: [{ nodeId: 'mensa', day: '2026-09-01', teams: [{ team: 'Aquile', categoryId: 'U10', served: true, servedAt: '11:00' }, { team: 'Volpi', categoryId: 'U10' }] }],
+        pending: [],
+      } as any };
+    const html = renderResources(d);
+    expect(html).toContain('Avanzamento risorse');
+    expect(html).toContain('1/2');                 // both Docce and Mensa are 1/2
+  });
   it('flags an overflow slot', () => {
     const over: ResourcesData = { ...base, plan: { ...plan, turns: [{ resourceId: 'r', day: '2026-09-01', slots: [{ time: '10:00', teams: [{ team: 'X', categoryId: 'U10', size: 20 }], persons: 20, capacity: 16, overflow: true }] }] } }
     expect(renderResources(over)).toContain('pf-res-slot--over')
