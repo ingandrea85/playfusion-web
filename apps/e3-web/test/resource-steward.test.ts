@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { renderResourceSteward } from '../src/views/resource-steward';
+// @vitest-environment jsdom
+import { describe, it, expect, vi } from 'vitest';
+import { renderResourceSteward, wireResourceSteward } from '../src/views/resource-steward';
 const ev = { sportEventId: 'e', name: 'Test', sport: 'calcio' } as any;
 const plan = {
   days: ['2026-09-10'], defaultTeamSize: 14, teams: [], unassignable: [], finishesByDay: {},
@@ -44,5 +45,28 @@ describe('e3 resource steward', () => {
     expect(html).toContain('Orsi');
     // A pending team that is in no slot has no active toggle button.
     expect(html).not.toContain('data-team="Orsi"');
+  });
+
+  it('marking a team sends only {nodeId,day,team} — never a full-ISO servedAt (handler zod is HH:MM)', async () => {
+    // Regression: the handler validates an optional servedAt as /^\d{2}:\d{2}$/. The wiring used to
+    // send `servedAt: new Date().toISOString()` (full ISO) → zod rejected the whole body → 400 on
+    // every "Segna fatto". The client must NOT send servedAt; the server stamps it (event-local).
+    const root = document.createElement('div');
+    root.innerHTML = renderResourceSteward(ev, plan, '2026-09-10');
+    const o7 = {
+      markCheckoff: vi.fn(async () => undefined),
+      unmarkCheckoff: vi.fn(async () => undefined),
+      getResourcePlan: vi.fn(async () => plan),
+    } as any;
+    wireResourceSteward(root, o7, 'e', '2026-09-10', plan);
+    const btn = root.querySelector<HTMLButtonElement>('.js-checkoff[data-served="0"]')!;
+    expect(btn).toBeTruthy();
+    btn.click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(o7.markCheckoff).toHaveBeenCalledTimes(1);
+    const [evId, body] = o7.markCheckoff.mock.calls[0];
+    expect(evId).toBe('e');
+    expect(body).toEqual({ nodeId: btn.dataset.node, day: '2026-09-10', team: btn.dataset.team });
+    expect(body).not.toHaveProperty('servedAt'); // no full-ISO servedAt → no 400
   });
 });

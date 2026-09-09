@@ -123,7 +123,9 @@ export function wireResourceSteward(root: ParentNode, o7: O7Api, eventId: string
           if (wasServed) {
             await o7.unmarkCheckoff(eventId, nodeId, day, team)
           } else {
-            await o7.markCheckoff(eventId, { sportEventId: eventId, nodeId, day, team, servedAt: new Date().toISOString() })
+            // No client servedAt: the server stamps it in event-local time (Europe/Rome). Sending a
+            // full ISO string here fails the handler's HH:MM zod → 400 on every "Segna fatto".
+            await o7.markCheckoff(eventId, { nodeId, day, team })
           }
           // Re-fetch ONLY the plan: it already carries served/servedAt on turns[].slots[].teams
           // and freeLists[].teams, and re-resolves pending → active downstream. A separate
