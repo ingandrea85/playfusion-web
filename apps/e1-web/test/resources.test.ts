@@ -34,6 +34,19 @@ describe('S17 resources view', () => {
     expect(html).toContain('pf-res-move')       // "sposta" control
     expect(html).toContain('Aquile')
   })
+  it('for a free resource, the organizer sees the check-off state (served/total + ✓), read-only', () => {
+    const d: ResourcesData = { ...base,
+      plan: { ...plan,
+        nodes: [{ nodeId: 'mensa', kind: 'resource', label: 'Mensa', memberIds: ['r'], mode: 'free', topoIndex: 0, predecessorIds: [] }],
+        freeLists: [{ nodeId: 'mensa', day: '2026-09-01', teams: [{ team: 'Aquile', categoryId: 'U10', served: true, servedAt: '11:00' }, { team: 'Volpi', categoryId: 'U10' }] }],
+        pending: [],
+      } as any };
+    const html = renderResources(d);
+    expect(html).toContain('Serviti 1/2');
+    expect(html).toContain('✓ 11:00');            // Aquile already served
+    expect(html).toContain('da servire');          // Volpi not yet
+    expect(html).not.toContain('js-checkoff');     // organizer view is read-only (no mark button)
+  });
   it('flags an overflow slot', () => {
     const over: ResourcesData = { ...base, plan: { ...plan, turns: [{ resourceId: 'r', day: '2026-09-01', slots: [{ time: '10:00', teams: [{ team: 'X', categoryId: 'U10', size: 20 }], persons: 20, capacity: 16, overflow: true }] }] } }
     expect(renderResources(over)).toContain('pf-res-slot--over')
