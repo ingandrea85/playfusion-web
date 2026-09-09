@@ -74,6 +74,16 @@ describe('S26 match lifecycle badges + delay', () => {
     expect(renderCalendar([{ ...base, id: 'a' }], (id) => id, false, { now, hideScheduledBadge: true })).not.toContain('Programmata')
     expect(renderCalendar([{ ...base, id: 'b', status: 'LIVE' }], (id) => id, false, { now, hideScheduledBadge: true })).toContain('In corso')
   })
+  it('festival match shows "giocata"/no score (non-competitive), and no Risultato button for the organizer', () => {
+    const now = new Date('2026-09-01T09:00:00')
+    const fin = renderCalendar([{ ...base, id: 'f1', phase: 'FESTIVAL' as const, status: 'FINISHED' as const, homeScore: 3, awayScore: 1 }], (id) => id, true, { now })
+    expect(fin).toContain('✓ giocata')
+    expect(fin).not.toContain('3–1')          // never a score in a festival
+    expect(fin).not.toContain('js-resultmatch') // organizer can reschedule but not enter a score
+    expect(fin).toContain('js-editmatch')       // Modifica stays
+    const sched = renderCalendar([{ ...base, id: 'f2', phase: 'FESTIVAL' as const }], (id) => id, false, { now })
+    expect(sched).not.toContain('<b>vs</b>')   // no vs for a festival either
+  })
 })
 
 describe('S26 bottom sheet', () => {

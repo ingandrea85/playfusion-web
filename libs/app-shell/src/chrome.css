@@ -291,6 +291,9 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-pill--member { color: var(--color-text-muted); }
 .pf-pill--served { color: var(--color-action-accent); background: color-mix(in srgb, var(--color-action-accent) 12%, transparent); font-weight: 600; }
 
+/* Festival (non-competitive): "giocata" marker in place of a score. */
+.pf-match__played { color: var(--color-action-accent); font-weight: 600; font-size: 0.85em; }
+
 /* Global top progress bar — activity feedback for slow serverless calls (rest-client onActivity). */
 .pf-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0; background: var(--color-action-accent); box-shadow: 0 0 8px color-mix(in srgb, var(--color-action-accent) 60%, transparent); z-index: 10000; opacity: 0; transition: width 0.2s ease, opacity 0.3s ease; pointer-events: none; }
 .pf-progress--on { opacity: 1; }
