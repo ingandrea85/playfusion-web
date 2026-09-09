@@ -187,7 +187,7 @@ export interface ResourceRelation { from: string; to: string }
 export interface ResourceConfig { resources: Resource[]; defaultTeamSize?: number; teamSizes?: Record<string, number>; assignments?: ResourceAssignment[]; groups?: ResourceGroup[]; relations?: ResourceRelation[] }
 export interface TurnTeam { team: string; categoryId: string; size: number; pinned?: boolean; served?: boolean; servedAt?: string }
 export interface ResourceSlot { time: string; teams: TurnTeam[]; persons: number; capacity: number; overflow: boolean }
-export interface ResourceDayTurns { resourceId: string; day: string; nodeId: string; topoIndex: number; slots: ResourceSlot[] }
+export interface ResourceDayTurns { resourceId: string; resourceName: string; day: string; nodeId: string; topoIndex: number; slots: ResourceSlot[] }
 export interface UnassignableTeam { day: string; team: string; categoryId: string; size: number }
 export interface PlanNodeInfo { nodeId: string; kind: 'group' | 'resource'; label: string; icon?: string; memberIds: string[]; mode: NodeMode; topoIndex: number; predecessorIds: string[] }
 export interface FreeNodeList { nodeId: string; day: string; teams: { team: string; categoryId: string; served?: boolean; servedAt?: string }[] }

@@ -112,7 +112,7 @@ export interface TurnTeam { team: string; categoryId: string; size: number; pinn
 export interface ResourceSlot { time: string; teams: TurnTeam[]; persons: number; capacity: number; overflow: boolean }
 /** One resource's turns for one day. `nodeId`/`topoIndex` identify the plan node (group or ungrouped
  *  resource) this resource belongs to and its position in schedule order. */
-export interface ResourceDayTurns { resourceId: string; day: string; nodeId: string; topoIndex: number; slots: ResourceSlot[] }
+export interface ResourceDayTurns { resourceId: string; resourceName: string; day: string; nodeId: string; topoIndex: number; slots: ResourceSlot[] }
 export interface UnassignableTeam { day: string; team: string; categoryId: string; size: number }
 /** Read-model summary of one plan node, for UI rendering of the node graph alongside the plan. */
 export interface PlanNodeInfo { nodeId: string; kind: 'group' | 'resource'; label: string; icon?: string; memberIds: string[]; mode: NodeMode; topoIndex: number; predecessorIds: string[] }
@@ -315,7 +315,7 @@ export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleC
         }
         freeLists.push({ nodeId: node.nodeId, day, teams: listTeams });
         completion.set(node.nodeId, nodeCompletion);
-        for (const r of node.pool) turns.push({ resourceId: r.resourceId, day, nodeId: node.nodeId, topoIndex: i, slots: [] });
+        for (const r of node.pool) turns.push({ resourceId: r.resourceId, resourceName: r.name, day, nodeId: node.nodeId, topoIndex: i, slots: [] });
         continue;
       }
 
@@ -361,7 +361,7 @@ export function computeResourcePlan(matches: ScheduledMatch[], config: ScheduleC
         }
       }
       completion.set(node.nodeId, packed.produced);
-      for (const r of node.pool) turns.push({ resourceId: r.resourceId, day, nodeId: node.nodeId, topoIndex: i, slots: packed.slotsByRes.get(r.resourceId) ?? [] });
+      for (const r of node.pool) turns.push({ resourceId: r.resourceId, resourceName: r.name, day, nodeId: node.nodeId, topoIndex: i, slots: packed.slotsByRes.get(r.resourceId) ?? [] });
       for (const u of packed.unassignable) unassignable.push({ day, team: u.team, categoryId: u.categoryId, size: u.size });
     }
   }
