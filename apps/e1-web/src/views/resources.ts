@@ -1,4 +1,4 @@
-import { esc, copyToClipboard } from '@playfusion/app-shell'
+import { esc, renderShareLink, wireShareLinks } from '@playfusion/app-shell'
 import type { EventDetail, ResourceConfig, ResourcePlan, Resource, ResourceSlot, ResourceGroup, ResourceRelation, PlanNodeInfo, NodeMode } from '@playfusion/rest-client'
 import { inlineError, lockCard, type Screen } from '../view.js'
 import { workspaceShell } from './workspace.js'
@@ -129,10 +129,7 @@ function nodeModeCard(d: ResourcesData): string {
 function stewardLinkCard(): string {
   return `<div class="pf-card"><h2 class="pf-h3">Link steward</h2>
     <p class="pf-muted">Condividi questo link con lo steward: potrà segnare le squadre servite dal telefono, senza accesso all'area organizzatore.</p>
-    <div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">
-      <button type="button" class="pf-btn js-steward-link">Genera link steward</button>
-      <span class="js-steward-copied pf-muted"></span>
-    </div></div>`
+    <div class="js-steward-row">${renderShareLink({ url: '' })}</div></div>`
 }
 
 function sizeEditor(d: ResourcesData): string {
@@ -377,17 +374,23 @@ export const resourcesScreen: Screen<ResourcesData> = {
       }))
     })
 
-    // S17 Wave B — steward link: one event-wide token, minted on demand and copied to the
-    // clipboard (mirrors the per-field director-link generator in schedule.ts).
-    root.querySelector<HTMLButtonElement>('.js-steward-link')?.addEventListener('click', async () => {
-      const note = root.querySelector<HTMLElement>('.js-steward-copied')
+    // S17 Wave B — steward link: one event-wide token, PRE-GENERATED on mount into the shared
+    // share-link control (URL + Copia + Apri), same graphic as the enrollment/director links.
+    void (async () => {
+      const row = root.querySelector<HTMLElement>('.js-steward-row')
+      if (!row) return
+      const input = row.querySelector<HTMLInputElement>('.pf-sharelink__url')
+      const copyBtn = row.querySelector<HTMLButtonElement>('.js-sharelink-copy')
+      const openA = row.querySelector<HTMLAnchorElement>('.js-sharelink-open')
       try {
         const { token } = await ctx.client.o7.stewardToken(id)
         const url = `${ctx.e3BaseUrl}/e3/?token=${encodeURIComponent(token)}#/events/${encodeURIComponent(id)}/resources`
-        const ok = await copyToClipboard(url)
-        if (note) note.textContent = ok ? 'Copiato ✓' : 'Copia manuale'
-      } catch { if (note) note.textContent = 'Errore, riprova' }
-    })
+        if (input) { input.value = url; input.placeholder = '' }
+        if (copyBtn) { copyBtn.dataset.url = url; copyBtn.disabled = false }
+        if (openA) { openA.href = url; openA.removeAttribute('aria-disabled'); openA.removeAttribute('tabindex') }
+      } catch { if (input) input.placeholder = 'Errore, ricarica la pagina' }
+      wireShareLinks(root)
+    })()
 
     root.querySelector('[data-setdefault]')?.addEventListener('click', () => {
       void save({ ...d.config, defaultTeamSize: num(root, '#r-default') })

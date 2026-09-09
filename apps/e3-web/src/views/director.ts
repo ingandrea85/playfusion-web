@@ -6,9 +6,9 @@ import {
   finalsPhaseTabs, finalsPhaseKey,
 } from '@playfusion/app-shell'
 
-/** The field director's scope, decoded from their magic-link (subject `director:<eventId>:<field>`).
- *  Client-side only, for display/filtering — the backend re-enforces the field on every write. */
-export function directorScopeFromToken(token: string | null): { eventId: string; field: string } | null {
+/** The director's scope, decoded from their magic-link (subject `director:<eventId>:<category>`).
+ *  Client-side only, for display/filtering — the backend re-enforces the category on every write. */
+export function directorScopeFromToken(token: string | null): { eventId: string; category: string } | null {
   if (!token) return null
   try {
     const body = token.split('.')[0] ?? ''
@@ -17,9 +17,14 @@ export function directorScopeFromToken(token: string | null): { eventId: string;
     const payload = JSON.parse(atob(padded)) as { sub?: string }
     const parts = String(payload.sub ?? '').split(':')
     if (parts[0] !== 'director' || !parts[1]) return null
-    return { eventId: parts[1], field: decodeURIComponent(parts.slice(2).join(':')) }
+    return { eventId: parts[1], category: decodeURIComponent(parts.slice(2).join(':')) }
   } catch { return null }
 }
+
+/** The selected field filter persists across refresh (per event, this browser). 'ALL' = every field. */
+const fieldKey = (eventId: string): string => `pf-dir-field-${eventId}`
+const savedField = (eventId: string): string => { try { return localStorage.getItem(fieldKey(eventId)) ?? 'ALL' } catch { return 'ALL' } }
+const saveField = (eventId: string, field: string): void => { try { localStorage.setItem(fieldKey(eventId), field) } catch { /* private mode */ } }
 
 const played = (m: ScheduledMatchView): boolean =>
   m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined
@@ -33,7 +38,7 @@ const dLabel = (m: ScheduledMatchView): string =>
 /** Compact, mobile-first list of the director's field matches — grouped by day, each a tappable
  *  row that opens the score bottom-sheet. Each row carries the S26 status badge + delay. */
 function listBody(matches: ScheduledMatchView[], now: Date): string {
-  if (!matches.length) return `<p class="pf-muted">Nessuna partita su questo campo.</p>`
+  if (!matches.length) return `<p class="pf-muted">Nessuna partita con questo filtro.</p>`
   const days = [...new Set(matches.map((m) => m.day))].sort()
   return days.map((day) => {
     const rows = matches.filter((m) => m.day === day).sort((a, b) => a.time.localeCompare(b.time)).map((m) => {
@@ -57,16 +62,31 @@ const dirFilterTabs = (mine: ScheduledMatchView[]): string =>
     ? `<div id="dir-filter">${renderTabs([{ key: 'ALL', label: 'Tutte' }, { key: 'GROUP', label: 'Gironi' }, { key: 'FINALS', label: 'Finali' }], 'ALL')}</div>`
     : ''
 
-export function renderDirector(event: EventDetail, field: string, matches: ScheduledMatchView[]): string {
-  const mine = matches.filter((m) => m.field === field)
+/** Field filter (Tutti i campi | <field> …) — the director's link now covers a whole CATEGORY across
+ *  fields, so they pick which field to focus on. Shown only when the category spans ≥2 fields. */
+const fieldsOf = (mine: ScheduledMatchView[]): string[] => [...new Set(mine.map((m) => m.field))].sort()
+const fieldFilterTabs = (mine: ScheduledMatchView[], selected: string): string => {
+  const fields = fieldsOf(mine)
+  if (fields.length < 2) return ''
+  const tabs = [{ key: 'ALL', label: 'Tutti i campi' }, ...fields.map((f) => ({ key: f, label: f }))]
+  return `<div id="dir-fieldfilter">${renderTabs(tabs, selected)}</div>`
+}
+
+export function renderDirector(event: EventDetail, category: string, matches: ScheduledMatchView[]): string {
+  const mine = matches.filter((m) => m.categoryId === category)
+  const fields = fieldsOf(mine)
+  const saved = savedField(event.sportEventId)
+  const field = fields.includes(saved) ? saved : 'ALL' // ignore a stale saved field
+  const inField = mine.filter((m) => field === 'ALL' || m.field === field)
   return `${renderPublicTopbar()}
     <main class="pf-container pf-container--narrow">
-      <div class="pf-pagehead"><div class="pf-eyebrow">Direttore di campo</div><h1>${esc(field)}</h1>
+      <div class="pf-pagehead"><div class="pf-eyebrow">Direttore</div><h1>${esc(category)}</h1>
         <div class="pf-mono pf-muted">${esc(event.name ?? event.sport)}</div></div>
       <div id="dir-err"></div>
-      ${dirFilterTabs(mine)}
+      ${fieldFilterTabs(mine, field)}
+      ${dirFilterTabs(inField)}
       <div id="dir-phase"></div>
-      <div id="dir-body">${listBody(mine, new Date())}</div>
+      <div id="dir-body">${listBody(inField, new Date())}</div>
       <div id="dir-sheet"></div>
     </main>`
 }
@@ -75,8 +95,8 @@ export function renderDirector(event: EventDetail, field: string, matches: Sched
  *  lifecycle (S26). SCHEDULED → "Inizia" (kickoff); LIVE → score stepper + Salva/Termina;
  *  FINISHED/CANCELLED → read-only. The director token is attached by the client; the backend
  *  enforces the field. Updates the row in place after each action. */
-export function wireDirector(root: ParentNode, o7: O7Api, eventId: string, field: string, matches: ScheduledMatchView[]): void {
-  const local = matches.filter((m) => m.field === field)
+export function wireDirector(root: ParentNode, o7: O7Api, eventId: string, category: string, matches: ScheduledMatchView[]): void {
+  const local = matches.filter((m) => m.categoryId === category)
   const body = root.querySelector('#dir-body')!
   const sheet = root.querySelector<HTMLElement>('#dir-sheet')!
   const err = root.querySelector('#dir-err')!
@@ -85,24 +105,35 @@ export function wireDirector(root: ParentNode, o7: O7Api, eventId: string, field
   const clearError = () => { err.innerHTML = '' }
   const upsert = (m: ScheduledMatchView) => { const i = local.findIndex((x) => x.id === m.id); if (i >= 0) local[i] = { ...local[i]!, ...m } }
 
+  const fieldbar = root.querySelector<HTMLElement>('#dir-fieldfilter')
   const filterbar = root.querySelector<HTMLElement>('#dir-filter')
   const phasebar = root.querySelector<HTMLElement>('#dir-phase')
+  const fields = fieldsOf(local)
+  const saved = savedField(eventId)
+  let field = fields.includes(saved) ? saved : 'ALL' // persisted across refresh (localStorage)
   let filter = 'ALL'
   let phase = 'ALL'
-  const shown = () => local.filter((m) => {
+  const inField = () => local.filter((m) => field === 'ALL' || m.field === field)
+  const shown = () => inField().filter((m) => {
     if (filter === 'ALL') return true
     if (filter === 'GROUP') return !isFinalPhase(m)
     return isFinalPhase(m) && (phase === 'ALL' || finalsPhaseKey(m.round) === phase) // FINALS
   })
 
   function draw() {
+    if (fieldbar && fields.length >= 2) {
+      const tabs = [{ key: 'ALL', label: 'Tutti i campi' }, ...fields.map((f) => ({ key: f, label: f }))]
+      fieldbar.innerHTML = renderTabs(tabs, field)
+      fieldbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
+        b.addEventListener('click', () => { field = b.dataset.key!; saveField(eventId, field); filter = 'ALL'; phase = 'ALL'; draw() }))
+    }
     if (filterbar) {
       filterbar.innerHTML = renderTabs([{ key: 'ALL', label: 'Tutte' }, { key: 'GROUP', label: 'Gironi' }, { key: 'FINALS', label: 'Finali' }], filter)
       filterbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
         b.addEventListener('click', () => { filter = b.dataset.key!; phase = 'ALL'; draw() }))
     }
     if (phasebar) {
-      const phaseTabs = filter === 'FINALS' ? finalsPhaseTabs(local) : []
+      const phaseTabs = filter === 'FINALS' ? finalsPhaseTabs(inField()) : []
       phasebar.innerHTML = phaseTabs.length ? `<div class="pf-tabs--sub">${renderTabs(phaseTabs, phase)}</div>` : ''
       phasebar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
         b.addEventListener('click', () => { phase = b.dataset.key!; draw() }))

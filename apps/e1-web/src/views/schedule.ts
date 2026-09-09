@@ -1,4 +1,4 @@
-import { esc, renderCalendar, renderTabs, categoryKeys, renderStepper, wireSteppers, readStepper, copyToClipboard, displayStatus, matchStatusBadge, calendarGironeTabs, filterCalendarMatches, finalsPhaseTabs, FINALS_TAB, renderBracket } from '@playfusion/app-shell'
+import { esc, renderCalendar, renderTabs, categoryKeys, renderStepper, wireSteppers, readStepper, displayStatus, matchStatusBadge, calendarGironeTabs, filterCalendarMatches, finalsPhaseTabs, FINALS_TAB, renderBracket, renderShareLink, wireShareLinks } from '@playfusion/app-shell'
 import type { CategorySchedule, CustomFinalsFormat, EventDetail, FinalsType, ScheduleConfig, ScheduleView, ScheduledMatchView } from '@playfusion/rest-client'
 import { previewDraws, formatExplainer, type FormulaInput } from '@playfusion/finals-format'
 
@@ -166,16 +166,15 @@ function calendarCard(matches: ScheduledMatchView[], selCat: string, selGir: str
 
 /** Per-field director links (S25): the organizer shares one link per field; that director
  *  reports only that field's results from the phone. */
-function directorCard(matches: ScheduledMatchView[]): string {
-  const fields = [...new Set(matches.map((m) => m.field))]
-  if (!fields.length) return ''
-  const rows = fields.map((f) => `<div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">
-    <span class="pf-mono">${esc(f)}</span>
-    <button type="button" class="pf-btn js-dirlink" data-field="${esc(f)}">Copia link direttore</button>
-    <span class="js-dircopied pf-muted" data-field="${esc(f)}"></span></div>`).join('')
-  return `<div class="pf-card"><h2 class="pf-h3">Direttori di campo</h2>
-    <p class="pf-muted">Invia a ciascun direttore il link del suo campo: potrà inserire i risultati di quel campo dal telefono.</p>
-    <div class="pf-stack">${rows}</div></div>`
+/** One director link PER CATEGORY (was per field). Each link is pre-generated on mount and shown in
+ *  the shared share-link control (URL + Copia + Apri), the same graphic as the enrollment link. */
+function directorCard(event: EventDetail, matches: ScheduledMatchView[]): string {
+  const cats = event.categorie?.length ? event.categorie : [...new Set(matches.map((m) => m.categoryId))]
+  if (!cats.length) return ''
+  const rows = cats.map((c) => `<div class="js-dirlink-row" data-cat="${esc(c)}">${renderShareLink({ label: `Categoria ${c}` , url: '' })}</div>`).join('')
+  return `<div class="pf-card"><h2 class="pf-h3">Direttori</h2>
+    <p class="pf-muted">Un link per categoria: invialo al direttore, che dal telefono inserirà i risultati di quella categoria (con filtro per campo).</p>
+    ${rows}</div>`
 }
 
 export function renderSchedule(data: ScheduleData): string {
@@ -183,7 +182,7 @@ export function renderSchedule(data: ScheduleData): string {
   const bracket = event.format === 'bracket'
   const festival = event.format === 'festival'
   const calendar = schedule.status === 'NONE' ? '' : calendarCard(matches, categoryKeys(matches)[0] ?? '', 'ALL')
-  const directors = schedule.status === 'NONE' ? '' : directorCard(matches)
+  const directors = schedule.status === 'NONE' ? '' : directorCard(event, matches)
   return workspaceShell(event, 'schedule',
     `<div id="err"></div>${configSection(schedule.config, event.categorie, schedule.status, data.finalsFormats, bracket, data.teamsByCat, festival)}${actionsCard(schedule.status)}${calendar}${directors}`)
 }
@@ -310,19 +309,24 @@ export const scheduleScreen: Screen<ScheduleData> = {
       })
     }
 
-    /** S25: per-field director links. On click, mint a director token for that field and copy
-     *  the E3 director URL (…/e3/?token=…#/events/:id/director) to the clipboard. */
-    function wireDirectorLinks() {
-      root.querySelectorAll<HTMLButtonElement>('.js-dirlink').forEach((btn) => btn.addEventListener('click', async () => {
-        const field = btn.dataset.field!
-        const note = btn.closest('.pf-row')?.querySelector<HTMLElement>('.js-dircopied')
+    /** Director links, one per category, PRE-GENERATED on mount: mint each category's token, fill its
+     *  share-link control (URL + Copia + Apri), then wire the copy buttons. */
+    async function wireDirectorLinks() {
+      const rows = [...root.querySelectorAll<HTMLElement>('.js-dirlink-row')]
+      await Promise.all(rows.map(async (row) => {
+        const cat = row.dataset.cat!
+        const input = row.querySelector<HTMLInputElement>('.pf-sharelink__url')
+        const copyBtn = row.querySelector<HTMLButtonElement>('.js-sharelink-copy')
+        const openA = row.querySelector<HTMLAnchorElement>('.js-sharelink-open')
         try {
-          const { token } = await ctx.client.o7.getDirectorToken(id, field)
+          const { token } = await ctx.client.o7.getDirectorToken(id, cat)
           const url = `${ctx.e3BaseUrl}/e3/?token=${encodeURIComponent(token)}#/events/${encodeURIComponent(id)}/director`
-          const ok = await copyToClipboard(url)
-          if (note) note.textContent = ok ? 'Copiato ✓' : 'Copia manuale'
-        } catch { if (note) note.textContent = 'Errore, riprova' }
+          if (input) { input.value = url; input.placeholder = '' }
+          if (copyBtn) { copyBtn.dataset.url = url; copyBtn.disabled = false }
+          if (openA) { openA.href = url; openA.removeAttribute('aria-disabled'); openA.removeAttribute('tabindex') }
+        } catch { if (input) input.placeholder = 'Errore, ricarica la pagina' }
       }))
+      wireShareLinks(root)
     }
 
     /** S23: category + girone filter tabs above the calendar. Redraws the tab bars and the

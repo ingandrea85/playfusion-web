@@ -1,5 +1,6 @@
 import { esc } from './html.js'
 import { brandWordmark } from './brand.js'
+import { copyToClipboard } from './clipboard.js'
 
 export function renderOrganizerTopbar(active: string): string {
   const link = (href: string, label: string, key: string) =>
@@ -162,6 +163,38 @@ export function renderTabs(items: Tab[], activeKey: string): string {
   return `<nav class="pf-tabs">${items.map((t) =>
     `<button type="button" class="pf-tab${t.key === activeKey ? ' pf-tab--active' : ''}" data-key="${esc(t.key)}" aria-selected="${t.key === activeKey}">${esc(t.label)}</button>`).join('')}</nav>`
 }
+/** Shared "share this link" control (enrollment / director / steward), one uniform graphic: an
+ *  optional label, a read-only URL input, a Copia button and an Apri link. When `url` is empty (a
+ *  token still minting) the input shows a placeholder and Copia/Apri are disabled. Wire with
+ *  wireShareLinks after mounting. */
+export function renderShareLink(opts: { url: string; label?: string; placeholder?: string }): string {
+  const { url, label, placeholder = 'Generazione link…' } = opts
+  const has = !!url
+  const dis = has ? '' : 'disabled'
+  return `<div class="pf-sharelink">
+    ${label ? `<div class="pf-sharelink__label">${esc(label)}</div>` : ''}
+    <div class="pf-row" style="gap:var(--space-sm)">
+      <input class="pf-sharelink__url" readonly value="${esc(url)}" placeholder="${esc(placeholder)}" style="flex:1;min-width:8em" />
+      <button type="button" class="pf-btn js-sharelink-copy" data-url="${esc(url)}" ${dis}>Copia</button>
+      <a class="pf-btn js-sharelink-open" href="${has ? esc(url) : '#'}" target="_blank" rel="noopener" ${dis} ${has ? '' : 'aria-disabled="true" tabindex="-1"'}>Apri</a>
+    </div>
+    <span class="pf-sharelink__note pf-muted"></span>
+  </div>`
+}
+
+/** Wires every .js-sharelink-copy inside `root`: copies its data-url and shows a "Copiato ✓" note. */
+export function wireShareLinks(root: ParentNode): void {
+  root.querySelectorAll<HTMLButtonElement>('.js-sharelink-copy').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const url = btn.dataset.url ?? ''
+      if (!url) return
+      const note = btn.closest('.pf-sharelink')?.querySelector<HTMLElement>('.pf-sharelink__note')
+      const ok = await copyToClipboard(url)
+      if (note) note.textContent = ok ? 'Copiato ✓' : 'Copia manuale'
+    })
+  })
+}
+
 /** Distinct categoryIds in first-seen order (from matches or standings groups). */
 export function categoryKeys(items: Array<{ categoryId: string }>): string[] {
   const out: string[] = []

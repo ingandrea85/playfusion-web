@@ -30,9 +30,9 @@ test('test_decideWinner_rejectsNonDrawOrUnfinished', async () => {
   await expect(decideWinner(matches)({ sportEventId: 'e', matchId: 'f1', winner: 'HOME' })).rejects.toBeInstanceOf(CannotDecideWinnerError);
 });
 
-test('test_decideWinner_directorRestrictedToOwnField', async () => {
-  await matches.replace('e', [fin({ field: 'Campo B' })]);
-  await expect(decideWinner(matches)({ sportEventId: 'e', matchId: 'f1', winner: 'HOME', restrictToField: 'Campo A' })).rejects.toBeInstanceOf(ForbiddenError);
+test('test_decideWinner_directorRestrictedToOwnCategory', async () => {
+  await matches.replace('e', [fin({ categoryId: 'U10' })]);
+  await expect(decideWinner(matches)({ sportEventId: 'e', matchId: 'f1', winner: 'HOME', restrictToCategory: 'U12' })).rejects.toBeInstanceOf(ForbiddenError);
 });
 
 test('test_decideWinner_missing404', async () => {

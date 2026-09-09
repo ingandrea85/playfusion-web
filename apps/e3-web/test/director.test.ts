@@ -10,9 +10,9 @@ const m = (id: string, field: string, home: string, away: string): ScheduledMatc
 const matches = [m('s1', 'Campo A', 'A', 'B'), m('s2', 'Campo A', 'C', 'D'), m('s3', 'Campo B', 'E', 'F')]
 
 describe('directorScopeFromToken', () => {
-  it('decodes eventId + field from a director magic-link', () => {
-    const token = signMagicLink({ subject: `director:e1:${encodeURIComponent('Campo A')}`, roles: ['director'], purpose: 'field-director' })
-    expect(directorScopeFromToken(token)).toEqual({ eventId: 'e1', field: 'Campo A' })
+  it('decodes eventId + category from a director magic-link', () => {
+    const token = signMagicLink({ subject: `director:e1:${encodeURIComponent('U10')}`, roles: ['director'], purpose: 'field-director' })
+    expect(directorScopeFromToken(token)).toEqual({ eventId: 'e1', category: 'U10' })
   })
   it('returns null for a non-director token or missing token', () => {
     expect(directorScopeFromToken(null)).toBeNull()
@@ -21,19 +21,19 @@ describe('directorScopeFromToken', () => {
 })
 
 describe('e3 director view (S26 lifecycle)', () => {
-  it('shows only the field matches; scheduled match → Inizia → stepper → Salva records the result', async () => {
+  it('shows the whole category (across fields); scheduled match → Inizia → stepper → Salva records the result', async () => {
     const o7 = {
       startMatch: vi.fn().mockResolvedValue({ ...matches[0], status: 'LIVE', startedAt: '2026-09-01T09:05:00.000Z' }),
       recordResult: vi.fn().mockResolvedValue({ ...matches[0], status: 'LIVE', homeScore: 2, awayScore: 0 }),
       finishMatch: vi.fn().mockResolvedValue({ ...matches[0], status: 'FINISHED', homeScore: 2, awayScore: 0 }),
     } as any
     const root = document.createElement('div')
-    root.innerHTML = renderDirector(event, 'Campo A', matches)
-    wireDirector(root, o7, 'e1', 'Campo A', matches)
+    root.innerHTML = renderDirector(event, 'U10', matches)
+    wireDirector(root, o7, 'e1', 'U10', matches)
     const body = root.querySelector('#dir-body')!.innerHTML
     expect(body).toContain('A <b>vs</b> B')
     expect(body).toContain('C <b>vs</b> D')
-    expect(body).not.toContain('E <b>vs</b> F') // Campo B hidden
+    expect(body).toContain('E <b>vs</b> F') // Campo B is same category → shown (field filter can narrow)
 
     // tap a SCHEDULED match → sheet shows "Inizia partita" (no stepper yet)
     root.querySelector<HTMLButtonElement>('.js-dirmatch')!.click()
@@ -60,8 +60,8 @@ describe('e3 director view (S26 lifecycle)', () => {
       finishMatch: vi.fn().mockResolvedValue({ ...live, status: 'FINISHED' }),
     } as any
     const root = document.createElement('div')
-    root.innerHTML = renderDirector(event, 'Campo A', [live, matches[1]])
-    wireDirector(root, o7, 'e1', 'Campo A', [live, matches[1]])
+    root.innerHTML = renderDirector(event, 'U10', [live, matches[1]])
+    wireDirector(root, o7, 'e1', 'U10', [live, matches[1]])
     // tap the LIVE match → Termina present
     root.querySelector<HTMLButtonElement>('.js-dirmatch')!.click()
     expect(root.querySelector('#dir-finish')).not.toBeNull()
@@ -78,7 +78,7 @@ describe('e3 director view (S26 lifecycle)', () => {
 describe('director shows finals (S12)', () => {
   const fin: ScheduledMatchView = { id: 'fm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-09-02', time: '10:00', field: 'Campo A', home: '1ª Girone A', away: '2ª Girone A', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'Finale', order: 1, homeResolved: 'Alfa', awayResolved: 'Bravo' }
   it('lists a FINAL match on the field with resolved names + round label', () => {
-    const html = renderDirector(event, 'Campo A', [fin])
+    const html = renderDirector(event, 'U10', [fin])
     expect(html).toContain('Alfa')
     expect(html).toContain('Bravo')
     expect(html).toContain('Finale')
@@ -91,8 +91,8 @@ describe('e3 director decrees winner on a drawn knockout', () => {
     const drawnFinal: ScheduledMatchView = { id: 'fm-1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-09-02', time: '14:00', field: 'Campo A', home: '1ª Girone A', away: '2ª Girone A', homeResolved: 'Alfa', awayResolved: 'Bravo', homeScore: 1, awayScore: 1, status: 'FINISHED', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'F', slot: 'F1' }
     const o7 = { decideWinner: vi.fn().mockResolvedValue({ ...drawnFinal, decidedWinner: 'HOME' }) } as any
     const root = document.createElement('div')
-    root.innerHTML = renderDirector(event, 'Campo A', [drawnFinal])
-    wireDirector(root, o7, 'e1', 'Campo A', [drawnFinal])
+    root.innerHTML = renderDirector(event, 'U10', [drawnFinal])
+    wireDirector(root, o7, 'e1', 'U10', [drawnFinal])
     root.querySelector<HTMLButtonElement>('.js-dirmatch')!.click()
     expect(root.querySelector('#dir-pass-home')).not.toBeNull()
     root.querySelector<HTMLButtonElement>('#dir-pass-home')!.click()
@@ -104,16 +104,38 @@ describe('e3 director Gironi/Finali filter', () => {
   const grp: ScheduledMatchView = { id: 'g1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Girone A', day: '2026-09-01', time: '09:00', field: 'Campo A', home: 'A', away: 'B', phase: 'GROUP' }
   const fin: ScheduledMatchView = { id: 'f1', sportEventId: 'e1', categoryId: 'U10', groupLabel: 'Tabellone', day: '2026-09-02', time: '14:00', field: 'Campo A', home: 'Alfa', away: 'Bravo', phase: 'FINAL', bracketLabel: 'Tabellone', round: 'F' }
   it('shows the filter only with both phases and filters the list', () => {
-    const html = renderDirector(event, 'Campo A', [grp, fin])
+    const html = renderDirector(event, 'U10', [grp, fin])
     expect(html).toContain('id="dir-filter"')
     const root = document.createElement('div'); root.innerHTML = html
-    wireDirector(root, {} as any, 'e1', 'Campo A', [grp, fin])
+    wireDirector(root, {} as any, 'e1', 'U10', [grp, fin])
     ;(root.querySelector('#dir-filter [data-key="FINALS"]') as HTMLButtonElement).click()
     const body = root.querySelector('#dir-body')!.innerHTML
     expect(body).toContain('Alfa')       // final shown
     expect(body).not.toContain('A <b>vs</b> B') // group hidden
   })
   it('no filter bar when the field has only group matches', () => {
-    expect(renderDirector(event, 'Campo A', [grp])).not.toContain('id="dir-filter"')
+    expect(renderDirector(event, 'U10', [grp])).not.toContain('id="dir-filter"')
+  })
+})
+
+describe('e3 director field filter (category spans fields, persists across refresh)', () => {
+  it('offers a field filter, narrows to the chosen field, and remembers it on re-render', () => {
+    localStorage.removeItem('pf-dir-field-e1')
+    // matches span Campo A (s1,s2) + Campo B (s3), all U10
+    const html = renderDirector(event, 'U10', matches)
+    expect(html).toContain('id="dir-fieldfilter"')
+    const root = document.createElement('div'); root.innerHTML = html
+    wireDirector(root, {} as any, 'e1', 'U10', matches)
+    // pick Campo B → only its match shown, and the choice is persisted
+    ;(root.querySelector('#dir-fieldfilter [data-key="Campo B"]') as HTMLButtonElement).click()
+    const body = root.querySelector('#dir-body')!.innerHTML
+    expect(body).toContain('E <b>vs</b> F')          // Campo B match
+    expect(body).not.toContain('A <b>vs</b> B')       // Campo A hidden
+    expect(localStorage.getItem('pf-dir-field-e1')).toBe('Campo B')
+    // a fresh render (simulating a page refresh) restores Campo B
+    const html2 = renderDirector(event, 'U10', matches)
+    const root2 = document.createElement('div'); root2.innerHTML = html2
+    expect(root2.querySelector('#dir-body')!.innerHTML).not.toContain('A <b>vs</b> B')
+    localStorage.removeItem('pf-dir-field-e1')
   })
 })

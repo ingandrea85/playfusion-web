@@ -290,6 +290,14 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-pill { display: inline-flex; align-items: center; font-size: 12px; padding: 3px 9px; border-radius: var(--radius-pill); background: var(--color-surface-sunken, rgba(127,127,127,0.14)); }
 .pf-pill--member { color: var(--color-text-muted); }
 .pf-pill--served { color: var(--color-action-accent); background: color-mix(in srgb, var(--color-action-accent) 12%, transparent); font-weight: 600; }
+
+/* Shared share-link control (enrollment / director / steward) — one uniform graphic. */
+.pf-sharelink { margin-top: var(--space-sm); }
+.pf-sharelink + .pf-sharelink { margin-top: var(--space-md); }
+.pf-sharelink__label { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.pf-sharelink__url { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; }
+.pf-sharelink__note { display: inline-block; font-size: 12px; margin-top: 4px; }
+.js-sharelink-open[aria-disabled="true"] { opacity: 0.5; pointer-events: none; }
 .pf-group { border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: var(--space-xs); }
 .pf-group__head { display: flex; align-items: center; gap: var(--space-sm); }
 .pf-group__name { font-weight: 650; }

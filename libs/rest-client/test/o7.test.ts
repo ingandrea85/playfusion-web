@@ -112,14 +112,14 @@ describe('o7 tie-break resolution (S11)', () => {
 })
 
 describe('o7 director token (S25)', () => {
-  it('getDirectorToken POSTs the field to /director-token', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ field: 'Campo A', token: 'tok-d' }), { status: 200, headers: { 'content-type': 'application/json' } }))
+  it('getDirectorToken POSTs the category to /director-token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ category: 'U10', token: 'tok-d' }), { status: 200, headers: { 'content-type': 'application/json' } }))
     const c = createClient({ baseUrl: 'https://api/prod', fetch: fetchMock })
-    const out = await c.o7.getDirectorToken('e1', 'Campo A')
+    const out = await c.o7.getDirectorToken('e1', 'U10')
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('https://api/prod/o7/events/e1/director-token')
     expect(init.method).toBe('POST')
-    expect(JSON.parse(init.body)).toEqual({ field: 'Campo A' })
+    expect(JSON.parse(init.body)).toEqual({ category: 'U10' })
     expect(out.token).toBe('tok-d')
   })
 })

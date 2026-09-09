@@ -4,9 +4,9 @@ import { InvalidMatchTransitionError, MatchNotFoundError } from '../errors.js';
 import type { MatchRepository } from '../ports.js';
 import type { Clock } from './transition-status.js';
 
-/** `restrictToField` (S25): when set (a field director), the match must be on that field, else
+/** `restrictToCategory` (S25): when set (a category director), the match must be in that category, else
  *  403 — a director reports only their own field's matches. */
-export interface RecordResultInput { sportEventId: string; matchId: string; homeScore: number; awayScore: number; restrictToField?: string }
+export interface RecordResultInput { sportEventId: string; matchId: string; homeScore: number; awayScore: number; restrictToCategory?: string }
 
 const systemClock: Clock = () => new Date().toISOString();
 
@@ -14,20 +14,20 @@ const systemClock: Clock = () => new Date().toISOString();
  *  S26 lifecycle: recording a SCHEDULED/LIVE match keeps it live (auto-advancing SCHEDULED → LIVE
  *  and stamping the kickoff), so a director who taps a score without pressing "Inizia" still
  *  works; a CANCELLED match rejects results (409); and once a match is FINISHED only the
- *  organizer may correct it — a field director (`restrictToField` set) gets 403. 404 if the match
+ *  organizer may correct it — a field director (`restrictToCategory` set) gets 403. 404 if the match
  *  doesn't exist; 403 if a director targets a match outside their field. */
 export function recordResult(matches: MatchRepository, now: Clock = systemClock) {
   return async (input: RecordResultInput): Promise<ScheduledMatch> => {
     const all = await matches.list(input.sportEventId);
     const target = all.find((m) => m.id === input.matchId);
     if (!target) throw new MatchNotFoundError(input.matchId);
-    if (input.restrictToField !== undefined && target.field !== input.restrictToField) {
-      throw new ForbiddenError('match is not on your field');
+    if (input.restrictToCategory !== undefined && target.categoryId !== input.restrictToCategory) {
+      throw new ForbiddenError('match is not in your category');
     }
     const status = effectiveStatus(target);
     if (!canRecord(status)) throw new InvalidMatchTransitionError(status, 'record a result on');
     // A field director cannot re-open a finished match — only the organizer corrects a result.
-    if (input.restrictToField !== undefined && status === 'FINISHED') {
+    if (input.restrictToCategory !== undefined && status === 'FINISHED') {
       throw new ForbiddenError('match is finished; only the organizer can correct the result');
     }
     // Correcting a FINISHED match keeps it FINISHED; any other state becomes LIVE (kickoff stamped).

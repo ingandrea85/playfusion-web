@@ -83,7 +83,7 @@ new HashRouter()
       if (scope.eventId !== id) { app.innerHTML = errorCard('Questo link direttore non vale per questo evento.'); return }
       const [ev, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getMatches(id)])
       await applyEventBrand(ev)
-      app.innerHTML = renderDirector(ev, scope.field, matches); wireDirector(app, client.o7, id, scope.field, matches)
+      app.innerHTML = renderDirector(ev, scope.category, matches); wireDirector(app, client.o7, id, scope.category, matches)
     } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/resources', async ({ id }) => {

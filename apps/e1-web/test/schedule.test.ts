@@ -24,6 +24,16 @@ describe('schedule render', () => {
     expect(html).not.toContain('id="approve"')
   })
 
+  it('renders one director share-link per category (not per field)', () => {
+    const html = renderSchedule(data('GENERATED', [match]))
+    // event has categories U10 + U12 → two director rows, each a pre-generated share-link
+    expect(html).toContain('data-cat="U10"')
+    expect(html).toContain('data-cat="U12"')
+    expect(html).toContain('Categoria U10')
+    expect(html).toContain('js-dirlink-row')
+    expect(html).toContain('pf-sharelink')
+    expect(html).not.toContain('data-field="Campo A"'); // no longer per-field
+  })
   it('renders the calendar and enables Approva when GENERATED', () => {
     const html = renderSchedule(data('GENERATED', [match]))
     expect(html).toContain('Girone A')

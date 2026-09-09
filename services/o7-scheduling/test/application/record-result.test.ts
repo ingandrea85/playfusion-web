@@ -51,21 +51,21 @@ test('test_recordResult_missingMatch404', async () => {
 });
 
 import { ForbiddenError } from '@playfusion/platform-lib';
-test('test_recordResult_directorScope_allowsOwnField_rejectsOther', async () => {
-  await matches.replace('evt-1', [{ ...mk('sm-1', 'A', 'B'), field: 'Campo A' }, { ...mk('sm-2', 'C', 'D'), field: 'Campo B' }]);
-  // director restricted to Campo A can report sm-1...
-  const m = await recordResult(matches)({ sportEventId: 'evt-1', matchId: 'sm-1', homeScore: 1, awayScore: 0, restrictToField: 'Campo A' });
+test('test_recordResult_directorScope_allowsOwnCategory_rejectsOther', async () => {
+  await matches.replace('evt-1', [{ ...mk('sm-1', 'A', 'B'), categoryId: 'U10' }, { ...mk('sm-2', 'C', 'D'), categoryId: 'U12' }]);
+  // director restricted to U10 can report sm-1...
+  const m = await recordResult(matches)({ sportEventId: 'evt-1', matchId: 'sm-1', homeScore: 1, awayScore: 0, restrictToCategory: 'U10' });
   expect(m).toMatchObject({ id: 'sm-1', homeScore: 1 });
-  // ...but not sm-2 (Campo B)
-  await expect(recordResult(matches)({ sportEventId: 'evt-1', matchId: 'sm-2', homeScore: 1, awayScore: 0, restrictToField: 'Campo A' }))
+  // ...but not sm-2 (U12)
+  await expect(recordResult(matches)({ sportEventId: 'evt-1', matchId: 'sm-2', homeScore: 1, awayScore: 0, restrictToCategory: 'U10' }))
     .rejects.toBeInstanceOf(ForbiddenError);
 });
 
 test('test_recordResult_directorCannotCorrectFinished', async () => {
-  await matches.replace('evt-1', [{ ...mk('sm-1', 'A', 'B'), field: 'Campo A' }]);
-  await recordResult(matches)({ sportEventId: 'evt-1', matchId: 'sm-1', homeScore: 2, awayScore: 0, restrictToField: 'Campo A' });
-  await finishMatch(matches)({ sportEventId: 'evt-1', matchId: 'sm-1', restrictToField: 'Campo A' });
+  await matches.replace('evt-1', [{ ...mk('sm-1', 'A', 'B'), categoryId: 'U10' }]);
+  await recordResult(matches)({ sportEventId: 'evt-1', matchId: 'sm-1', homeScore: 2, awayScore: 0, restrictToCategory: 'U10' });
+  await finishMatch(matches)({ sportEventId: 'evt-1', matchId: 'sm-1', restrictToCategory: 'U10' });
   // Once finished, a director may not re-open the result — only the organizer corrects.
-  await expect(recordResult(matches)({ sportEventId: 'evt-1', matchId: 'sm-1', homeScore: 3, awayScore: 0, restrictToField: 'Campo A' }))
+  await expect(recordResult(matches)({ sportEventId: 'evt-1', matchId: 'sm-1', homeScore: 3, awayScore: 0, restrictToCategory: 'U10' }))
     .rejects.toBeInstanceOf(ForbiddenError);
 });

@@ -1,4 +1,4 @@
-import { renderOrganizerWorkspace, esc, copyToClipboard, type WorkspaceTab } from '@playfusion/app-shell'
+import { renderOrganizerWorkspace, esc, renderShareLink, wireShareLinks, type WorkspaceTab } from '@playfusion/app-shell'
 import type { EventDetail, RegistrationView, RegistrationWindowView } from '@playfusion/rest-client'
 import { eventLabels } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
@@ -67,9 +67,7 @@ export function renderEnroll(d: EnrollData): string {
   const shareUrl = enrollUrl(d.e3BaseUrl, id, d.enrollToken)
   const shareCard = open ? `<div class="pf-card"><h2>Link iscrizioni</h2>
       <p class="pf-muted">Invia questo link agli allenatori: aprendolo potranno iscrivere la propria squadra.</p>
-      <div class="pf-row"><input id="share" readonly value="${esc(shareUrl)}" style="flex:1" />
-        <button class="pf-btn" data-copy>Copia</button><a class="pf-btn" href="${esc(shareUrl)}" target="_blank" rel="noopener">Apri</a></div>
-      <span id="copied" class="pf-muted"></span></div>` : ''
+      ${renderShareLink({ url: shareUrl })}</div>` : ''
   const inbox = d.pending.length
     ? d.pending.map((r) => `<li class="pf-card"><div class="pf-row">
         <span><b>${esc(r.participantRef)}</b> · <span class="pf-mono">${esc(r.categoria)}</span></span>
@@ -113,11 +111,7 @@ export const enrollScreen: Screen<EnrollData> = {
       })
       try { await ctx.client.o5.openRegistrationWindow(id, caps); ctx.refresh() } catch { fail('Apertura non riuscita.') }
     })
-    root.querySelector('[data-copy]')?.addEventListener('click', async () => {
-      const ok = await copyToClipboard(enrollUrl(d.e3BaseUrl, id, d.enrollToken))
-      const el = root.querySelector('#copied')
-      if (el) el.textContent = ok ? 'Copiato ✓' : 'Copia manuale'
-    })
+    wireShareLinks(root)
     root.querySelector('#inbox')?.addEventListener('click', async (e) => {
       const t = e.target as HTMLElement
       const cId = t.closest('[data-confirm]')?.getAttribute('data-confirm')

@@ -106,10 +106,10 @@ async function assertPro(c: any): Promise<void> {
   if (sub.plan === 'FREE') throw new ForbiddenError('this feature requires a Pro plan');
 }
 
-// S25: who may report a result — the organizer (Auth0 / RegistrationManager bridge) OR a field
-// director (magic-link, role 'director'). Stashes the reporter's scope: `{ full: true }` for the
-// organizer, or `{ field, eventId }` for a director (the handler then restricts to that field).
-type ReporterScope = { full: true } | { field: string; eventId: string };
+// S25: who may report a result — the organizer (Auth0 / RegistrationManager bridge) OR a director
+// (magic-link, role 'director'). Stashes the reporter's scope: `{ full: true }` for the organizer, or
+// `{ category, eventId }` for a director (the handler then restricts to that category, across fields).
+type ReporterScope = { full: true } | { category: string; eventId: string };
 const requireResultReporter = async (c: any, next: () => Promise<unknown>) => {
   const token = bearerToken(c);
   if (!token) throw new UnauthorizedError('missing token');
@@ -119,7 +119,7 @@ const requireResultReporter = async (c: any, next: () => Promise<unknown>) => {
     if (magic.roles.includes(DIRECTOR_ROLE)) {
       const scope = parseDirectorScope(magic.subject);
       if (!scope) throw new ForbiddenError('invalid director token');
-      c.set('reporterScope', { field: scope.field, eventId: scope.eventId } as ReporterScope);
+      c.set('reporterScope', { category: scope.category, eventId: scope.eventId } as ReporterScope);
       return next();
     }
     throw new ForbiddenError('actor cannot report results');
@@ -156,12 +156,12 @@ app.put('/events/:id/matches/:matchId', organizer, async (c) => {
 });
 
 // A field director's token is bound to one event + field; the organizer is unrestricted.
-// Returns the field to restrict writes to (undefined = organizer), after checking the token's
+// Returns the category to restrict writes to (undefined = organizer), after checking the token's
 // event matches the path.
-const reporterFieldScope = (c: any, eventId: string): string | undefined => {
+const reporterCategoryScope = (c: any, eventId: string): string | undefined => {
   const scope = c.get('reporterScope' as never) as ReporterScope;
-  if ('field' in scope && scope.eventId !== eventId) throw new ForbiddenError('token is for another event');
-  return 'field' in scope ? scope.field : undefined;
+  if ('category' in scope && scope.eventId !== eventId) throw new ForbiddenError('token is for another event');
+  return 'category' in scope ? scope.category : undefined;
 };
 
 // S10: record/correct a group match result (organizer or field director). S26: recording
@@ -169,20 +169,20 @@ const reporterFieldScope = (c: any, eventId: string): string | undefined => {
 const resultBody = z.object({ homeScore: z.number().int().nonnegative(), awayScore: z.number().int().nonnegative() });
 app.post('/events/:id/matches/:matchId/result', requireResultReporter, async (c) => {
   const b = resultBody.parse(await c.req.json());
-  const restrictToField = reporterFieldScope(c, c.req.param('id'));
-  const match = await recordResult(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), homeScore: b.homeScore, awayScore: b.awayScore, restrictToField });
+  const restrictToCategory = reporterCategoryScope(c, c.req.param('id'));
+  const match = await recordResult(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), homeScore: b.homeScore, awayScore: b.awayScore, restrictToCategory });
   return c.json(match);
 });
 
 // S26: match lifecycle. Start/finish are result-reporter actions (organizer OR the field's
 // director); cancel is an organizer-only administrative override.
 app.post('/events/:id/matches/:matchId/start', requireResultReporter, async (c) => {
-  const restrictToField = reporterFieldScope(c, c.req.param('id'));
-  return c.json(await startMatch(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), restrictToField }));
+  const restrictToCategory = reporterCategoryScope(c, c.req.param('id'));
+  return c.json(await startMatch(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), restrictToCategory }));
 });
 app.post('/events/:id/matches/:matchId/finish', requireResultReporter, async (c) => {
-  const restrictToField = reporterFieldScope(c, c.req.param('id'));
-  return c.json(await finishMatch(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), restrictToField }));
+  const restrictToCategory = reporterCategoryScope(c, c.req.param('id'));
+  return c.json(await finishMatch(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), restrictToCategory }));
 });
 app.post('/events/:id/matches/:matchId/cancel', organizer, async (c) =>
   c.json(await cancelMatch(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId') })));
@@ -192,23 +192,23 @@ app.post('/events/:id/matches/:matchId/cancel', organizer, async (c) =>
 const decideBody = z.object({ winner: z.enum(['HOME', 'AWAY']) });
 app.post('/events/:id/matches/:matchId/decide-winner', requireResultReporter, async (c) => {
   const { winner } = decideBody.parse(await c.req.json());
-  const restrictToField = reporterFieldScope(c, c.req.param('id'));
-  return c.json(await decideWinner(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), winner, restrictToField }));
+  const restrictToCategory = reporterCategoryScope(c, c.req.param('id'));
+  return c.json(await decideWinner(matches)({ sportEventId: c.req.param('id'), matchId: c.req.param('matchId'), winner, restrictToCategory }));
 });
 
 // S25: mint a per-field director link (organizer). The token lasts the whole tournament — TTL
-// runs to the event's end date (+2 days), with a generous fallback. The organizer shares one
-// link per field; the director then reports only that field's results.
-const directorBody = z.object({ field: z.string().min(1) });
+// runs to the event's end date (+2 days), with a generous fallback. The organizer shares one link
+// per CATEGORY; the director then reports that category's results (across fields, filtering in the UI).
+const directorBody = z.object({ category: z.string().min(1) });
 app.post('/events/:id/director-token', organizer, async (c) => {
-  const { field } = directorBody.parse(await c.req.json());
+  const { category } = directorBody.parse(await c.req.json());
   const sportEventId = c.req.param('id');
   const ev = await events.get(sportEventId);
   const now = Math.floor(Date.now() / 1000);
   const endSec = ev ? Math.floor(Date.parse(`${ev.dates.to}T23:59:59Z`) / 1000) : NaN;
   const ttlSeconds = Number.isFinite(endSec) && endSec > now ? (endSec - now) + 2 * 86400 : 180 * 86400;
-  const token = signMagicLink({ subject: directorSubject(sportEventId, field), roles: [DIRECTOR_ROLE], purpose: DIRECTOR_PURPOSE, ttlSeconds });
-  return c.json({ field, token });
+  const token = signMagicLink({ subject: directorSubject(sportEventId, category), roles: [DIRECTOR_ROLE], purpose: DIRECTOR_PURPOSE, ttlSeconds });
+  return c.json({ category, token });
 });
 
 // B4: mint a resource-steward link (organizer). Scoped to one event; the steward then checks

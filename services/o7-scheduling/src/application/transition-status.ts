@@ -7,16 +7,16 @@ import type { MatchRepository } from '../ports.js';
 export type Clock = () => string;
 const systemClock: Clock = () => new Date().toISOString();
 
-/** `restrictToField` (a field director) forces the match to be on that field — else 403, as in
+/** `restrictToCategory` (a category director) forces the match to be in that category — else 403, as in
  *  recordResult. Organizer transitions pass it undefined. */
-export interface TransitionInput { sportEventId: string; matchId: string; restrictToField?: string }
+export interface TransitionInput { sportEventId: string; matchId: string; restrictToCategory?: string }
 
 async function loadTarget(matches: MatchRepository, input: TransitionInput): Promise<{ all: ScheduledMatch[]; target: ScheduledMatch }> {
   const all = await matches.list(input.sportEventId);
   const target = all.find((m) => m.id === input.matchId);
   if (!target) throw new MatchNotFoundError(input.matchId);
-  if (input.restrictToField !== undefined && target.field !== input.restrictToField) {
-    throw new ForbiddenError('match is not on your field');
+  if (input.restrictToCategory !== undefined && target.categoryId !== input.restrictToCategory) {
+    throw new ForbiddenError('match is not in your category');
   }
   return { all, target };
 }
