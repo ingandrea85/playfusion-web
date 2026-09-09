@@ -282,9 +282,9 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-checkoff-row--served { background: color-mix(in srgb, var(--color-action-accent) 9%, transparent); border-radius: var(--radius-sm); padding: 2px 6px; }
 .pf-checkoff-row--served > span:first-child::before { content: '✓ '; color: var(--color-action-accent); font-weight: 700; }
 
-/* Steward board: within a group node, label each member resource (which spogliatoio a team is in). */
-.pf-res-member { margin-top: var(--space-sm); }
-.pf-res-member__name { font-size: 12px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px; }
+/* Steward board: a group node shows one row per team; "usa: <member> ×N" names the specific
+   resources the (possibly split) team occupies, so a single check-off never looks like two. */
+.pf-res-uses { display: block; font-size: 12px; color: var(--color-text-muted); margin-top: 1px; }
 
 /* Resource groups (pools) & relations (sequence) — S17 Wave A */
 .pf-pill { display: inline-flex; align-items: center; font-size: 12px; padding: 3px 9px; border-radius: var(--radius-pill); background: var(--color-surface-sunken, rgba(127,127,127,0.14)); }
