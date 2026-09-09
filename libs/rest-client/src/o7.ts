@@ -14,7 +14,7 @@ export interface O7Api {
   getFinalStandings(eventId: string): Promise<CategoryFinalStanding[]>
   // S11: manually resolve a group's residual tie (organizer). `order` is the tied teams' decided order.
   setTieOverride(eventId: string, categoryId: string, groupLabel: string, order: string[]): Promise<{ order: string[]; resolvedBy: string; resolvedAt: string }>
-  getDirectorToken(eventId: string, field: string): Promise<{ field: string; token: string }>
+  getDirectorToken(eventId: string, category: string): Promise<{ category: string; token: string }>
   // S26: match lifecycle transitions.
   startMatch(eventId: string, matchId: string): Promise<ScheduledMatchView>
   finishMatch(eventId: string, matchId: string): Promise<ScheduledMatchView>
@@ -47,7 +47,7 @@ export const o7 = (cfg: HttpConfig): O7Api => ({
   getStandings: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/standings`),
   getFinalStandings: (id) => request(cfg, 'GET', `/o7/events/${encodeURIComponent(id)}/final-standings`),
   setTieOverride: (id, categoryId, groupLabel, order) => request(cfg, 'PUT', `/o7/events/${encodeURIComponent(id)}/standings/${encodeURIComponent(categoryId)}/${encodeURIComponent(groupLabel)}/override`, { order }),
-  getDirectorToken: (id, field) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/director-token`, { field }),
+  getDirectorToken: (id, category) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/director-token`, { category }),
   startMatch: (id, matchId) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/start`),
   finishMatch: (id, matchId) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/finish`),
   cancelMatch: (id, matchId) => request(cfg, 'POST', `/o7/events/${encodeURIComponent(id)}/matches/${encodeURIComponent(matchId)}/cancel`),

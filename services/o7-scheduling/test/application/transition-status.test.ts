@@ -14,7 +14,7 @@ const fixedClock = () => '2026-09-01T09:05:00.000Z';
 let matches: InMemoryMatchRepository;
 beforeEach(async () => {
   matches = new InMemoryMatchRepository();
-  await matches.replace('evt-1', [mk('sm-1'), mk('sm-2', 'Campo B')]);
+  await matches.replace('evt-1', [mk('sm-1'), { ...mk('sm-2', 'Campo B'), categoryId: 'U12' }]);
 });
 
 test('test_start_setsLiveAndStampsKickoffOnce', async () => {
@@ -47,10 +47,10 @@ test('test_cannotStartOrRecord_afterCancel', async () => {
     .rejects.toBeInstanceOf(InvalidMatchTransitionError);
 });
 
-test('test_directorFieldRestriction_onTransitions', async () => {
-  // director on Campo A can start sm-1 but not sm-2 (Campo B)
-  await startMatch(matches, fixedClock)({ sportEventId: 'evt-1', matchId: 'sm-1', restrictToField: 'Campo A' });
-  await expect(startMatch(matches, fixedClock)({ sportEventId: 'evt-1', matchId: 'sm-2', restrictToField: 'Campo A' }))
+test('test_directorCategoryRestriction_onTransitions', async () => {
+  // director on U10 can start sm-1 but not sm-2 (U12)
+  await startMatch(matches, fixedClock)({ sportEventId: 'evt-1', matchId: 'sm-1', restrictToCategory: 'U10' });
+  await expect(startMatch(matches, fixedClock)({ sportEventId: 'evt-1', matchId: 'sm-2', restrictToCategory: 'U10' }))
     .rejects.toBeInstanceOf(ForbiddenError);
 });
 

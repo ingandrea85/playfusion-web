@@ -101,8 +101,11 @@ describe('S17 resources view', () => {
       turns: [{ resourceId: 's1', day: '2026-09-01', nodeId: 'docce', topoIndex: 0, slots: [] }] } };
     expect(renderResources(d as any)).toContain('<optgroup label="Docce">');
   })
-  it('shows a generate-steward-link control', () => {
-    expect(renderResources(base as any)).toContain('js-steward-link');
+  it('shows the steward share-link control (unified graphic)', () => {
+    const html = renderResources(base as any);
+    expect(html).toContain('Link steward');
+    expect(html).toContain('js-steward-row');       // pre-generated share-link row
+    expect(html).toContain('pf-sharelink');          // shared share-link component
   });
   it('shows a per-node mode toggle (scheduled/free)', () => {
     const d = { ...base, plan: { ...base.plan, nodes: [{ nodeId: 'mensa', kind: 'resource', label: 'Mensa', memberIds: ['mensa'], mode: 'free', topoIndex: 0, predecessorIds: [] }] } };
