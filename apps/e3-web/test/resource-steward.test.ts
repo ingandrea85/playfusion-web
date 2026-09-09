@@ -5,10 +5,13 @@ const ev = { sportEventId: 'e', name: 'Test', sport: 'calcio' } as any;
 const plan = {
   days: ['2026-09-10'], defaultTeamSize: 14, teams: [], unassignable: [], finishesByDay: {},
   nodes: [
-    { nodeId: 'docce', kind: 'group', label: 'Docce', memberIds: ['s1'], mode: 'scheduled', topoIndex: 0, predecessorIds: [] },
+    { nodeId: 'docce', kind: 'group', label: 'Docce', memberIds: ['s1', 's2'], mode: 'scheduled', topoIndex: 0, predecessorIds: [] },
     { nodeId: 'mensa', kind: 'resource', label: 'Mensa', memberIds: ['mensa'], mode: 'free', topoIndex: 1, predecessorIds: ['docce'] },
   ],
-  turns: [{ resourceId: 's1', resourceName: 'Spogliatoio 1', day: '2026-09-10', nodeId: 'docce', topoIndex: 0, slots: [{ time: '10:30', capacity: 10, persons: 10, overflow: false, teams: [{ team: 'Leoni', categoryId: '1', size: 10 }] }] }],
+  turns: [
+    { resourceId: 's1', resourceName: 'Spogliatoio 1', day: '2026-09-10', nodeId: 'docce', topoIndex: 0, slots: [{ time: '10:30', capacity: 10, persons: 10, overflow: false, teams: [{ team: 'Leoni', categoryId: '1', size: 10 }] }] },
+    { resourceId: 's2', resourceName: 'Spogliatoio 2', day: '2026-09-10', nodeId: 'docce', topoIndex: 0, slots: [{ time: '10:30', capacity: 10, persons: 4, overflow: false, teams: [{ team: 'Leoni', categoryId: '1', size: 4 }] }] },
+  ],
   freeLists: [{ nodeId: 'mensa', day: '2026-09-10', teams: [{ team: 'Leoni', categoryId: '1', served: true, servedAt: '11:00' }, { team: 'Aquile', categoryId: '1' }] }],
   pending: [{ nodeId: 'mensa', day: '2026-09-10', team: 'Aquile', categoryId: '1', waitingFor: 'Docce' }],
 } as any;
@@ -20,10 +23,13 @@ describe('e3 resource steward', () => {
     expect(html).toContain('js-checkoff');            // toggle control
     expect(html).toContain('Leoni');
   });
-  it('labels the specific member resource for a group node', () => {
+  it('aggregates a split team to ONE row/button in a group, with a "usa:" member breakdown', () => {
     const html = renderResourceSteward(ev, plan, '2026-09-10');
-    expect(html).toContain('pf-res-member__name');
-    expect(html).toContain('Spogliatoio 1');          // the assigned resource within the Docce group
+    // Leoni is split across Spogliatoio 1 (×10) + Spogliatoio 2 (×4) but must appear ONCE with ONE button.
+    const leoniButtons = html.match(/data-node="docce" data-team="Leoni"/g) ?? [];
+    expect(leoniButtons).toHaveLength(1);
+    expect(html).toContain('usa: Spogliatoio 1 ×10 · Spogliatoio 2 ×4');
+    expect(html).toContain('(Spogliatoio 1 · Spogliatoio 2)'); // group header lists its member resources
   });
   it('renders a free node as a flat list with a served/total counter', () => {
     const html = renderResourceSteward(ev, plan, '2026-09-10');

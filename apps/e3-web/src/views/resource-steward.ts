@@ -43,25 +43,53 @@ function pendingNodeRow(nodeId: string, day: string, plan: ResourcePlan): string
     </li>`).join('')
 }
 
-function scheduledNode(node: PlanNodeInfo, day: string, plan: ResourcePlan): string {
+/** GROUP node: a team may be SPLIT across member resources (Doccia 1 ×10 + Doccia 2 ×4), but the
+ *  check-off is one per (team, node). So aggregate to ONE row per team with a single button and a
+ *  "usa: <member> ×N · …" breakdown — never one button per member (that made a single check-off look
+ *  like two, and marking one flipped the other). */
+function groupTeamRows(node: PlanNodeInfo, day: string, plan: ResourcePlan): string {
   const turns = plan.turns.filter((t) => t.nodeId === node.nodeId && t.day === day)
-  // For a GROUP node the pool has several member resources (e.g. Spogliatoio 1 / 2): label each
-  // member's slots with its name so the steward sees the specific resource a team is assigned to.
-  // A single-resource node needs no such sub-label (the card title already names it).
-  const showMember = node.kind === 'group'
-  const sections = turns
-    .filter((t) => t.slots.length)
-    .map((t) => {
-      const slotsHtml = t.slots.map((s) => scheduledSlot(node.nodeId, day, s, plan)).join('')
-      return showMember
-        ? `<div class="pf-res-member"><div class="pf-res-member__name pf-mono">${esc(t.resourceName)}</div>${slotsHtml}</div>`
-        : slotsHtml
+  type Agg = { team: string; categoryId: string; served: boolean; time: string; parts: { name: string; size: number }[] }
+  const byTeam = new Map<string, Agg>()
+  for (const t of turns) for (const s of t.slots) for (const tm of s.teams) {
+    const cur = byTeam.get(tm.team) ?? { team: tm.team, categoryId: tm.categoryId, served: false, time: s.time, parts: [] }
+    cur.parts.push({ name: t.resourceName, size: tm.size })
+    if (tm.served) cur.served = true
+    if (s.time.localeCompare(cur.time) < 0) cur.time = s.time
+    byTeam.set(tm.team, cur)
+  }
+  return [...byTeam.values()]
+    .sort((a, b) => a.time.localeCompare(b.time) || a.team.localeCompare(b.team))
+    .map((r) => {
+      const parts = r.parts.map((p) => `${esc(p.name)} ×${p.size}`).join(' · ')
+      return `<li class="pf-checkoff-row${r.served ? ' pf-checkoff-row--served' : ''}">
+        <span>${esc(r.team)} <span class="pf-muted pf-mono">${esc(r.categoryId)} · ${esc(r.time)}</span>
+          <span class="pf-res-uses pf-mono">usa: ${parts}</span></span>
+        <button type="button" class="pf-btn${r.served ? ' pf-btn--primary' : ''} js-checkoff" data-node="${esc(node.nodeId)}" data-team="${esc(r.team)}" data-served="${r.served ? '1' : '0'}">${r.served ? '✓ Fatto' : 'Segna fatto'}</button>
+      </li>`
     })
     .join('')
-  const body = sections || `<p class="pf-muted">Nessun turno per questa giornata.</p>`
+}
+
+function scheduledNode(node: PlanNodeInfo, day: string, plan: ResourcePlan): string {
+  const turns = plan.turns.filter((t) => t.nodeId === node.nodeId && t.day === day)
+  const isGroup = node.kind === 'group'
+  let body: string
+  if (isGroup) {
+    // One row per team (aggregated across member resources), with the member breakdown.
+    const rows = groupTeamRows(node, day, plan)
+    body = rows ? `<ul class="pf-res-slot__teams" style="list-style:none;padding:0">${rows}</ul>` : `<p class="pf-muted">Nessun turno per questa giornata.</p>`
+  } else {
+    // Single resource: no split, no ambiguity — keep the per-slot layout (with time/capacity).
+    const slots = turns.flatMap((t) => t.slots)
+    body = slots.length ? slots.map((s) => scheduledSlot(node.nodeId, day, s, plan)).join('') : `<p class="pf-muted">Nessun turno per questa giornata.</p>`
+  }
   const pendingRows = pendingNodeRow(node.nodeId, day, plan)
   const pendingBlock = pendingRows ? `<ul class="pf-res-slot__teams" style="list-style:none;padding:0">${pendingRows}</ul>` : ''
-  return `<div class="pf-card"><h2 class="pf-h3">${node.icon ? `${esc(node.icon)} ` : ''}${esc(node.label)}</h2>${body}${pendingBlock}</div>`
+  // Group header lists the member resources the pool uses (e.g. "Doccia 1 · Doccia 2").
+  const members = isGroup ? [...new Set(turns.map((t) => t.resourceName))] : []
+  const sub = members.length ? ` <span class="pf-muted pf-mono" style="font-size:12px">(${members.map((m) => esc(m)).join(' · ')})</span>` : ''
+  return `<div class="pf-card"><h2 class="pf-h3">${node.icon ? `${esc(node.icon)} ` : ''}${esc(node.label)}${sub}</h2>${body}${pendingBlock}</div>`
 }
 
 function freeNode(node: PlanNodeInfo, day: string, plan: ResourcePlan): string {
