@@ -289,6 +289,7 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 /* Resource groups (pools) & relations (sequence) — S17 Wave A */
 .pf-pill { display: inline-flex; align-items: center; font-size: 12px; padding: 3px 9px; border-radius: var(--radius-pill); background: var(--color-surface-sunken, rgba(127,127,127,0.14)); }
 .pf-pill--member { color: var(--color-text-muted); }
+.pf-pill--served { color: var(--color-action-accent); background: color-mix(in srgb, var(--color-action-accent) 12%, transparent); font-weight: 600; }
 .pf-group { border: 1px solid var(--color-border-default); border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: var(--space-xs); }
 .pf-group__head { display: flex; align-items: center; gap: var(--space-sm); }
 .pf-group__name { font-weight: 650; }

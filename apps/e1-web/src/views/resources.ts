@@ -184,7 +184,30 @@ const slotHtml = (s: ResourceSlot, d: ResourcesData, day: string): string => {
   </div>`
 }
 
+/** A FREE node has no scheduled slots — only a check-off list. The organizer can't mark (that's the
+ *  steward's job) but MUST see who's already been served, so render it read-only with a served/total
+ *  count and, per team, ✓ servedAt, "in attesa · <predecessor>", or "da servire". */
+function renderFreeList(d: ResourcesData, nodeId: string, day: string): string {
+  const teams = d.plan.freeLists?.find((f) => f.nodeId === nodeId && f.day === day)?.teams ?? []
+  if (!teams.length) return `<p class="pf-muted">Nessuna squadra per questa risorsa in questa giornata.</p>`
+  const served = teams.filter((t) => t.served).length
+  const rows = teams.map((t) => {
+    const pending = d.plan.pending?.find((p) => p.nodeId === nodeId && p.day === day && p.team === t.team)
+    const status = t.served
+      ? `<span class="pf-pill pf-pill--served">✓ ${esc(t.servedAt ?? '')}</span>`
+      : pending
+      ? `<span class="pf-muted pf-mono">in attesa · ${esc(pending.waitingFor)}</span>`
+      : `<span class="pf-muted pf-mono">da servire</span>`
+    return `<li class="pf-checkoff-row"><span>${esc(t.team)} <span class="pf-muted pf-mono">${esc(t.categoryId)}</span></span>${status}</li>`
+  }).join('')
+  return `<div class="pf-muted pf-mono" style="margin-bottom:6px">Serviti ${served}/${teams.length}</div>
+    <ul class="pf-res-slot__teams" style="list-style:none;padding:0">${rows}</ul>`
+}
+
 function renderTurns(d: ResourcesData, resourceId: string, day: string): string {
+  // A free node (its resource, or any member of a free group) shows the check-off list, not slots.
+  const node = (d.plan.nodes ?? []).find((n) => n.memberIds.includes(resourceId))
+  if (node?.mode === 'free') return renderFreeList(d, node.nodeId, day)
   const slots = d.plan.turns.find((t) => t.resourceId === resourceId && t.day === day)?.slots ?? []
   if (!slots.length) return `<p class="pf-muted">Nessun turno per questa risorsa in questa giornata.</p>`
   return slots.map((s) => slotHtml(s, d, day)).join('')
