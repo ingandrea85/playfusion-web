@@ -45,7 +45,19 @@ describe('S23 tabs', () => {
   })
 })
 
-import { displayStatus, matchStatusBadge, matchDelayLabel, openSheet, renderCalendar } from '../src/chrome'
+import { displayStatus, matchStatusBadge, matchDelayLabel, openSheet, renderCalendar, renderPublicFooter } from '../src/chrome'
+
+describe('public attribution footer', () => {
+  it('is a discreet, followable link back to the product site', () => {
+    const html = renderPublicFooter()
+    expect(html).toContain('pf-pubfoot')
+    expect(html).toContain('Organizzato con')
+    expect(html).toContain('PlayFusion')
+    expect(html).toContain('href="https://playfusion.it"')
+    expect(html).not.toContain('nofollow') // we want the SEO link juice
+  })
+})
+
 describe('S26 match lifecycle badges + delay', () => {
   const base = { categoryId: 'U10', groupLabel: 'Girone A', day: '2026-09-01', time: '09:00', field: 'Campo A', home: 'A', away: 'B' }
   it('displayStatus uses explicit status, falls back to FINISHED when a statusless match has scores', () => {

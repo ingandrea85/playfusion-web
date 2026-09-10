@@ -57,7 +57,7 @@ describe('e3 views', () => {
     expect(html).toContain('Le Betulle')
     expect(html).toContain('https://maps/x')     // Maps link
     expect(html).toContain('Rossi')
-    expect(html).toContain('PlayFusion')          // footer
+    expect(html).toContain('pf-esite-foot')       // footer present (PlayFusion credit is the site-wide footer, appended in main)
   })
   it('falls back to the basic landing when the resolved site is empty', () => {
     const empty = { enabled: true, sponsors: [] }

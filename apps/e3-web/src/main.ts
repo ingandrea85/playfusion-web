@@ -1,7 +1,7 @@
 import '@playfusion/tokens/tokens.css'
 import '@playfusion/app-shell/chrome.css'
 import '@playfusion/ui'
-import { HashRouter, applyBrand, trackActivity } from '@playfusion/app-shell'
+import { HashRouter, applyBrand, trackActivity, renderPublicFooter } from '@playfusion/app-shell'
 import { createClient, resolveEventSite, eventLabels } from '@playfusion/rest-client'
 import { readConfig } from './config.js'
 import { renderLanding, renderParticipants, wireParticipants } from './views/landing.js'
@@ -17,6 +17,9 @@ import { captureMagicLink, magicLinkAuthProvider, storedToken, clearToken } from
 
 const cfg = readConfig(import.meta.env)
 const app = document.getElementById('app')!
+// Discreet, site-wide attribution footer (growth loop): appended once, outside #app, so it persists
+// across route re-renders. Public pages only (E3).
+document.body.insertAdjacentHTML('beforeend', renderPublicFooter())
 
 /** Renders a small error card into #app so a rejected call never leaves a blank page. */
 function errorCard(msg: string): string {

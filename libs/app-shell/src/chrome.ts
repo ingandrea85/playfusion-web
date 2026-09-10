@@ -200,6 +200,16 @@ export function wireShareLinks(root: ParentNode): void {
   })
 }
 
+/** Discreet, non-invasive attribution footer for the PUBLIC event pages — a growth loop: every public
+ *  event page quietly links back to the product. Muted, centered, at the very bottom; a followable
+ *  link (SEO). The organizer's own brand stays the star above. */
+export function renderPublicFooter(siteUrl = 'https://playfusion.it'): string {
+  return `<footer class="pf-pubfoot">
+    <a class="pf-pubfoot__link" href="${esc(siteUrl)}" target="_blank" rel="noopener">
+      <span class="pf-pubfoot__mark" aria-hidden="true">◆</span> Organizzato con <b>PlayFusion</b></a>
+  </footer>`
+}
+
 /** Distinct categoryIds in first-seen order (from matches or standings groups). */
 export function categoryKeys(items: Array<{ categoryId: string }>): string[] {
   const out: string[] = []
