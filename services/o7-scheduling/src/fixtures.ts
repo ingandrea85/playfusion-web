@@ -106,17 +106,19 @@ export function placeMatches(
 }
 
 export function buildFixtures(
-  eventId: string, startDate: string, endDate: string, dailyStart: string, cats: FixtureCategory[],
+  eventId: string, startDate: string, endDate: string, dailyStart: string, cats: FixtureCategory[], phase?: MatchPhase,
 ): ScheduledMatch[] {
   const raw: RawMatch[] = [];
   for (const cat of cats) {
     const slotMinutes = cat.periods * cat.periodMinutes + cat.breakMinutes;
-    const fields = cat.fields.length ? cat.fields : ['Campo 1'];
-    const place: Placement = { fields, slotMinutes };
+    const catFields = cat.fields.length ? cat.fields : ['Campo 1'];
     for (const group of cat.groups) {
+      // Field per group: a pinned group plays ALL its matches on its one field (serialized); an
+      // unpinned group keeps sharing the category's fields (today's rotation).
+      const place: Placement = { fields: group.field ? [group.field] : catFields, slotMinutes };
       for (const [home, away] of pairs(group.teams)) {
-        raw.push({ categoryId: cat.id, groupLabel: group.label, home, away, place });
-        if (cat.legs === 'HOME_AWAY') raw.push({ categoryId: cat.id, groupLabel: group.label, home: away, away: home, place });
+        raw.push({ categoryId: cat.id, groupLabel: group.label, home, away, place, ...(phase ? { phase } : {}) });
+        if (cat.legs === 'HOME_AWAY') raw.push({ categoryId: cat.id, groupLabel: group.label, home: away, away: home, place, ...(phase ? { phase } : {}) });
       }
     }
   }

@@ -4,6 +4,7 @@
 export interface Group {
   label: string;   // 'Girone A', 'Girone B', …
   teams: string[]; // participantRefs, in slot order
+  field?: string;  // pin this group/pool to one field (all its matches play there); unset = category fields
 }
 export interface CategoryGironi {
   groups: Group[];

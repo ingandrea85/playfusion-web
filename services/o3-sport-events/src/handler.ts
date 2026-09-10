@@ -103,7 +103,7 @@ app.get('/events/:id', async (c) => {
 // S8: gironi (O6 group composition) on the event. Draw + save are organizer mutations; the
 // composition read is public (E1 editor + downstream o7/standings).
 const drawBody = z.object({ categoria: z.string(), groupsCount: z.number().int().positive().default(2) });
-const groupSchema = z.object({ label: z.string(), teams: z.array(z.string()) });
+const groupSchema = z.object({ label: z.string(), teams: z.array(z.string()), field: z.string().optional() });
 const saveGironiBody = z.object({ groups: z.array(groupSchema), locked: z.boolean().default(false) });
 
 app.post('/events/:id/gironi:draw', organizer, async (c) => {

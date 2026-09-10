@@ -74,6 +74,22 @@ test('test_buildFixtures_perCategoryOwnFields', () => {
   assertNoTeamTwicePerSlot(m);
 });
 
+test('test_buildFixtures_pinnedGroupPlaysAllMatchesOnItsField_serialized', () => {
+  // Girone A pinned to "Campo 2"; Girone B unpinned → the category's fields (["Campo 1"]).
+  const m = buildFixtures('evt-1', '2026-08-29', '2026-08-30', '09:00', [
+    cat('U10', [
+      { label: 'Girone A', teams: ['A', 'B', 'C'], field: 'Campo 2' },
+      { label: 'Girone B', teams: ['D', 'E', 'F'] },
+    ], { fields: ['Campo 1'] }),
+  ]);
+  const a = m.filter((x) => x.groupLabel === 'Girone A');
+  const b = m.filter((x) => x.groupLabel === 'Girone B');
+  expect(a.every((x) => x.field === 'Campo 2')).toBe(true);   // all of A on its pinned field
+  expect(b.every((x) => x.field === 'Campo 1')).toBe(true);   // B stays on the category field
+  expect(new Set(a.map((x) => `${x.day} ${x.time}`)).size).toBe(a.length); // serialized (distinct times) on one field
+  assertNoTeamTwicePerSlot(m);
+});
+
 test('test_buildFixtures_isDeterministicWithSmIds', () => {
   const m = buildFixtures('evt-1', '2026-08-29', '2026-08-29', '09:00', [cat('U10', [{ label: 'Girone A', teams: ['A', 'B'] }])]);
   expect(m).toHaveLength(1);

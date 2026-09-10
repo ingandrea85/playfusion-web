@@ -46,7 +46,7 @@ export interface CreateEventInput {
 }
 export interface CreateEventResult { sportEventId: string; status: 'Published' }
 // o6 gironi (composition on the o3 event) — S8
-export interface Group { label: string; teams: string[] }
+export interface Group { label: string; teams: string[]; field?: string }
 export interface CategoryGironi { groups: Group[]; locked: boolean }
 export type GironiMap = Record<string, CategoryGironi>
 
