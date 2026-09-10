@@ -67,6 +67,12 @@ export interface ScheduleConfig {
   finalsQualifiersPerGroup?: number;
   /** Festival: default matches each team plays (default 3). Per-category via byCategory. */
   festivalMatchesPerTeam?: number;
+  /** Slice B — festival split into POOLS (round-robin within each o3-composed pool) instead of the
+   *  global rotation. Event-level. Default false. */
+  festivalUsePools?: boolean;
+  /** Slice C — one field (shared across categories) for the 1º/2º final; those finals are serialized
+   *  on it. Event-level. Absent ⇒ finals stay on their category fields. */
+  finalissimaField?: string;
 }
 
 /** Resolve a category's playing config: its `byCategory` override if present, else the

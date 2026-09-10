@@ -121,6 +121,7 @@ function globalCard(config: ScheduleConfig, locked: boolean, bracket: boolean, f
       <div class="pf-field" style="margin-bottom:0"><label>Inizio giornata</label><input id="dailyStart" type="time" value="${esc(config.dailyStart)}" ${dis} /></div>
       ${dateField}
     </div>
+    ${festival ? `<label class="pf-switch" style="margin-top:var(--space-sm)"><input type="checkbox" id="festivalUsePools" ${config.festivalUsePools ? 'checked' : ''} ${dis} /> Suddividi in pool (le squadre giocano dentro il pool — componili nel tab <b>Pool</b>)</label>` : ''}
     <p class="pf-muted" style="margin:var(--space-sm) 0 0">${hint}</p></div>`
 }
 
@@ -279,10 +280,16 @@ export const scheduleScreen: Screen<ScheduleData> = {
       // groupsCount is only the auto-split fallback for events with no composed gironi (set in
       // the Gironi tab); it's no longer a calendar-screen input. Preserve the stored value.
       const groupsCount = data.schedule.config.groupsCount || 1
+      // Slice B (festival pools) + Slice C (finalissima field) — event-level extras.
+      const upEl = root.querySelector<HTMLInputElement>('#festivalUsePools')
+      const extra = {
+        ...(upEl ? { festivalUsePools: upEl.checked } : {}),
+        ...(root.querySelector<HTMLInputElement>('#finalissimaField')?.value ? { finalissimaField: root.querySelector<HTMLInputElement>('#finalissimaField')!.value } : {}),
+      }
       if (mode() === 'all') {
         const cc = readCard(cfgbody.querySelector('.js-playcard')!)
         if (!cc.fields.length) return { error: 'Indica almeno un campo.' }
-        return { config: { ...cc, dailyStart, groupsCount, finalsDate } }
+        return { config: { ...cc, dailyStart, groupsCount, finalsDate, ...extra } }
       }
       const byCategory: Record<string, CategorySchedule> = {}
       for (const card of Array.from(cfgbody.querySelectorAll('.js-playcard'))) {
@@ -292,7 +299,7 @@ export const scheduleScreen: Screen<ScheduleData> = {
         byCategory[c] = cc
       }
       const first = Object.values(byCategory)[0] ?? defaultCat(data.schedule.config)
-      return { config: { ...first, dailyStart, groupsCount, byCategory, finalsDate } }
+      return { config: { ...first, dailyStart, groupsCount, byCategory, finalsDate, ...extra } }
     }
 
     root.querySelector('#generate')?.addEventListener('click', async (e) => {
