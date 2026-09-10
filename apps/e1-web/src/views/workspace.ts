@@ -1,6 +1,6 @@
 import type { CategoryFinalStanding, EventDetail, Playbook, FinalsType, GironiMap, RegistrationView, RegistrationWindowView, ScheduledMatchView, ScheduleView } from '@playfusion/rest-client'
 import { eventLabels } from '@playfusion/rest-client'
-import { renderOrganizerWorkspace, esc, type WorkspaceTab } from '@playfusion/app-shell'
+import { renderOrganizerWorkspace, esc, renderShareLink, wireShareLinks, type WorkspaceTab } from '@playfusion/app-shell'
 import type { Screen } from '../view.js'
 import { criterionLabel } from './tiebreak.js'
 import { derivePhase, enrollmentByCategory, eventSummary, matchProgress, progressByDay, progressByField, type EventPhase } from './dashboard-data.js'
@@ -135,9 +135,18 @@ export function dashboardBand(data: OverviewData): { phase: EventPhase; html: st
 }
 
 /** Panoramica = the merged overview + competition config (the two tabs were unified). */
-export function renderWorkspace(event: EventDetail, activeTab: string, overview?: OverviewData): string {
+/** The event's PUBLIC page (E3 landing) — a shareable, non-token link, shown with the same share-link
+ *  graphic as the director/steward/enrollment links. */
+export function publicLinkCard(event: EventDetail, e3BaseUrl: string): string {
+  const url = `${e3BaseUrl}/e3/#/events/${encodeURIComponent(event.sportEventId)}`
+  return `<div class="pf-card"><h2 class="pf-h3">Link pubblico evento</h2>
+    <p class="pf-muted">Pagina pubblica dell'evento (calendario, squadre, tabellone): condividila con partecipanti e pubblico.</p>
+    ${renderShareLink({ url })}</div>`
+}
+
+export function renderWorkspace(event: EventDetail, activeTab: string, overview?: OverviewData, e3BaseUrl = ''): string {
   const band = overview ? dashboardBand(overview) : null
-  return shell(event, activeTab, `${band?.html ?? ''}${configCard(event)}
+  return shell(event, activeTab, `${band?.html ?? ''}${e3BaseUrl ? publicLinkCard(event, e3BaseUrl) : ''}${configCard(event)}
     <div class="pf-card">
       <h2 class="pf-h3">Criteri di spareggio</h2>
       ${tieBreakList(event)}
@@ -171,7 +180,7 @@ export function renderCategorie(data: CategorieData, activeTab = 'categorie'): s
 
 /** Overview screen: the event is mandatory (its failure surfaces the error card); the dashboard
  *  inputs are best-effort — a schedule/window/finals that isn't ready yet must not blank the page. */
-export const workspaceScreen: Screen<{ event: EventDetail; overview: OverviewData }> = {
+export const workspaceScreen: Screen<{ event: EventDetail; overview: OverviewData; e3BaseUrl: string }> = {
   load: async (ctx, p) => {
     const event = await ctx.client.o3.getEvent(p.id)
     const [matches, window, finalStandings] = await Promise.all([
@@ -179,9 +188,10 @@ export const workspaceScreen: Screen<{ event: EventDetail; overview: OverviewDat
       ctx.client.o5.getRegistrationWindow(p.id).catch(() => null as RegistrationWindowView | null),
       ctx.client.o7.getFinalStandings(p.id).catch(() => [] as CategoryFinalStanding[]),
     ])
-    return { event, overview: { matches, window, finalStandings } }
+    return { event, overview: { matches, window, finalStandings }, e3BaseUrl: ctx.e3BaseUrl }
   },
-  render: ({ event, overview }) => renderWorkspace(event, 'overview', overview),
+  render: ({ event, overview, e3BaseUrl }) => renderWorkspace(event, 'overview', overview, e3BaseUrl),
+  mount: (root) => wireShareLinks(root),
 }
 
 export const categorieScreen: Screen<CategorieData> = {
