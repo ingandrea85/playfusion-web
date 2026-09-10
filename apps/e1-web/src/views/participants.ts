@@ -19,7 +19,7 @@ export function renderParticipants(d: ParticipantsData): string {
                            : `<span class="pf-badge pf-muted">Richiesta</span>`
         const pay = paid ? '' : `<button class="pf-btn pf-btn--primary" data-pay="${esc(r.registrationId)}">Segna quota pagata</button>`
         return `<li class="pf-card"><div class="pf-row">
-          <span><b>${esc(r.participantRef)}</b> · <span class="pf-mono">${esc(r.categoria)}</span></span>
+          <span><b>${esc(r.teamName ?? r.participantRef)}</b> · <span class="pf-mono">${esc(r.categoria)}</span></span>
           <span>${badge} ${pay}</span></div></li>`
       }).join('')
     : `<li class="pf-card pf-muted">Nessun partecipante confermato.</li>`
