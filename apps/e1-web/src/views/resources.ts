@@ -1,4 +1,5 @@
-import { esc, renderShareLink, wireShareLinks } from '@playfusion/app-shell'
+import { esc, renderShareLink, wireShareLinks, downloadXls } from '@playfusion/app-shell'
+import { resourceSheets } from './export.js'
 import type { EventDetail, ResourceConfig, ResourcePlan, Resource, ResourceSlot, ResourceGroup, ResourceRelation, PlanNodeInfo, NodeMode } from '@playfusion/rest-client'
 import { inlineError, lockCard, type Screen } from '../view.js'
 import { workspaceShell } from './workspace.js'
@@ -271,7 +272,8 @@ function turnsSection(d: ResourcesData): string {
       return `<optgroup label="${esc(n.label)}">${opts}</optgroup>`
     }).join('')
     : d.config.resources.map((r) => `<option value="${esc(r.resourceId)}">${resName(r)}</option>`).join('')
-  return `<div class="pf-card"><h2 class="pf-h3">Turni proposti</h2>
+  return `<div class="pf-card"><div class="pf-row" style="justify-content:space-between;align-items:center"><h2 class="pf-h3" style="margin:0">Turni proposti</h2>
+      <button type="button" class="pf-btn pf-btn--ghost js-dl-res">⬇ Scarica risorse (.xls)</button></div>
     <p class="pf-muted">Ogni squadra è assegnata a una sola risorsa; usa "sposta" per spostarla su un'altra risorsa/orario.</p>
     <div class="pf-row"><label>Giornata</label><select id="r-day">${dayOpts}</select>
       <label>Risorsa</label><select id="r-res">${resOpts}</select></div>
@@ -391,6 +393,9 @@ export const resourcesScreen: Screen<ResourcesData> = {
       } catch { if (input) input.placeholder = 'Errore, ricarica la pagina' }
       wireShareLinks(root)
     })()
+
+    root.querySelector<HTMLButtonElement>('.js-dl-res')?.addEventListener('click', () =>
+      downloadXls(`${d.event.name ?? d.event.sport}-risorse`, resourceSheets(d.event, d.config, d.plan)))
 
     root.querySelector('[data-setdefault]')?.addEventListener('click', () => {
       void save({ ...d.config, defaultTeamSize: num(root, '#r-default') })

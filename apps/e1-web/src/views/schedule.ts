@@ -12,6 +12,8 @@ const FINALS_TYPE_LABEL: Record<FinalsType, string> = {
 const FINALS_TYPES: FinalsType[] = ['PLACEMENT', 'SINGLE_GROUP_CROSSOVER', 'SPLIT_GROUP_FINALS', 'GROUP_KNOCKOUT', 'FINAL_ROUND_ROBIN']
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
+import { calendarSheets } from './export.js'
+import { downloadXls } from '@playfusion/app-shell'
 
 export interface ScheduleData {
   event: EventDetail
@@ -155,7 +157,8 @@ function calendarCard(matches: ScheduledMatchView[], selCat: string, selGir: str
   // Festival (non-competitive): no gironi/finali — plain list, no phase filter.
   const isFestival = matches.some((m) => m.phase === 'FESTIVAL')
   const gtabs = calendarGironeTabs(matches, selCat)
-  return `<div class="pf-card"><h2 class="pf-h3">Calendario</h2>
+  return `<div class="pf-card"><div class="pf-row" style="justify-content:space-between;align-items:center"><h2 class="pf-h3" style="margin:0">Calendario</h2>
+      <button type="button" class="pf-btn pf-btn--ghost js-dl-cal">⬇ Scarica calendario (.xls)</button></div>
     <div id="cal-cattabs">${renderTabs(categoryKeys(matches).map((c) => ({ key: c, label: c })), selCat)}</div>
     <div id="cal-girtabs">${isFestival ? '' : renderTabs(gtabs, selGir)}</div>
     <div id="cal-phasetabs"></div>
@@ -208,6 +211,15 @@ export const scheduleScreen: Screen<ScheduleData> = {
     // Risultato/Modifica buttons. Works in every status (incl. APPROVED/PUBLISHED).
     wireCalendar()
     wireDirectorLinks()
+    // Download the calendar as .xls (also pulls the confirmed teams for the "Squadre iscritte" sheet).
+    root.querySelector<HTMLButtonElement>('.js-dl-cal')?.addEventListener('click', (e) => {
+      const btn = e.currentTarget as HTMLButtonElement
+      void withPending(btn, async () => {
+        const regs = await ctx.client.o5.listRegistrations(id, 'Confirmed').catch(() => [])
+        const teams = regs.map((r) => ({ categoria: r.categoria, name: r.teamName ?? r.participantRef }))
+        downloadXls(`${data.event.name ?? data.event.sport}-calendario`, calendarSheets(data.event, data.matches, teams))
+      })
+    })
     if (isLocked(data.schedule.status)) { wireStatus(); return }
 
     const categorie = data.event.categorie
