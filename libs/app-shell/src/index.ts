@@ -1,4 +1,5 @@
 export * from './chrome.js'
+export * from './export-xls.js'
 export * from './progress.js'
 export * from './router.js'
 export * from './html.js'
