@@ -221,7 +221,7 @@ export interface GroupStanding {
 }
 
 /** A resolved group: its label + the teams composing it. */
-export interface ResolvedGroup { label: string; teams: string[] }
+export interface ResolvedGroup { label: string; teams: string[]; field?: string }
 
 /** One category fed to buildFixtures: its resolved groups (from the o3 gironi composition
  *  when present, else auto-split — S8), leg count, and its own placement config (fields +

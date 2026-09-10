@@ -3,18 +3,22 @@ import type { CategoryGironi, EventDetail, GironiMap, Group } from '@playfusion/
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
 
-export interface GironiData { event: EventDetail; gironi: GironiMap }
+export interface GironiData { event: EventDetail; gironi: GironiMap; fieldsByCat: Record<string, string[]> }
 
 /** Pure move: return a new group set with `team` removed from wherever it is and appended to
- *  the group labelled `toLabel`. Trivial UI-state rearrangement (the split algorithm — the
- *  actual business logic — is server-side in the o3 draw). */
+ *  the group labelled `toLabel`. Preserves each group's pinned `field`. */
 export function moveTeamAcrossGroups(groups: Group[], team: string, toLabel: string): Group[] {
   return groups.map((g) => ({
-    label: g.label,
+    ...g,
     teams: g.label === toLabel
       ? [...g.teams.filter((t) => t !== team), team]
       : g.teams.filter((t) => t !== team),
   }))
+}
+
+/** Pin (or clear, with '') a group's field — slice A. */
+export function setGroupField(groups: Group[], label: string, field: string): Group[] {
+  return groups.map((g) => (g.label === label ? { ...g, ...(field ? { field } : { field: undefined }) } : g))
 }
 
 const hasTeams = (cg?: CategoryGironi): boolean => !!cg?.groups.some((g) => g.teams.length)
@@ -27,7 +31,7 @@ function catTabs(categorie: string[], sel: string): string {
 
 /** Content for the selected category: toolbar (groups count + draw + lock) and either the
  *  group columns with per-team move selects or a prompt to draw. */
-export function renderGironiContent(cg: CategoryGironi | undefined): string {
+export function renderGironiContent(cg: CategoryGironi | undefined, fields: string[] = []): string {
   const locked = cg?.locked ?? false
   const count = cg?.groups.length || 2
   const dis = locked ? 'disabled' : ''
@@ -50,22 +54,31 @@ export function renderGironiContent(cg: CategoryGironi | undefined): string {
             ${labels.map((l) => `<option value="${esc(l)}"${l === g.label ? ' selected' : ''}>${esc(l)}</option>`).join('')}
           </select></li>`).join('')
       : '<li class="pf-muted">Vuoto</li>'
-    return `<div class="pf-card"><h3 class="pf-h4" style="margin-top:0">${esc(g.label)}</h3><ul style="list-style:none;margin:0;padding:0">${rows}</ul></div>`
+    // Field per group (slice A): pin all this group's matches to one field (else the category fields).
+    const fieldSel = fields.length ? `<div class="pf-field" style="margin:0 0 var(--space-sm)"><label>Campo</label>
+        <select class="js-group-field" data-label="${esc(g.label)}" ${dis}>
+          <option value=""${g.field ? '' : ' selected'}>Auto (rotazione campi)</option>
+          ${fields.map((f) => `<option value="${esc(f)}"${g.field === f ? ' selected' : ''}>${esc(f)}</option>`).join('')}
+        </select></div>` : ''
+    return `<div class="pf-card"><h3 class="pf-h4" style="margin-top:0">${esc(g.label)}</h3>${fieldSel}<ul style="list-style:none;margin:0;padding:0">${rows}</ul></div>`
   }).join('')
   return toolbar + `<div class="pf-stack">${cols}</div>`
 }
 
 export function renderGironi(data: GironiData, sel = data.event.categorie[0] ?? ''): string {
   const body = data.event.categorie.length
-    ? `<div id="err"></div>${catTabs(data.event.categorie, sel)}<div id="content">${renderGironiContent(data.gironi[sel])}</div>`
+    ? `<div id="err"></div>${catTabs(data.event.categorie, sel)}<div id="content">${renderGironiContent(data.gironi[sel], data.fieldsByCat?.[sel] ?? [])}</div>`
     : `<div class="pf-card pf-muted">Aggiungi categorie all'evento per comporre i gironi.</div>`
   return workspaceShell(data.event, 'gironi', body)
 }
 
 export const gironiScreen: Screen<GironiData> = {
   load: async (ctx, p) => {
-    const [event, gironi] = await Promise.all([ctx.client.o3.getEvent(p.id), ctx.client.o3.getGironi(p.id)])
-    return { event, gironi }
+    const [event, gironi, schedule] = await Promise.all([ctx.client.o3.getEvent(p.id), ctx.client.o3.getGironi(p.id), ctx.client.o7.getSchedule(p.id).catch(() => null)])
+    const cfg = schedule?.config
+    const fieldsByCat: Record<string, string[]> = {}
+    for (const c of event.categorie) fieldsByCat[c] = cfg?.byCategory?.[c]?.fields ?? cfg?.fields ?? []
+    return { event, gironi, fieldsByCat }
   },
   render: (data) => renderGironi(data),
   mount(root, ctx: ViewCtx, data) {
@@ -81,7 +94,7 @@ export const gironiScreen: Screen<GironiData> = {
       b.addEventListener('click', () => { sel = b.dataset.key!; root.querySelector('#cattabs')!.innerHTML = renderTabs(data.event.categorie.map((c) => ({ key: c, label: c })), sel); wireTabs(); draw() }))
 
     function draw() {
-      content.innerHTML = renderGironiContent(gironi[sel])
+      content.innerHTML = renderGironiContent(gironi[sel], data.fieldsByCat?.[sel] ?? [])
       const locked = gironi[sel]?.locked ?? false
 
       const drawBtn = content.querySelector<HTMLButtonElement>('#draw')
@@ -105,6 +118,13 @@ export const gironiScreen: Screen<GironiData> = {
           const groups = moveTeamAcrossGroups(gironi[sel]?.groups ?? [], selEl.dataset.team!, selEl.value)
           try { gironi[sel] = await ctx.client.o3.saveGironi(id, sel, groups, gironi[sel]?.locked ?? false); draw() }
           catch { fail('Spostamento non riuscito. Riprova.') }
+        }))
+
+      if (!locked) content.querySelectorAll<HTMLSelectElement>('.js-group-field').forEach((selEl) =>
+        selEl.addEventListener('change', async () => {
+          const groups = setGroupField(gironi[sel]?.groups ?? [], selEl.dataset.label!, selEl.value)
+          try { gironi[sel] = await ctx.client.o3.saveGironi(id, sel, groups, gironi[sel]?.locked ?? false); draw() }
+          catch { fail('Salvataggio campo non riuscito. Riprova.') }
         }))
     }
     wireTabs()

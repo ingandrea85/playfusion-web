@@ -1,7 +1,25 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest'
 import type { CategoryGironi, EventDetail, GironiMap } from '@playfusion/rest-client'
-import { renderGironi, renderGironiContent, moveTeamAcrossGroups, gironiScreen, type GironiData } from '../src/views/gironi'
+import { renderGironi, renderGironiContent, moveTeamAcrossGroups, setGroupField, gironiScreen, type GironiData } from '../src/views/gironi'
+
+describe('field per group (slice A)', () => {
+  const groups = [{ label: 'Girone A', teams: ['A', 'B'], field: 'Campo 2' }, { label: 'Girone B', teams: ['C', 'D'] }]
+  it('renders a Campo select per group with the pinned field selected', () => {
+    const html = renderGironiContent({ groups, locked: false }, ['Campo 1', 'Campo 2'])
+    expect(html).toContain('js-group-field')
+    expect(html).toContain('Auto (rotazione campi)')
+    expect(html).toContain('<option value="Campo 2" selected>Campo 2</option>')
+  })
+  it('setGroupField pins and clears a field', () => {
+    expect(setGroupField(groups, 'Girone B', 'Campo 1').find((g) => g.label === 'Girone B')!.field).toBe('Campo 1')
+    expect(setGroupField(groups, 'Girone A', '').find((g) => g.label === 'Girone A')!.field).toBeUndefined()
+  })
+  it('moveTeamAcrossGroups preserves the pinned field', () => {
+    const out = moveTeamAcrossGroups(groups, 'C', 'Girone A')
+    expect(out.find((g) => g.label === 'Girone A')!.field).toBe('Campo 2') // A keeps its pin
+  })
+})
 
 const event: EventDetail = {
   sportEventId: 'e1', sport: 'Calcio', categorie: ['U10', 'U12'],
