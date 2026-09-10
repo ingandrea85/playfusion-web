@@ -29,6 +29,16 @@ describe('workspace Panoramica', () => {
     expect(renderWorkspace(full, 'overview')).toContain('Torneo Estivo')
   })
 
+  it('shows the public event link (share-link graphic) when the e3 base url is known', () => {
+    const html = renderWorkspace(full, 'overview', undefined, 'https://cdn.example')
+    expect(html).toContain('Link pubblico evento')
+    expect(html).toContain('pf-sharelink')
+    expect(html).toContain(`https://cdn.example/e3/#/events/${encodeURIComponent(full.sportEventId)}`)
+  })
+  it('omits the public link card when the e3 base url is unknown', () => {
+    expect(renderWorkspace(full, 'overview')).not.toContain('Link pubblico evento')
+  })
+
   it('falls back to sport · categorie in the hero when there is no name', () => {
     const html = renderWorkspace(minimal, 'overview')
     expect(html).toContain('Basket · U14')
