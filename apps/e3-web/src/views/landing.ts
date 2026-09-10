@@ -95,7 +95,7 @@ function renderEventHome(event: EventDetail, window: RegistrationWindowView, pub
     </div></section>
     ${section('Con il sostegno di', sponsors)}
     ${section('Contatti', contacts)}
-    <footer class="pf-esite-foot"><div class="pf-container">Sito realizzato con <b>PlayFusion</b> · <a href="#/events/${id}">${esc(event.name ?? event.sport)}</a></div></footer>`
+    <footer class="pf-esite-foot"><div class="pf-container"><a href="#/events/${id}">${esc(event.name ?? event.sport)}</a></div></footer>`
 }
 
 /**
