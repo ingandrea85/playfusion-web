@@ -21,4 +21,13 @@ describe('participants render', () => {
   it('shows an empty-state when there are no confirmed participants', () => {
     expect(renderParticipants({ event, confirmed: [], fees: {} })).toMatch(/Nessun partecipante/i)
   })
+  it('shows the team NAME, not the participantRef id (direct roster / PB-2)', () => {
+    const html = renderParticipants({
+      event,
+      confirmed: [{ registrationId: 'r1', participantRef: '6e61de07-8f6c-uuid', teamName: 'Leoni Monselice', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' }],
+      fees: {},
+    })
+    expect(html).toContain('Leoni Monselice')
+    expect(html).not.toContain('6e61de07')
+  })
 })

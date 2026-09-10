@@ -74,6 +74,11 @@ describe('e3 views', () => {
     const html = renderParticipants([{ registrationId: 'r', participantRef: 'Team A', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' }])
     expect(html).toContain('Team A')
   })
+  it('participants shows the team NAME, not the participantRef id (direct roster / PB-2)', () => {
+    const html = renderParticipants([{ registrationId: 'r', participantRef: 'f718a926-52b5-4de7-uuid', teamName: 'Corsari Cavarzere', sportEventId: 'e1', categoria: '3', status: 'Confirmed' }])
+    expect(html).toContain('Corsari Cavarzere')
+    expect(html).not.toContain('f718a926') // never the internal id
+  })
   it('participants shows confirmed participants only', () => {
     const html = renderParticipants([
       { registrationId: 'r1', participantRef: 'Team A', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' },

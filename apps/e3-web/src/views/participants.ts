@@ -12,7 +12,7 @@ const categories = (rows: RegistrationView[]): string[] => {
 const teamList = (rows: RegistrationView[], selCat: string, singular = 'Squadra'): string => {
   const items = confirmedOnly(rows).filter((r) => r.categoria === selCat)
   return items.length
-    ? `<ul class="pf-stack" style="list-style:none;padding:0">${items.map((r) => `<li class="pf-card"><b>${esc(r.participantRef)}</b></li>`).join('')}</ul>`
+    ? `<ul class="pf-stack" style="list-style:none;padding:0">${items.map((r) => `<li class="pf-card"><b>${esc(r.teamName ?? r.participantRef)}</b></li>`).join('')}</ul>`
     : `<p class="pf-muted">Nessun${singular === 'Giocatore' ? ' giocatore confermato' : 'a squadra confermata'} in questa categoria.</p>`
 }
 
