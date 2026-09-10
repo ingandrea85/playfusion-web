@@ -1,6 +1,19 @@
 import { describe, it, expect } from 'vitest'
 import type { EventDetail } from '@playfusion/rest-client'
-import { renderWorkspace, renderCategorie } from '../src/views/workspace'
+import { renderWorkspace, renderCategorie, workspaceTabs } from '../src/views/workspace'
+
+describe('workspaceTabs — festival shows a "Pool" tab (slice B)', () => {
+  it('relabels gironi→Pool for a festival and hides standings/finals', () => {
+    const tabs = workspaceTabs({ sportEventId: 'e1', format: 'festival' })
+    const pool = tabs.find((t) => t.key === 'gironi')
+    expect(pool?.label).toBe('Pool')
+    expect(tabs.some((t) => t.key === 'standings')).toBe(false)
+    expect(tabs.some((t) => t.key === 'finals')).toBe(false)
+  })
+  it('keeps "Gironi" for a normal event', () => {
+    expect(workspaceTabs({ sportEventId: 'e1', format: 'groups+bracket' }).find((t) => t.key === 'gironi')?.label).toBe('Gironi')
+  })
+})
 
 const full: EventDetail = {
   sportEventId: 'e1', sport: 'Calcio', categorie: ['U10', 'U12'],

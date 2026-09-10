@@ -32,6 +32,20 @@ describe('generateSchedule — festival branch', () => {
     for (const t of ['A', 'B', 'C', 'D']) expect(ms.filter((m) => m.home === t || m.away === t).length).toBe(3);
   });
 
+  it('festivalUsePools: round-robin WITHIN each composed pool, phase FESTIVAL, no finals', async () => {
+    const ev = event({ gironi: { U10: { locked: false, groups: [{ label: 'Pool A', teams: ['A', 'B', 'C'] }, { label: 'Pool B', teams: ['D', 'E', 'F'] }] } } });
+    const { replace, d } = deps(ev, new Map([['U10', ['A', 'B', 'C', 'D', 'E', 'F']]]));
+    const config = { ...defaultConfig(), festivalUsePools: true };
+    await generateSchedule(d as any)({ sportEventId: 'e1', organizationId: 'org-1', config });
+    const ms: ScheduledMatch[] = replace.mock.calls[0]![1];
+    expect(ms.every((m) => m.phase === 'FESTIVAL')).toBe(true);
+    expect(ms.filter((m) => m.phase === 'FINAL').length).toBe(0);
+    // each pool is a 3-team round-robin = 3 matches; teams only meet within their pool
+    const poolA = new Set(['A', 'B', 'C']);
+    for (const m of ms) expect(poolA.has(m.home) === poolA.has(m.away)).toBe(true) // never cross-pool
+    expect(ms.length).toBe(6) // 3 + 3
+  });
+
   it('respects a per-category festivalMatchesPerTeam override', async () => {
     const { replace, d } = deps(event(), new Map([['U10', ['A', 'B', 'C', 'D', 'E', 'F']]]));
     const config = { ...defaultConfig(), byCategory: { U10: { fields: ['C1'], periods: 1, periodMinutes: 10, breakMinutes: 2, legs: 'SINGLE' as const, festivalMatchesPerTeam: 2 } } };

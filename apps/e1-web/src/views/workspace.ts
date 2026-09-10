@@ -32,11 +32,13 @@ export const workspaceTabs = (event: Pick<EventDetail, 'sportEventId' | 'format'
     { key: 'enroll', label: 'Iscrizioni', href: `#/events/${e}/enroll` },
     { key: 'participants', label: 'Partecipanti', href: `#/events/${e}/participants` },
   ]
-  // Epic #143 (S4): solo tabellone hides gironi+standings. Festival (non-competitive) also hides
-  // finals — it's calendar-only.
-  const hide: Record<string, string[]> = { bracket: ['gironi', 'standings'], festival: ['gironi', 'standings', 'finals'] }
+  // Epic #143 (S4): solo tabellone hides gironi+standings. Festival hides standings+finals (calendar-
+  // only) but KEEPS the gironi tab relabelled "Pool" (slice B — compose pools; generation uses them
+  // only when "Suddividi in pool" is on).
+  const hide: Record<string, string[]> = { bracket: ['gironi', 'standings'], festival: ['standings', 'finals'] }
   const hidden = hide[event.format ?? ''] ?? []
   return tabs.filter((t) => !hidden.includes(t.key))
+    .map((t) => (event.format === 'festival' && t.key === 'gironi' ? { ...t, label: 'Pool' } : t))
 }
 
 const PLAYBOOK_LABEL: Record<Playbook, string> = {

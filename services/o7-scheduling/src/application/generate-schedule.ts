@@ -157,9 +157,21 @@ export function generateSchedule(deps: GenerateScheduleDeps) {
       // Epic #143 (S4): solo tabellone — no gironi, no group fixtures, no standings; each category's
       // single-elimination bracket is seeded directly from its confirmed participants.
       allMatches = buildBracketMatches(input.sportEventId, input.config.finalsDate ?? event.dates.to, input.config.dailyStart, event.categorie, input.config, byCategory, formatMap);
+    } else if (event.format === 'festival' && input.config.festivalUsePools) {
+      // Festival a POOL (non-competitive): teams are split into pools (the o3 gironi composition) and
+      // play a single round-robin WITHIN their pool. Still phase FESTIVAL → no standings, no finals.
+      const cats: FixtureCategory[] = event.categorie.map((categoria) => {
+        const composed = event.gironi?.[categoria]?.groups;
+        const groups = composed?.some((g) => g.teams.length)
+          ? composed
+          : autoSplit(byCategory.get(categoria) ?? [], input.config.groupsCount);
+        const cc = categoryConfig(input.config, categoria);
+        return { id: categoria, name: categoria, legs: 'SINGLE' as const, groups, fields: cc.fields, periods: cc.periods, periodMinutes: cc.periodMinutes, breakMinutes: cc.breakMinutes };
+      });
+      allMatches = buildFixtures(input.sportEventId, event.dates.from, event.dates.to, input.config.dailyStart, cats, 'FESTIVAL');
     } else if (event.format === 'festival') {
-      // Festival (non-competitive): each category's confirmed teams play N rotation matches. No gironi,
-      // no standings (phase FESTIVAL), no finals (buildFinalMatches is not called).
+      // Festival a rotazione (default, non-competitive): each category's confirmed teams play N rotation
+      // matches. No pools, no standings (phase FESTIVAL), no finals (buildFinalMatches is not called).
       const festCats: FestivalCategory[] = event.categorie.map((categoria) => {
         const cc = categoryConfig(input.config, categoria);
         return {

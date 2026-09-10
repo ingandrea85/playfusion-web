@@ -79,6 +79,9 @@ export const scheduleConfigBody = z.object({
   finalsDate: z.string().optional(),
   // Festival: default matches each team plays.
   festivalMatchesPerTeam: z.number().int().positive().optional(),
+  // Slice B: festival split into pools. Slice C: shared field for the 1º/2º final.
+  festivalUsePools: z.boolean().optional(),
+  finalissimaField: z.string().optional(),
   ...finalsFields,
 });
 

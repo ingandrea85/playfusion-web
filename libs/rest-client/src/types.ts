@@ -118,6 +118,8 @@ export interface ScheduleConfig {
   finalsThirdPlace?: boolean
   finalsQualifiersPerGroup?: number
   festivalMatchesPerTeam?: number
+  festivalUsePools?: boolean       // slice B: festival split into pools
+  finalissimaField?: string        // slice C: shared field for the 1º/2º final
 }
 export interface ScheduleView {
   sportEventId: string
