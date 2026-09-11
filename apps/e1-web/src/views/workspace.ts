@@ -3,7 +3,7 @@ import { eventLabels } from '@playfusion/rest-client'
 import { renderOrganizerWorkspace, esc, renderShareLink, wireShareLinks, type WorkspaceTab } from '@playfusion/app-shell'
 import type { Screen } from '../view.js'
 import { criterionLabel } from './tiebreak.js'
-import { derivePhase, enrollmentByCategory, eventSummary, matchProgress, progressByDay, progressByField, scheduleDelay, type EventPhase } from './dashboard-data.js'
+import { derivePhase, enrollmentByCategory, eventSummary, matchProgress, progressByDay, progressByField, scheduleDelay, upcomingMatches, progressByCategory, type EventPhase } from './dashboard-data.js'
 import { capacityBars, dayColumns, donut, statTiles } from './dashboard-charts.js'
 
 const FINALS_LABEL: Record<FinalsType, string> = {
@@ -122,8 +122,16 @@ export function dashboardBand(data: OverviewData, now: Date = new Date()): { pha
     const delayCard = dashCard('Ritardo', delay.lateCount
       ? `<div style="font-size:30px;font-weight:800;color:var(--color-feedback-warning,#c77d16)">~${delay.maxLateMin}′</div><p class="pf-muted">${delay.lateCount} ${delay.lateCount === 1 ? 'partita' : 'partite'} in ritardo sull'orario previsto</p>`
       : `<div style="font-size:30px;font-weight:800;color:var(--color-feedback-success,#0f9d6b)">✓</div><p class="pf-muted">In orario</p>`)
+    const upcoming = upcomingMatches(data.matches)
+    const upcomingCard = dashCard('Prossime partite', upcoming.length
+      ? `<ul class="pf-dashnext">${upcoming.map((m) => `<li><span class="pf-mono">${esc(m.time)}</span> <span class="pf-muted pf-mono">${esc(m.field)}</span> <span>${esc(m.homeResolved ?? m.home)} <span class="pf-muted">vs</span> ${esc(m.awayResolved ?? m.away)}</span></li>`).join('')}</ul>`
+      : '<p class="pf-muted">Tutte le partite sono state giocate.</p>')
+    const catRows = progressByCategory(data.matches).map((c) => ({ label: c.categoryId, value: c.played, max: c.total, note: `${c.played}/${c.total}` }))
+    const perCatCard = dashCard('Avanzamento per categoria', catRows.length ? capacityBars(catRows) : '<p class="pf-muted">Nessuna categoria.</p>')
     cards = dashCard('Avanzamento partite', donut(mp.pct, `${mp.pct}%`, `${mp.played}/${mp.total} partite`))
       + delayCard
+      + upcomingCard
+      + perCatCard
       + dashCard('Partite per giornata', dayColumns(progressByDay(data.matches)))
       + dashCard('Avanzamento per campo', fields.length ? capacityBars(fields) : '<p class="pf-muted">Nessun campo assegnato.</p>')
   } else {
