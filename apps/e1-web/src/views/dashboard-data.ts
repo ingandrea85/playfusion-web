@@ -9,6 +9,10 @@ export type EventPhase = 'PREP' | 'LIVE' | 'DONE'
 const isCancelled = (m: ScheduledMatchView): boolean => m.status === 'CANCELLED'
 const isFinal = (m: ScheduledMatchView): boolean => m.phase === 'FINAL' || m.phase === 'FINAL_GROUP'
 const isPlayed = (m: ScheduledMatchView): boolean => m.homeScore != null && m.awayScore != null
+/** "Done" for progress/completion: an explicit FINISHED (covers a festival "giocata", which has no
+ *  score), or a legacy statusless match that carries a score. A LIVE match (even with an interim
+ *  score) is NOT counted. */
+const isCompleted = (m: ScheduledMatchView): boolean => m.status === 'FINISHED' || (m.status == null && isPlayed(m))
 
 /** Group-stage fixtures only (phase absent ⇒ GROUP), cancelled matches excluded. */
 export function groupMatches(matches: ScheduledMatchView[]): ScheduledMatchView[] {
@@ -24,16 +28,16 @@ export function groupMatches(matches: ScheduledMatchView[]): ScheduledMatchView[
 export function derivePhase(matches: ScheduledMatchView[]): EventPhase {
   const group = groupMatches(matches)
   if (group.length === 0) return 'PREP'
-  const gp = group.filter(isPlayed).length
+  const gp = group.filter(isCompleted).length
   if (gp === 0) return 'PREP'
   if (gp < group.length) return 'LIVE'
   const finals = matches.filter((m) => isFinal(m) && !isCancelled(m))
-  return finals.every(isPlayed) ? 'DONE' : 'LIVE'
+  return finals.every(isCompleted) ? 'DONE' : 'LIVE'
 }
 
 export function matchProgress(matches: ScheduledMatchView[]): { played: number; total: number; pct: number } {
   const g = groupMatches(matches)
-  const p = g.filter(isPlayed).length
+  const p = g.filter(isCompleted).length
   return { played: p, total: g.length, pct: g.length ? Math.round((p / g.length) * 100) : 0 }
 }
 
@@ -44,7 +48,7 @@ export function progressByDay(matches: ScheduledMatchView[]): Array<{ day: strin
   days.sort()
   return days.map((day) => {
     const dm = g.filter((m) => m.day === day)
-    return { day, played: dm.filter(isPlayed).length, total: dm.length }
+    return { day, played: dm.filter(isCompleted).length, total: dm.length }
   })
 }
 
@@ -57,10 +61,24 @@ export function progressByField(matches: ScheduledMatchView[]): Array<{ field: s
   return fields.map((field) => {
     const fm = g.filter((m) => m.field === field)
     const total = fm.length
-    const p = fm.filter(isPlayed).length
+    const p = fm.filter(isCompleted).length
     const pct = total ? (p / total) * 100 : 0
     return { field, played: p, total, behind: total > 0 && pct <= overallPct - 15 }
   })
+}
+
+/** How far behind schedule the event is running: among matches not yet completed/cancelled whose
+ *  kickoff time has already passed, the count and the largest minutes-late. `now` is injected (pure).
+ *  A LIVE match started late also counts (from its kickoff). */
+export function scheduleDelay(matches: ScheduledMatchView[], now: Date): { lateCount: number; maxLateMin: number } {
+  let lateCount = 0, maxLateMin = 0
+  for (const m of matches) {
+    if (isCancelled(m) || isCompleted(m)) continue
+    const start = new Date(`${m.day}T${m.time}:00`)
+    const lateMin = Math.floor((now.getTime() - start.getTime()) / 60000)
+    if (Number.isFinite(lateMin) && lateMin > 0) { lateCount++; if (lateMin > maxLateMin) maxLateMin = lateMin }
+  }
+  return { lateCount, maxLateMin }
 }
 
 /** Capacity rows from the registration window (cap/count per category); [] when unavailable. */
