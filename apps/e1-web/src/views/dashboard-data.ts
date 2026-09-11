@@ -81,6 +81,26 @@ export function scheduleDelay(matches: ScheduledMatchView[], now: Date): { lateC
   return { lateCount, maxLateMin }
 }
 
+/** The next matches to play: not completed/cancelled and not currently LIVE, earliest first. */
+export function upcomingMatches(matches: ScheduledMatchView[], n = 4): ScheduledMatchView[] {
+  return matches
+    .filter((m) => !isCancelled(m) && !isCompleted(m) && m.status !== 'LIVE')
+    .sort((a, b) => a.day.localeCompare(b.day) || a.time.localeCompare(b.time) || a.field.localeCompare(b.field))
+    .slice(0, n)
+}
+
+/** Completed/total group matches per category (breakdown, like progressByDay/-Field). */
+export function progressByCategory(matches: ScheduledMatchView[]): Array<{ categoryId: string; played: number; total: number }> {
+  const g = groupMatches(matches)
+  const cats: string[] = []
+  for (const m of g) if (!cats.includes(m.categoryId)) cats.push(m.categoryId)
+  cats.sort()
+  return cats.map((categoryId) => {
+    const cm = g.filter((m) => m.categoryId === categoryId)
+    return { categoryId, played: cm.filter(isCompleted).length, total: cm.length }
+  })
+}
+
 /** Capacity rows from the registration window (cap/count per category); [] when unavailable. */
 export function enrollmentByCategory(window: RegistrationWindowView | null): Array<{ categoria: string; count: number; cap: number }> {
   return (window?.categories ?? []).map((c) => ({ categoria: c.categoria, count: c.count, cap: c.cap }))

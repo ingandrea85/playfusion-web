@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { CategoryFinalStanding, RegistrationWindowView, ScheduledMatchView } from '@playfusion/rest-client'
-import { derivePhase, enrollmentByCategory, eventSummary, matchProgress, progressByDay, progressByField, scheduleDelay } from '../src/views/dashboard-data'
+import { derivePhase, enrollmentByCategory, eventSummary, matchProgress, progressByDay, progressByField, scheduleDelay, upcomingMatches, progressByCategory } from '../src/views/dashboard-data'
 import { capacityBars, dayColumns, donut, statTiles } from '../src/views/dashboard-charts'
 import { renderWorkspace, type OverviewData } from '../src/views/workspace'
 
@@ -60,6 +60,27 @@ describe('dashboard-data — progress', () => {
       m({ id: '5', time: '09:00', status: 'CANCELLED' }),  // cancelled → not late
     ]
     expect(scheduleDelay(ms, now)).toEqual({ lateCount: 2, maxLateMin: 30 })
+  })
+  it('upcomingMatches: soonest first, excludes completed/cancelled/LIVE', () => {
+    const ms = [
+      m({ id: '1', time: '11:00' }),
+      m({ id: '2', time: '10:00' }),
+      m({ id: '3', time: '09:00', status: 'FINISHED' }),  // done → out
+      m({ id: '4', time: '09:30', status: 'LIVE' }),        // live → out
+      m({ id: '5', time: '09:45', status: 'CANCELLED' }),   // cancelled → out
+    ]
+    expect(upcomingMatches(ms).map((x) => x.id)).toEqual(['2', '1']) // sorted, only the two scheduled
+  })
+  it('progressByCategory: completed/total per category (counts a FINISHED festival match)', () => {
+    const ms = [
+      m({ id: '1', categoryId: 'U10', status: 'FINISHED', phase: 'FESTIVAL' }),
+      m({ id: '2', categoryId: 'U10', phase: 'FESTIVAL' }),
+      m({ id: '3', categoryId: 'U12', homeScore: 1, awayScore: 0 }),
+    ]
+    expect(progressByCategory(ms)).toEqual([
+      { categoryId: 'U10', played: 1, total: 2 },
+      { categoryId: 'U12', played: 1, total: 1 },
+    ])
   })
   it('matchProgress is 0/0 → pct 0 with no matches', () => {
     expect(matchProgress([])).toEqual({ played: 0, total: 0, pct: 0 })
