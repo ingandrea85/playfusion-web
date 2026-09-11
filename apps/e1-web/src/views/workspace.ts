@@ -3,7 +3,7 @@ import { eventLabels } from '@playfusion/rest-client'
 import { renderOrganizerWorkspace, esc, renderShareLink, wireShareLinks, type WorkspaceTab } from '@playfusion/app-shell'
 import type { Screen } from '../view.js'
 import { criterionLabel } from './tiebreak.js'
-import { derivePhase, enrollmentByCategory, eventSummary, matchProgress, progressByDay, progressByField, type EventPhase } from './dashboard-data.js'
+import { derivePhase, enrollmentByCategory, eventSummary, matchProgress, progressByDay, progressByField, scheduleDelay, type EventPhase } from './dashboard-data.js'
 import { capacityBars, dayColumns, donut, statTiles } from './dashboard-charts.js'
 
 const FINALS_LABEL: Record<FinalsType, string> = {
@@ -102,7 +102,7 @@ const dashCard = (title: string, body: string, wide = false): string =>
   `<div class="pf-card pf-dashcard${wide ? ' pf-dashcard--wide' : ''}"><h2 class="pf-h3">${esc(title)}</h2>${body}</div>`
 
 /** Phase-aware chart band prepended to the Panoramica — only the current phase's charts. */
-export function dashboardBand(data: OverviewData): { phase: EventPhase; html: string } {
+export function dashboardBand(data: OverviewData, now: Date = new Date()): { phase: EventPhase; html: string } {
   const phase = derivePhase(data.matches)
   let cards: string
   if (phase === 'PREP') {
@@ -118,7 +118,12 @@ export function dashboardBand(data: OverviewData): { phase: EventPhase; html: st
       note: f.behind ? `${f.played}/${f.total} · indietro` : `${f.played}/${f.total}`,
       state: f.behind ? ('behind' as const) : undefined,
     }))
+    const delay = scheduleDelay(data.matches, now)
+    const delayCard = dashCard('Ritardo', delay.lateCount
+      ? `<div style="font-size:30px;font-weight:800;color:var(--color-feedback-warning,#c77d16)">~${delay.maxLateMin}′</div><p class="pf-muted">${delay.lateCount} ${delay.lateCount === 1 ? 'partita' : 'partite'} in ritardo sull'orario previsto</p>`
+      : `<div style="font-size:30px;font-weight:800;color:var(--color-feedback-success,#0f9d6b)">✓</div><p class="pf-muted">In orario</p>`)
     cards = dashCard('Avanzamento partite', donut(mp.pct, `${mp.pct}%`, `${mp.played}/${mp.total} partite`))
+      + delayCard
       + dashCard('Partite per giornata', dayColumns(progressByDay(data.matches)))
       + dashCard('Avanzamento per campo', fields.length ? capacityBars(fields) : '<p class="pf-muted">Nessun campo assegnato.</p>')
   } else {

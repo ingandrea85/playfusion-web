@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { CategoryFinalStanding, RegistrationWindowView, ScheduledMatchView } from '@playfusion/rest-client'
-import { derivePhase, enrollmentByCategory, eventSummary, matchProgress, progressByDay, progressByField } from '../src/views/dashboard-data'
+import { derivePhase, enrollmentByCategory, eventSummary, matchProgress, progressByDay, progressByField, scheduleDelay } from '../src/views/dashboard-data'
 import { capacityBars, dayColumns, donut, statTiles } from '../src/views/dashboard-charts'
 import { renderWorkspace, type OverviewData } from '../src/views/workspace'
 
@@ -45,6 +45,21 @@ describe('dashboard-data — progress', () => {
   it('matchProgress excludes finals from the total', () => {
     const ms = [m({ id: '1', homeScore: 1, awayScore: 0 }), m({ id: 'f', phase: 'FINAL' })]
     expect(matchProgress(ms)).toEqual({ played: 1, total: 1, pct: 100 })
+  })
+  it('matchProgress counts a FINISHED match with NO score (festival "giocata")', () => {
+    const ms = [m({ id: '1', phase: 'FESTIVAL', status: 'FINISHED' }), m({ id: '2', phase: 'FESTIVAL' })]
+    expect(matchProgress(ms)).toEqual({ played: 1, total: 2, pct: 50 }) // regression: was 0 (score-based)
+  })
+  it('scheduleDelay: matches past kickoff and not done/cancelled are late (max minutes late)', () => {
+    const now = new Date('2026-09-01T10:30:00')
+    const ms = [
+      m({ id: '1', time: '10:00' }),                       // 30' late
+      m({ id: '2', time: '10:15' }),                       // 15' late
+      m({ id: '3', time: '11:00' }),                       // future → not late
+      m({ id: '4', time: '09:00', status: 'FINISHED' }),   // done → not late
+      m({ id: '5', time: '09:00', status: 'CANCELLED' }),  // cancelled → not late
+    ]
+    expect(scheduleDelay(ms, now)).toEqual({ lateCount: 2, maxLateMin: 30 })
   })
   it('matchProgress is 0/0 → pct 0 with no matches', () => {
     expect(matchProgress([])).toEqual({ played: 0, total: 0, pct: 0 })
