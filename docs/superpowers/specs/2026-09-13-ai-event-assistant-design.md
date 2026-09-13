@@ -38,7 +38,7 @@ through the existing endpoints (`o3.createEvent` → `o7.schedule:generate` →
 | Assistant type | Copilot that drafts + applies, anchored at **creation** (natural-language, with completion questions). |
 | Scope v1 | Only at event creation → generates a complete draft. |
 | Provider | **AWS Bedrock / Claude**, in-account, region **`eu-south-1`** (verified available), EU inference profile. No external SaaS, no new authorization. |
-| Default model | `eu.anthropic.claude-sonnet-4-5-20250929-v1:0` (EU residency). `eu.anthropic.claude-haiku-4-5-20251001-v1:0` as the low-cost fallback if testing shows it suffices. |
+| Default model | `eu.anthropic.claude-haiku-4-5-20251001-v1:0` (EU residency) — cheap/fast, sufficient for the constrained JSON task. Upgrade to `eu.anthropic.claude-sonnet-4-5-20250929-v1:0` if testing shows the draft quality is insufficient. The model id is a single injectable constant, so switching is a one-line change. |
 | Apply model | **AI proposes `EventDraft`; frontend applies** via existing endpoints, human-in-the-loop. |
 | Paywall | New entitlement `hasAiAssistant` on **CLUB+**, with a monthly usage cap. |
 | Cap | Trial (`status: TRIAL`) = **5**/month · CLUB active = **20**/month · ENTERPRISE = **unlimited**. |
@@ -224,6 +224,7 @@ No full prompts in logs by default (they contain event descriptions, possibly na
 
 ## 12. Cost
 
-~$0.03 per generation (Sonnet-class); ~$0.60/org/month at the 20-cap. Account has **active AWS
+~$0.008 per generation (Haiku 4.5 default; ~$0.03 if upgraded to Sonnet); ~$0.16/org/month at the
+20-cap on Haiku. Account has **active AWS
 credits currently offsetting all monthly usage** (net ~0) — likely covering Bedrock too (confirm
 "Applicable services" on the Billing→Credits page). Economics are not a design risk.
