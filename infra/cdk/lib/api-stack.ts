@@ -7,6 +7,7 @@ import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { RestApi, LambdaIntegration, Cors } from 'aws-cdk-lib/aws-apigateway';
 import { Rule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import type { DataStack } from './data-stack.js';
 import { EVENT_SOURCE, busName } from './naming.js';
 
@@ -91,6 +92,9 @@ const BCS: BcSpec[] = [
     tables: ['o11-subscriptions'],
     consumer: { tables: ['o11-subscriptions', 'o11-processed-events'], detailTypes: ['OrganizationCreated'] },
   },
+  // O13 assistant: AI event assistant backed by Bedrock, reads o11's subscription (plan lookup)
+  // over a direct table grant (not HTTP, unlike o7) and writes its own usage/quota table. No consumer.
+  { key: 'o13-assistant', route: 'o13', tables: ['o13-usage'] },
 ];
 
 /**
@@ -190,6 +194,21 @@ export class ApiStack extends Stack {
       if (bc.route === 'o11') addStripeEnv(handler);
       for (const t of bc.tables) props.data.tables[t]!.grantReadWriteData(handler);
       props.data.bus.grantPutEventsTo(handler);
+
+      // O13 assistant: read-only plan lookup on o11's table (cross-BC table grant, not HTTP —
+      // unlike o7's PF_API_BASE_URL pattern) + Bedrock model config + InvokeModel IAM.
+      if (bc.route === 'o13') {
+        props.data.tables['o11-subscriptions']!.grantReadData(handler); // read-only plan lookup
+        handler.addEnvironment('O13_MODEL_ID', 'eu.anthropic.claude-haiku-4-5-20251001-v1:0');
+        handler.addEnvironment('O13_BEDROCK_REGION', 'eu-south-1');
+        handler.addToRolePolicy(new PolicyStatement({
+          actions: ['bedrock:InvokeModel'],
+          resources: [
+            `arn:aws:bedrock:eu-south-1:*:inference-profile/eu.anthropic.claude-haiku-4-5-20251001-v1:0`,
+            `arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0`,
+          ],
+        }));
+      }
 
       // API Gateway route: /<route>/{proxy+} → the BC's Hono app
       api.root.addResource(bc.route).addProxy({

@@ -103,6 +103,17 @@ export class DataStack extends Stack {
     // O11 consumer idempotency (D-O11-3): dedupe OrganizationCreated deliveries.
     this.tables['o11-processed-events'] = table('o11-processed-events', 'eventId');
 
+    // O13 assistant (AI event assistant): per-org monthly usage/quota tracking, keyed by
+    // (organizationId, month). Composite key + TTL — constructed inline like o7-checkoffs.
+    this.tables['o13-usage'] = new Table(this, 'o13-usage', {
+      tableName: resourceName('o13-usage', env),
+      partitionKey: { name: 'organizationId', type: AttributeType.STRING },
+      sortKey: { name: 'month', type: AttributeType.STRING },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+      timeToLiveAttribute: 'ttl',
+      removalPolicy,
+    });
+
     // O9 communications (S15): announcements per event; event-index GSI to list per event.
     const announcements = table('o9-announcements', 'announcementId');
     announcements.addGlobalSecondaryIndex({
