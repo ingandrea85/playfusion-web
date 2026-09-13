@@ -27,15 +27,17 @@ export interface Entitlements {
   hasResources: boolean
   /** Business-only killer feature (sub-teams / multi-venue / SSO — scoped later). */
   hasBusinessFeatures: boolean
+  hasAiAssistant: boolean
+  aiAssistantMonthlyCap: number | null
 }
 
 const TABLE: Record<Plan, Entitlements> = {
-  FREE: { maxSeats: 1, canInviteMembers: false, maxActiveEvents: 1, hasBrand: false, hasAnnouncements: false, hasPayments: false, hasEventSite: false, hasFinalsFormats: false, hasResources: false, hasBusinessFeatures: false },
+  FREE: { maxSeats: 1, canInviteMembers: false, maxActiveEvents: 1, hasBrand: false, hasAnnouncements: false, hasPayments: false, hasEventSite: false, hasFinalsFormats: false, hasResources: false, hasBusinessFeatures: false, hasAiAssistant: false, aiAssistantMonthlyCap: 0 },
   // STARTER — core tournament: unlimited events, custom finals formats, basic announcements. The
   // differentiators (payments, brand, event site, post-match resources) stay off; they're the CLUB step-up.
-  STARTER: { maxSeats: 3, canInviteMembers: true, maxActiveEvents: null, hasBrand: false, hasAnnouncements: true, hasPayments: false, hasEventSite: false, hasFinalsFormats: true, hasResources: false, hasBusinessFeatures: false },
-  CLUB: { maxSeats: 5, canInviteMembers: true, maxActiveEvents: null, hasBrand: true, hasAnnouncements: true, hasPayments: true, hasEventSite: true, hasFinalsFormats: true, hasResources: true, hasBusinessFeatures: false },
-  ENTERPRISE: { maxSeats: 20, canInviteMembers: true, maxActiveEvents: null, hasBrand: true, hasAnnouncements: true, hasPayments: true, hasEventSite: true, hasFinalsFormats: true, hasResources: true, hasBusinessFeatures: true },
+  STARTER: { maxSeats: 3, canInviteMembers: true, maxActiveEvents: null, hasBrand: false, hasAnnouncements: true, hasPayments: false, hasEventSite: false, hasFinalsFormats: true, hasResources: false, hasBusinessFeatures: false, hasAiAssistant: false, aiAssistantMonthlyCap: 0 },
+  CLUB: { maxSeats: 5, canInviteMembers: true, maxActiveEvents: null, hasBrand: true, hasAnnouncements: true, hasPayments: true, hasEventSite: true, hasFinalsFormats: true, hasResources: true, hasBusinessFeatures: false, hasAiAssistant: true, aiAssistantMonthlyCap: 20 },
+  ENTERPRISE: { maxSeats: 20, canInviteMembers: true, maxActiveEvents: null, hasBrand: true, hasAnnouncements: true, hasPayments: true, hasEventSite: true, hasFinalsFormats: true, hasResources: true, hasBusinessFeatures: true, hasAiAssistant: true, aiAssistantMonthlyCap: null },
 }
 
 /** Entitlements for a plan. Unknown/missing plan falls back to the most restrictive (FREE). */
@@ -47,4 +49,16 @@ export function entitlements(plan: Plan | string | undefined | null): Entitlemen
 export function atEventCap(plan: Plan | string | undefined | null, activeEvents: number): boolean {
   const max = entitlements(plan).maxActiveEvents
   return max !== null && activeEvents >= max
+}
+
+/** Monthly AI-assistant generation cap. 0 = not entitled, null = unlimited.
+ *  A trial (status TRIAL) of an entitled plan gets a reduced taster cap. */
+export function aiAssistantCap(
+  plan: Plan | string | undefined | null,
+  status: string | undefined | null,
+): number | null {
+  const ent = entitlements(plan)
+  if (!ent.hasAiAssistant) return 0
+  if (status === 'TRIAL') return 5
+  return ent.aiAssistantMonthlyCap
 }

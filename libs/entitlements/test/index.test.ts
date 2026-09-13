@@ -31,3 +31,30 @@ describe('atEventCap', () => {
     expect(atEventCap('ENTERPRISE', 500)).toBe(false)
   })
 })
+
+import { aiAssistantCap } from '../src/index.js'
+
+describe('aiAssistantCap', () => {
+  it('FREE and STARTER have no AI assistant (cap 0)', () => {
+    expect(aiAssistantCap('FREE', 'ACTIVE')).toBe(0)
+    expect(aiAssistantCap('STARTER', 'ACTIVE')).toBe(0)
+  })
+  it('CLUB active gets 20, ENTERPRISE unlimited (null)', () => {
+    expect(aiAssistantCap('CLUB', 'ACTIVE')).toBe(20)
+    expect(aiAssistantCap('ENTERPRISE', 'ACTIVE')).toBe(null)
+  })
+  it('a CLUB trial gets the reduced cap of 5', () => {
+    expect(aiAssistantCap('CLUB', 'TRIAL')).toBe(5)
+  })
+  it('an unknown plan is not entitled (cap 0) regardless of status', () => {
+    expect(aiAssistantCap('WHATEVER', 'TRIAL')).toBe(0)
+    expect(aiAssistantCap(undefined, 'ACTIVE')).toBe(0)
+  })
+})
+
+describe('entitlements — AI flags', () => {
+  it('CLUB unlocks the AI assistant, FREE does not', () => {
+    expect(entitlements('CLUB')).toMatchObject({ hasAiAssistant: true, aiAssistantMonthlyCap: 20 })
+    expect(entitlements('FREE')).toMatchObject({ hasAiAssistant: false, aiAssistantMonthlyCap: 0 })
+  })
+})
