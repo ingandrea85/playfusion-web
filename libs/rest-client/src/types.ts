@@ -279,3 +279,28 @@ export type OrgRole = 'OWNER' | 'ORGANIZER'
 export interface Member { memberId: string; organizationId: string; name: string; email: string; role: OrgRole; createdAt: string }
 export interface Invitation { invitationId: string; organizationId: string; name: string; email: string; role: OrgRole; status: 'PENDING'; createdAt: string }
 export interface InviteMemberInput { name: string; email: string; role: OrgRole }
+
+// o13 — AI event-configuration assistant
+export type EventDraftFormat = 'groups' | 'groups+bracket' | 'bracket' | 'festival'
+export interface EventDraftCore {
+  name: string
+  sportId: string
+  participantType: 'team' | 'individual'
+  format: EventDraftFormat
+  categorie: string[]
+  dates: { from: string; to: string }
+  startTime?: string
+  location?: string
+  playbook: 'PB-1' | 'PB-2'
+}
+export interface DraftGroup { label: string; teamCount: number; field?: string }
+export interface EventDraft {
+  event: EventDraftCore
+  groupsByCategory?: Record<string, { groups: DraftGroup[] }>
+  schedule: ScheduleConfig
+  rationale: string
+  assumptions: string[]
+}
+export interface OpenQuestion { field: string; question: string }
+export interface DraftResponse { draft?: EventDraft; openQuestions?: OpenQuestion[] }
+export interface DraftInput { description: string; answers?: Record<string, string>; sportId?: string }
