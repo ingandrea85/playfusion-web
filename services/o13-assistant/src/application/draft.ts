@@ -19,8 +19,16 @@ export function generateDraft(d: Deps) {
     const used = await d.usage.count(organizationId, month)
     if (cap !== null && used >= cap) throw new AiCapReached('tetto mensile raggiunto')
 
+    console.error('[o13-diag] entitlement', JSON.stringify({ plan, status, cap, used }))
     const raw = await d.ai.complete(buildPrompt(input))
-    const resp = parseAndValidateDraft(raw)     // throws AiInvalidDraft on malformed/illegal
+    let resp: DraftResponse
+    try {
+      resp = parseAndValidateDraft(raw)     // throws AiInvalidDraft on malformed/illegal
+    } catch (e) {
+      // [o13-diag] the model output that failed validation — see WHY it 422'd.
+      console.error('[o13-diag] validate-fail', JSON.stringify({ message: (e as Error).message, rawLen: raw.length, rawHead: raw.slice(0, 500) }))
+      throw e
+    }
     if (resp.draft) await d.usage.increment(organizationId, month)   // count only successful generations
     return resp
   }
