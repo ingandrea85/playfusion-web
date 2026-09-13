@@ -15,13 +15,31 @@ const FORMAT_LABEL: Record<NonNullable<CreateEventInput['format']>, string> = {
   'festival': 'Festival (non competitivo)',
 }
 
-export function renderCreateEvent(categorie: string[] = [], sports: SportProfile[] = []): string {
+function assistantPanel(hasAi: boolean): string {
+  if (!hasAi) {
+    return `<div class="pf-card pf-aipanel pf-aipanel--locked">
+      <h2 class="pf-h3">✨ Assistente AI</h2>
+      <p class="pf-muted">Descrivi il torneo a parole e lascia che l'assistente configuri categorie, gironi, calendario e finali. <b>Disponibile con Club.</b></p>
+      <a class="pf-btn" href="#/org/subscription">Passa a Club</a>
+    </div>`
+  }
+  return `<div class="pf-card pf-aipanel">
+    <h2 class="pf-h3">✨ Assistente AI</h2>
+    <p class="pf-muted">Descrivi il torneo: squadre, campi, orari, formato. L'assistente prepara una bozza da rivedere.</p>
+    <textarea id="pf-ai-desc" rows="4" class="pf-input" placeholder="Es. Festa dello sport, 24 squadre U10, 3 campi, domenica 9–18, partite da 15', tutti giocano, niente classifiche."></textarea>
+    <button id="pf-ai-go" class="pf-btn pf-btn--primary" type="button">✨ Genera bozza</button>
+    <div id="pf-ai-out"></div>
+  </div>`
+}
+
+export function renderCreateEvent(categorie: string[] = [], sports: SportProfile[] = [], hasAi = false): string {
   const sportOpts = sports.map((s) => `<option value="${esc(s.id)}" data-part="${s.participants}">${esc(s.name)}</option>`).join('')
   const formatOpts = (Object.keys(FORMAT_LABEL) as (keyof typeof FORMAT_LABEL)[])
     .map((k) => `<option value="${k}"${k === 'groups+bracket' ? ' selected' : ''}>${FORMAT_LABEL[k]}</option>`).join('')
   return `${renderOrganizerTopbar('dashboard')}
     <main class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">Nuovo</div><h1>Crea evento</h1></div>
+      ${assistantPanel(hasAi)}
       <div id="err"></div>
       <form id="form" class="pf-card">
         <div class="pf-field"><label>Playbook</label>
@@ -75,7 +93,7 @@ export function renderCapBlocked(): string {
     </main>`
 }
 
-export interface CreateEventGate { capReached: boolean; sports: SportProfile[] }
+export interface CreateEventGate { capReached: boolean; sports: SportProfile[]; hasAi: boolean }
 
 export const createEventScreen: Screen<CreateEventGate> = {
   load: async (ctx) => {
@@ -84,9 +102,9 @@ export const createEventScreen: Screen<CreateEventGate> = {
       ctx.client.o3.listSports().catch(() => [] as SportProfile[]),
     ])
     const max = ctx.entitlements.maxActiveEvents
-    return { capReached: max !== null && events.length >= max, sports }
+    return { capReached: max !== null && events.length >= max, sports, hasAi: ctx.entitlements.hasAiAssistant }
   },
-  render: (data) => (data.capReached ? renderCapBlocked() : renderCreateEvent([], data.sports)),
+  render: (data) => (data.capReached ? renderCapBlocked() : renderCreateEvent([], data.sports, data.hasAi)),
   mount(root, ctx: ViewCtx, data) {
     if (data.capReached) return
     const categorie: string[] = []
