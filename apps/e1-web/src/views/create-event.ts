@@ -1,6 +1,22 @@
 import { renderOrganizerTopbar, esc } from '@playfusion/app-shell'
-import type { CreateEventInput, SportProfile } from '@playfusion/rest-client'
+import type { Client, CreateEventInput, EventDraft, SportProfile } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
+
+/** Task 8: applies an AI-generated draft — create the event, draw gironi per category (dependency
+ *  order: gironi must exist before schedule generation reads group/pool composition), generate the
+ *  schedule, then navigate to the new event. Pure w.r.t. the DOM so it's unit-testable without it. */
+export async function applyDraft(client: Client, navigate: (h: string) => void, draft: EventDraft): Promise<void> {
+  const created = await client.o3.createEvent(draft.event)
+  const id = created.sportEventId
+  if (draft.groupsByCategory) {
+    for (const cat of draft.event.categorie) {
+      const g = draft.groupsByCategory[cat]
+      if (g && g.groups.length) await client.o3.drawGironi(id, cat, g.groups.length)
+    }
+  }
+  await client.o7.generateSchedule(id, draft.schedule)
+  navigate(`#/events/${encodeURIComponent(id)}`)
+}
 
 /** Chip markup for the category list — shared by the initial render and mount's redraw(). */
 export function renderCatChips(categorie: string[]): string {
@@ -158,5 +174,72 @@ export const createEventScreen: Screen<CreateEventGate> = {
         ctx.navigate(`#/events/${encodeURIComponent(created.sportEventId)}`)
       } catch { err.innerHTML = inlineError('Creazione non riuscita. Riprova.'); btn.disabled = false }
     })
+
+    // Task 8: AI assistant interaction (only wired when the panel is rendered — entitled orgs).
+    const desc = root.querySelector<HTMLTextAreaElement>('#pf-ai-desc')
+    const go = root.querySelector<HTMLButtonElement>('#pf-ai-go')
+    const out = root.querySelector<HTMLElement>('#pf-ai-out')
+    let answers: Record<string, string> = {}
+
+    async function requestDraft(): Promise<void> {
+      if (!desc || !out) return
+      const description = desc.value.trim()
+      if (!description) { out.innerHTML = inlineError('Descrivi prima il torneo.'); return }
+      if (go) go.disabled = true
+      out.innerHTML = '<p class="pf-muted">Genero la bozza…</p>'
+      try {
+        const resp = await ctx.client.o13.draftEvent(ctx.orgId, { description, answers, sportId: undefined })
+        if (resp.openQuestions?.length) renderQuestions(resp.openQuestions)
+        else if (resp.draft) renderDraft(resp.draft)
+        else out.innerHTML = inlineError('Nessuna bozza. Riprova o configura a mano.')
+      } catch (e: unknown) {
+        const status = (e as { status?: number }).status
+        if (status === 429) out.innerHTML = inlineError('Hai esaurito le generazioni di questo mese. Passa a Enterprise per generazioni illimitate.')
+        else out.innerHTML = inlineError('Non sono riuscito a generare una bozza. Configura pure a mano.')
+      } finally { if (go) go.disabled = false }
+    }
+
+    function renderQuestions(qs: { field: string; question: string }[]): void {
+      if (!out) return
+      out.innerHTML = `<div class="pf-aiqs">${qs.map((q) =>
+        `<label class="pf-field"><span>${esc(q.question)}</span><input class="pf-input" data-qfield="${esc(q.field)}"></label>`).join('')}
+        <button class="pf-btn pf-btn--primary" id="pf-ai-answer" type="button">Completa la bozza</button></div>`
+      out.querySelector('#pf-ai-answer')!.addEventListener('click', () => {
+        answers = { ...answers }
+        out.querySelectorAll<HTMLInputElement>('[data-qfield]').forEach((i) => { answers[i.dataset.qfield!] = i.value })
+        void requestDraft()
+      })
+    }
+
+    function renderDraft(draft: EventDraft): void {
+      if (!out) return
+      const cats = draft.event.categorie.map((cat) => {
+        const g = draft.groupsByCategory?.[cat]
+        const gtxt = g ? ` → ${g.groups.length} gruppi` : ''
+        return `<li>${esc(cat)}${gtxt}</li>`
+      }).join('')
+      out.innerHTML = `<div class="pf-aidraft">
+        <h3 class="pf-h4">${esc(draft.event.name)}</h3>
+        <p class="pf-muted">${esc(draft.event.format)} · ${esc(draft.event.dates.from)} → ${esc(draft.event.dates.to)}</p>
+        <ul>${cats}</ul>
+        <p class="pf-muted">${esc(draft.rationale)}</p>
+        <div class="pf-row">
+          <button class="pf-btn" id="pf-ai-edit" type="button">✎ Modifica a mano</button>
+          <button class="pf-btn pf-btn--primary" id="pf-ai-apply" type="button">Applica configurazione</button>
+        </div></div>`
+      out.querySelector('#pf-ai-apply')!.addEventListener('click', async () => {
+        const btn = out.querySelector<HTMLButtonElement>('#pf-ai-apply')!; btn.disabled = true
+        try { await applyDraft(ctx.client, ctx.navigate, draft) }
+        catch { out.innerHTML = inlineError('Evento creato solo in parte. Controlla dal workspace.'); btn.disabled = false }
+      })
+      // "Modifica a mano" prefill is best-effort: fill the name field if present.
+      out.querySelector('#pf-ai-edit')!.addEventListener('click', () => {
+        const nameInput = root.querySelector<HTMLInputElement>('input[name="name"]')
+        if (nameInput) nameInput.value = draft.event.name
+        desc?.scrollIntoView({ behavior: 'smooth' })
+      })
+    }
+
+    if (go) go.addEventListener('click', () => void requestDraft())
   },
 }
