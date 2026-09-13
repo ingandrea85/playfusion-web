@@ -204,7 +204,7 @@ export class ApiStack extends Stack {
         handler.addToRolePolicy(new PolicyStatement({
           actions: ['bedrock:InvokeModel'],
           resources: [
-            `arn:aws:bedrock:eu-south-1:*:inference-profile/eu.anthropic.claude-haiku-4-5-20251001-v1:0`,
+            `arn:aws:bedrock:eu-south-1:${this.account}:inference-profile/eu.anthropic.claude-haiku-4-5-20251001-v1:0`,
             `arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0`,
           ],
         }));

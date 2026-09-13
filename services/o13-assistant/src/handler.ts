@@ -3,7 +3,7 @@ import { cors } from 'hono/cors'
 import { randomUUID } from 'node:crypto'
 import {
   withCorrelation, currentCorrelationId, toHttpError, checkpoint,
-  auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer,
+  auth0ConfigFromEnv, createAuth0Verifier, requireOrganizer, getIdentity,
 } from '@playfusion/platform-lib'
 import { z } from 'zod'
 import { generateDraft, AiForbidden, AiCapReached, type Deps } from './application/draft.js'
@@ -28,8 +28,18 @@ export function makeApp(deps: Deps): Hono {
 
   app.post('/organizations/:orgId/assistant:draft', organizer, async (c) => {
     const body = draftBody.parse(await c.req.json().catch(() => ({})))
+    // Bind org enforcement to the caller's JWT identity, not the attacker-controlled path
+    // param — mirrors o7/o3's identity-first convention (getIdentity(c)?.organizationId).
+    // Without this, any organizer could POST a different org's id in the path and burn that
+    // org's plan cap / get paid generations under someone else's subscription.
+    const pathOrg = c.req.param('orgId')
+    const identityOrg = getIdentity(c)?.organizationId
+    if (identityOrg && identityOrg !== pathOrg) {
+      return c.json({ code: 'ORG_MISMATCH', message: 'organizzazione non consentita' }, 403)
+    }
+    const orgId = identityOrg ?? pathOrg
     try {
-      return c.json(await generateDraft(deps)(c.req.param('orgId'), body))
+      return c.json(await generateDraft(deps)(orgId, body))
     } catch (e) {
       if (e instanceof AiForbidden) return c.json({ code: 'AI_NOT_ENTITLED', message: e.message }, 403)
       if (e instanceof AiCapReached) return c.json({ code: 'AI_CAP_REACHED', message: e.message }, 429)

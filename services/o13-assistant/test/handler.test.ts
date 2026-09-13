@@ -49,4 +49,27 @@ describe('o13 handler', () => {
     const res = await call(makeApp(deps()), {})
     expect(res.status).toBe(400)
   })
+
+  describe('org enforcement is bound to the JWT identity, not the URL path', () => {
+    // The magic-link bridge can carry an organizationId too (see libs/platform-lib/src/magic-link.ts
+    // `claims.organizationId` / payload `org`); mint one for org-A to exercise the mismatch guard.
+    const orgAToken = signMagicLink({ subject: 'it-organizer-a', roles: ['RegistrationManager'], organizationId: 'org-A' })
+    const orgAHeaders = { 'content-type': 'application/json', authorization: `Bearer ${orgAToken}` }
+
+    it('403 ORG_MISMATCH when the identity org differs from the path org', async () => {
+      const res = await makeApp(deps()).request('/organizations/org-B/assistant:draft', {
+        method: 'POST', headers: orgAHeaders, body: JSON.stringify({ description: 'festa' }),
+      })
+      expect(res.status).toBe(403)
+      expect((await res.json()).code).toBe('ORG_MISMATCH')
+    })
+
+    it('200 when the identity org matches the path org', async () => {
+      const res = await makeApp(deps()).request('/organizations/org-A/assistant:draft', {
+        method: 'POST', headers: orgAHeaders, body: JSON.stringify({ description: 'festa' }),
+      })
+      expect(res.status).toBe(200)
+      expect((await res.json()).draft.event.format).toBe('festival')
+    })
+  })
 })
