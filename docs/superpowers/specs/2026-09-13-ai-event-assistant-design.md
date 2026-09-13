@@ -203,6 +203,13 @@ manual form. For **CLUB+** it is active; for FREE/STARTER it renders the **locke
   (and any small helper split if the file grows unwieldy).
 - **CDK** — o13 Lambda + API Gateway route `POST /o13/assistant/draft`; `o13-usage` DynamoDB table;
   IAM (`bedrock:InvokeModel` on the specific inference-profile ARNs; read access to o11).
+- **Public site FAQ** — `apps/site/index.html`: add an AI-assistant Q&A to **both** the visible
+  `.site-faq` list (a new `.site-faq__item`) **and** the JSON-LD `FAQPage` `mainEntity` array
+  (kept in sync — the two must not diverge, or the structured data is wrong for SEO). Proposed copy
+  (final wording tweakable):
+  > **C'è un assistente AI?** — Sì: con il piano Club l'assistente AI configura l'evento per te.
+  > Descrivi il torneo a parole (squadre, campi, orari, formato) e genera categorie, gironi o pool,
+  > calendario e finali, pronti da rivedere e applicare. Disponibile anche durante i 14 giorni di prova.
 
 ## 10. Testing
 
@@ -216,6 +223,8 @@ manual form. For **CLUB+** it is active; for FREE/STARTER it renders the **locke
 - **Bedrock client:** mocked in unit tests (no real calls); one optional flagged integration test.
 - **UI E1:** panel render (locked vs active); question loop; apply orchestration asserts
   `createEvent → schedule:generate → gironi:draw` order (client mocked).
+- **Site FAQ:** the new AI Q&A appears in both the visible `.site-faq` list and the JSON-LD
+  `FAQPage` (same question text/answer in sync); the JSON-LD still parses as valid JSON.
 
 ## 11. Privacy & logging
 
