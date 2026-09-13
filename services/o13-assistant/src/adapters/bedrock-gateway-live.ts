@@ -8,13 +8,23 @@ export function makeLiveBedrockGateway(): BedrockGateway {
   const client = new BedrockRuntimeClient({ region: REGION })
   return {
     async complete(prompt: string): Promise<string> {
-      const out = await client.send(new ConverseCommand({
-        modelId: MODEL_ID,
-        messages: [{ role: 'user', content: [{ text: prompt }] }],
-        inferenceConfig: { maxTokens: 2000, temperature: 0.2 },
-      }))
+      let out
+      try {
+        out = await client.send(new ConverseCommand({
+          modelId: MODEL_ID,
+          // maxTokens 2000 truncated multi-category drafts → invalid JSON; 4096 gives headroom.
+          messages: [{ role: 'user', content: [{ text: prompt }] }],
+          inferenceConfig: { maxTokens: 4096, temperature: 0 },
+        }))
+      } catch (e) {
+        // [o13-diag] surface Bedrock runtime failures (IAM AccessDenied, throttling, model id).
+        console.error('[o13-diag] bedrock-error', JSON.stringify({ name: (e as Error).name, message: (e as Error).message, modelId: MODEL_ID, region: REGION }))
+        throw e
+      }
       const block = out.output?.message?.content?.find((b) => typeof (b as { text?: string }).text === 'string')
-      return (block as { text?: string } | undefined)?.text ?? ''
+      const text = (block as { text?: string } | undefined)?.text ?? ''
+      console.error('[o13-diag] bedrock-ok', JSON.stringify({ stopReason: out.stopReason, len: text.length, head: text.slice(0, 200) }))
+      return text
     },
   }
 }

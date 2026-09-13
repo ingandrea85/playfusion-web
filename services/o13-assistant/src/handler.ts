@@ -34,6 +34,7 @@ export function makeApp(deps: Deps): Hono {
     // org's plan cap / get paid generations under someone else's subscription.
     const pathOrg = c.req.param('orgId')
     const identityOrg = getIdentity(c)?.organizationId
+    console.error('[o13-diag] org', JSON.stringify({ pathOrg, identityOrg: identityOrg ?? null }))
     if (identityOrg && identityOrg !== pathOrg) {
       return c.json({ code: 'ORG_MISMATCH', message: 'organizzazione non consentita' }, 403)
     }
@@ -44,6 +45,8 @@ export function makeApp(deps: Deps): Hono {
       if (e instanceof AiForbidden) return c.json({ code: 'AI_NOT_ENTITLED', message: e.message }, 403)
       if (e instanceof AiCapReached) return c.json({ code: 'AI_CAP_REACHED', message: e.message }, 429)
       if (e instanceof AiInvalidDraft) return c.json({ code: 'AI_INVALID_DRAFT', message: e.message }, 422)
+      // [o13-diag] anything else → 500 via onError; surface it so we see IAM/runtime failures.
+      console.error('[o13-diag] unhandled', JSON.stringify({ name: (e as Error).name, message: (e as Error).message }))
       throw e
     }
   })
