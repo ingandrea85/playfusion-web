@@ -70,6 +70,24 @@ describe('e3 views', () => {
     expect(renderLanding(ev, win, true, disabled)).not.toContain('pf-esite-hero')
   })
 
+  it('P5: promotes the Calendario action to a primary, large CTA when published', () => {
+    const html = renderLanding(ev, win, true)
+    expect(html).toMatch(/class="pf-btn pf-btn--primary pf-btn--lg"[^>]*href="#\/events\/e1\/calendar"/)
+  })
+  it('A10: wraps content in a single <main> landmark (skip-link target), no second banner', () => {
+    const basic = renderLanding(ev, win, true)
+    expect(basic).toContain('<main id="pf-main">')
+    const site = { enabled: true, tagline: 'x', about: 'y', sponsors: [] }
+    const rich = renderLanding(ev, win, true, site)
+    expect(rich).toContain('<main id="pf-main">')
+    expect(rich).not.toContain('<header class="pf-esite-hero">') // demoted to <section>
+    expect(rich).toContain('<section class="pf-esite-hero">')
+  })
+  it('P12: participants page has a "Torna all\'evento" back row', () => {
+    const html = renderParticipants([{ registrationId: 'r', participantRef: 'Team A', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' }])
+    expect(html).toContain("Torna all'evento")
+    expect(html).toContain('href="#/events/e1"')
+  })
   it('participants lists confirmed teams', () => {
     const html = renderParticipants([{ registrationId: 'r', participantRef: 'Team A', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' }])
     expect(html).toContain('Team A')

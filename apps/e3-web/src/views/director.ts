@@ -85,7 +85,7 @@ export function renderDirector(event: EventDetail, category: string, matches: Sc
   const field = fields.includes(saved) ? saved : 'ALL' // ignore a stale saved field
   const inField = mine.filter((m) => field === 'ALL' || m.field === field)
   return `${renderPublicTopbar()}
-    <main class="pf-container pf-container--narrow">
+    <main id="pf-main" class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">Direttore</div><h1>${esc(category)}</h1>
         <div class="pf-mono pf-muted">${esc(event.name ?? event.sport)}</div></div>
       <div id="dir-err"></div>

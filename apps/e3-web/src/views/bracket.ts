@@ -6,9 +6,9 @@ const finalsOnly = (matches: ScheduledMatchView[]): ScheduledMatchView[] => matc
 const rowsFor = (ranking: CategoryFinalStanding[], cat: string) => ranking.find((r) => r.categoryId === cat)?.rows ?? []
 
 const section = (finals: ScheduledMatchView[], ranking: CategoryFinalStanding[], selCat: string): string =>
-  `${renderBracket(finals.filter((f) => f.categoryId === selCat), catName)}
+  `${renderBracket(finals.filter((f) => f.categoryId === selCat), catName, 'public')}
    <h3 class="pf-h4">Classifica finale</h3>
-   ${renderFinalStanding(rowsFor(ranking, selCat))}`
+   ${renderFinalStanding(rowsFor(ranking, selCat), 'public')}`
 
 /** Public, read-only finals: bracket + progressive final ranking, per category. Gated on PUBLISHED. */
 export function renderPublicBracket(event: EventDetail, schedule: ScheduleView, matches: ScheduledMatchView[], ranking: CategoryFinalStanding[] = []): string {
@@ -22,8 +22,9 @@ export function renderPublicBracket(event: EventDetail, schedule: ScheduleView, 
       ? `<div id="brk-cattabs">${renderTabs(categoryKeys(finals).map((c) => ({ key: c, label: c })), selCat)}</div>
          <div id="brkbody">${section(finals, ranking, selCat)}</div>`
       : `<p class="pf-muted">Nessuna fase finale per questo evento.</p>`
+  // P1: the bracket tree needs ~748px+ — use the wide (1080px, centred) container, not --narrow.
   return `${renderPublicTopbar()}
-    <main class="pf-container pf-container--narrow">
+    <main id="pf-main" class="pf-container">
       <div class="pf-pagehead"><div class="pf-eyebrow">${esc(event.name ?? event.sport)}</div><h1>Tabellone</h1></div>
       <div class="pf-card">${inner}</div>
       <div class="pf-row"><a class="pf-btn" href="#/events/${id}">← Torna all'evento</a></div>

@@ -13,12 +13,12 @@ export function renderPublicStandings(event: EventDetail, standings: GroupStandi
   const pl = eventLabels(event).participant
   const selCat = categoryKeys(standings)[0] ?? ''
   return `${renderPublicTopbar()}
-    <main class="pf-container pf-container--narrow">
+    <main id="pf-main" class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">${esc(event.name ?? event.sport)}</div><h1>Classifiche</h1></div>
       <div class="pf-card">
         <div id="st-cattabs">${renderTabs(categoryKeys(standings).map((c) => ({ key: c, label: c })), selCat)}</div>
         <div id="st-girtabs">${renderTabs([{ key: 'ALL', label: 'Tutti' }, ...groupKeys(standings, selCat).map((g) => ({ key: g, label: g }))], 'ALL')}</div>
-        <div id="stbody">${renderStandings(filterStandings(standings, selCat, 'ALL'), catName, pl)}</div>
+        <div id="stbody">${renderStandings(filterStandings(standings, selCat, 'ALL'), catName, pl, 'public')}</div>
       </div>
       <div class="pf-row"><a class="pf-btn" href="#/events/${id}">← Torna all'evento</a></div>
     </main>`
@@ -37,7 +37,7 @@ export function wirePublicStandings(root: ParentNode, standings: GroupStanding[]
     girbar.innerHTML = renderTabs([{ key: 'ALL', label: 'Tutti' }, ...groupKeys(standings, selCat).map((g) => ({ key: g, label: g }))], selGir)
     girbar.querySelectorAll<HTMLButtonElement>('[data-key]').forEach((b) =>
       b.addEventListener('click', () => { selGir = b.dataset.key!; draw() }))
-    stbody!.innerHTML = renderStandings(filterStandings(standings, selCat, selGir), catName, pl)
+    stbody!.innerHTML = renderStandings(filterStandings(standings, selCat, selGir), catName, pl, 'public')
   }
   draw()
 }

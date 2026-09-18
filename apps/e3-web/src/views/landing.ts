@@ -16,7 +16,8 @@ function navButtons(event: EventDetail, published: boolean): string {
   const id = encodeURIComponent(event.sportEventId)
   // Festival (non-competitive): calendar-only — no bracket, no standings, no finals formula.
   const isFestival = event.format === 'festival'
-  const calendarCta = published ? `<a class="pf-btn" href="#/events/${id}/calendar">Calendario →</a>` : ''
+  // P5: Calendario is the primary matchday action — promote it (primary + large); the rest stay ghost.
+  const calendarCta = published ? `<a class="pf-btn pf-btn--primary pf-btn--lg" href="#/events/${id}/calendar">Calendario →</a>` : ''
   const bracketCta = published && !isFestival ? `<a class="pf-btn pf-btn--ghost" href="#/events/${id}/bracket">Tabellone →</a>` : ''
   // Epic #143 (S4): solo tabellone has no standings — hide the Classifiche link. Festival too.
   const standingsCta = (event.format === 'bracket' || isFestival) ? '' : `<a class="pf-btn pf-btn--ghost" href="#/events/${id}/standings">Classifiche →</a>`
@@ -35,7 +36,9 @@ function renderBasicLanding(event: EventDetail, window: RegistrationWindowView, 
   const enrollHint = window.state === 'Open'
     ? `<p class="pf-muted" style="margin-top:var(--space-md)">Per iscrivere ${event.participantType === 'individual' ? 'un giocatore' : 'una squadra'} usa il link ricevuto dall'organizzatore.</p>`
     : ''
+  // A10: single banner is the topbar (<header>); page content lives in one <main> (skip-link target).
   return `${renderPublicTopbar()}
+    <main id="pf-main">
     <section class="pf-hero"><div class="pf-hero__inner">
       <div class="pf-eyebrow">Evento</div>
       <h1>${esc(event.name ?? event.sport)}</h1>
@@ -44,7 +47,8 @@ function renderBasicLanding(event: EventDetail, window: RegistrationWindowView, 
       <div class="pf-tabs" style="margin:var(--space-sm) 0 var(--space-xl)">${catChips(event, published)}</div>
       <div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">${navButtons(event, published)}</div>
       ${enrollHint}
-    </div></section>`
+    </div></section>
+    </main>`
 }
 
 const section = (title: string, body: string): string =>
@@ -78,14 +82,17 @@ function renderEventHome(event: EventDetail, window: RegistrationWindowView, pub
     c.phone ? esc(c.phone) : '', c.social ? esc(c.social) : '',
   ].filter(Boolean).join(' · ') : ''
 
+  // A10: the topbar is the single banner (<header>); the hero is demoted to <section> and all
+  // page content sits in one <main> (skip-link target). The site footer stays outside <main>.
   return `${renderPublicTopbar()}
-    <header class="pf-esite-hero"><div class="pf-container">
+    <main id="pf-main">
+    <section class="pf-esite-hero"><div class="pf-container">
       <div class="pf-eyebrow">Evento</div>
       <h1>${esc(event.name ?? event.sport)}</h1>
       ${site.tagline ? `<p class="pf-esite-tagline">${esc(site.tagline)}</p>` : ''}
       <div class="pf-esite-meta">${meta}</div>
       <div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm);margin-top:var(--space-lg)">${navButtons(event, published)}</div>
-    </div></header>
+    </div></section>
     ${section('Chi siamo', about)}
     ${section('Programma', program)}
     ${section('Dove si gioca', venueBlock)}
@@ -95,6 +102,7 @@ function renderEventHome(event: EventDetail, window: RegistrationWindowView, pub
     </div></section>
     ${section('Con il sostegno di', sponsors)}
     ${section('Contatti', contacts)}
+    </main>
     <footer class="pf-esite-foot"><div class="pf-container"><a href="#/events/${id}">${esc(event.name ?? event.sport)}</a></div></footer>`
 }
 

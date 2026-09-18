@@ -30,12 +30,12 @@ export function renderPublicFormula(event: EventDetail, config: ScheduleConfig, 
     const explain = `<p class="pf-formula__explain">💡 ${esc(formatExplainer(input))}</p>`
     const custom = event.format !== 'bracket' && cc.finalsFormatId
     const draws = custom ? [] : previewDraws(input)
-    const preview = draws.length ? renderBracket(draws.map((d) => ({ ...d, categoryId: 'preview' })), catName) : ''
+    const preview = draws.length ? renderBracket(draws.map((d) => ({ ...d, categoryId: 'preview' })), catName, 'public') : ''
     const note = custom ? `<p class="pf-muted">Formato personalizzato: il tabellone completo appare a torneo avviato.</p>` : ''
     return `<div class="pf-card"><div class="pf-calday__head pf-mono">${esc(c)}</div>${explain}${preview}${note}</div>`
   }).join('')
   return `${renderPublicTopbar()}
-    <main class="pf-container pf-container--narrow">
+    <main id="pf-main" class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">${esc(event.name ?? event.sport)}</div><h1>Formula del torneo</h1></div>
       ${event.categorie.length ? cards : '<p class="pf-muted">Nessuna categoria.</p>'}
       <div class="pf-row"><a class="pf-btn" href="#/events/${id}">← Torna all'evento</a></div>

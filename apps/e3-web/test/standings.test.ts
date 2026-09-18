@@ -16,8 +16,9 @@ describe('e3 public standings', () => {
     expect(html).toContain('<b>3</b>')
     expect(html).not.toContain('js-') // no edit controls
   })
-  it('shows the empty hint when there are no standings', () => {
-    expect(renderPublicStandings(event, [])).toContain('Nessuna classifica')
+  it('shows a visitor-facing empty hint when there are no standings', () => {
+    // P2: public empty states address the visitor, not the organizer.
+    expect(renderPublicStandings(event, [])).toContain('Le classifiche saranno disponibili a torneo iniziato')
   })
   it('landing links to the public standings', () => {
     expect(renderLanding(event, win)).toContain('/events/e1/standings')

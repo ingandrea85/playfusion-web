@@ -22,7 +22,7 @@ export function renderPublicAvvisi(event: EventDetail, announcements: Announceme
   const id = encodeURIComponent(event.sportEventId)
   const tabs = [{ key: 'ALL', label: 'Tutte' }, ...event.categorie.map((c) => ({ key: c, label: c }))]
   return `${renderPublicTopbar()}
-    <main class="pf-container pf-container--narrow">
+    <main id="pf-main" class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">${esc(event.name ?? event.sport)}</div><h1>Avvisi</h1></div>
       <div id="av-tabs">${renderTabs(tabs, 'ALL')}</div>
       <div id="av-list" class="pf-stack">${renderCards(filterAnnouncements(announcements, 'ALL'))}</div>

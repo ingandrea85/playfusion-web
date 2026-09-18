@@ -33,7 +33,7 @@ function categoryOptions(event: EventDetail, window: RegistrationWindowView): st
 export function renderApply(event: EventDetail, window: RegistrationWindowView, hasToken: boolean): string {
   const id = encodeURIComponent(event.sportEventId)
   const head = `${renderPublicTopbar()}
-    <main class="pf-container pf-container--narrow">
+    <main id="pf-main" class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">Iscrizione</div><h1>${esc(event.name ?? event.sport)}</h1></div>
       <div class="pf-row" style="margin-bottom:var(--space-md)"><a class="pf-btn pf-btn--ghost" href="#/events/${id}">← Vai alla pagina evento</a></div>`
   // Without a magic-link token the O5 apply call would 401 — show the notice instead of a form.
@@ -51,8 +51,8 @@ export function renderApply(event: EventDetail, window: RegistrationWindowView, 
   return `${head}
       <div id="msg"></div>
       <form id="apply" class="pf-card">
-        <div class="pf-field"><label>Nome squadra</label><input name="participantRef" required placeholder="es. Falchi Rossi" /></div>
-        <div class="pf-field"><label>Categoria</label><select name="categoria" required>${categoryOptions(event, window)}</select></div>
+        <div class="pf-field"><label for="apply-name">Nome squadra</label><input id="apply-name" name="participantRef" required placeholder="es. Falchi Rossi" /></div>
+        <div class="pf-field"><label for="apply-cat">Categoria</label><select id="apply-cat" name="categoria" required>${categoryOptions(event, window)}</select></div>
         <button class="pf-btn pf-btn--primary pf-btn--lg" type="submit" data-apply>Invia iscrizione</button>
       </form>
     </main>`
