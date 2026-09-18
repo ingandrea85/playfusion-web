@@ -31,6 +31,13 @@ const FORMAT_LABEL: Record<NonNullable<CreateEventInput['format']>, string> = {
   'festival': 'Festival (non competitivo)',
 }
 
+/**
+ * AI event-configuration assistant (o13). Hidden from the UI until its public release.
+ * The panel + interaction code below and the whole backend (o13 lambda, rest-client.o13,
+ * entitlements.hasAiAssistant) stay wired — flip this to `true` to re-expose the feature.
+ */
+const AI_ASSISTANT_ENABLED = false
+
 function assistantPanel(hasAi: boolean): string {
   if (!hasAi) {
     return `<div class="pf-card pf-aipanel pf-aipanel--locked">
@@ -55,7 +62,7 @@ export function renderCreateEvent(categorie: string[] = [], sports: SportProfile
   return `${renderOrganizerTopbar('dashboard')}
     <main class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">Nuovo</div><h1>Crea evento</h1></div>
-      ${assistantPanel(hasAi)}
+      ${AI_ASSISTANT_ENABLED ? assistantPanel(hasAi) : ''}
       <div id="err"></div>
       <form id="form" class="pf-card">
         <div class="pf-field"><label>Playbook</label>
