@@ -9,10 +9,12 @@ describe('participants mount wiring', () => {
     const ctx = { client: { o12: { payFee } } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh }
     const data = { event: { sportEventId: 'e1', sport: 's', categorie: ['U10'], dates: { from: 'a', to: 'b' }, status: 'Published' as const, playbook: 'PB-1' as const },
       confirmed: [{ registrationId: 'r2', participantRef: 'B', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' as const }], fees: { r2: 'Requested' as const } }
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true) // E1-14: marking a fee paid is confirmed
     const root = document.createElement('div'); root.innerHTML = renderParticipants(data)
     participantsScreen.mount!(root, ctx as any, data)
     root.querySelector<HTMLButtonElement>('[data-pay="r2"]')!.click()
     await vi.waitFor(() => expect(payFee).toHaveBeenCalledWith('r2'))
     expect(refresh).toHaveBeenCalled()
+    confirmSpy.mockRestore()
   })
 })

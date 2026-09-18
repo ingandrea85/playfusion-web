@@ -124,7 +124,7 @@ export const finalsFormatEditorScreen: Screen<FormatEditorData> = {
           <input class="ff-slot" data-r="${ri}" data-m="${mi}" value="${esc(mm.slot)}" placeholder="slot" style="width:80px" />
           ${refSelect('ff-ref', ri, mi, 'home', mm.home)} <span class="pf-muted">vs</span> ${refSelect('ff-ref', ri, mi, 'away', mm.away)}
           <input class="ff-pfrom" data-r="${ri}" data-m="${mi}" type="number" min="1" value="${mm.placementFrom ?? ''}" placeholder="pos." style="width:70px" title="Piazzamento (posizione del vincente)" />
-          <button class="pf-btn pf-btn--ghost" data-delmatch="${ri}" data-mi="${mi}">✕</button>
+          <button class="pf-btn pf-btn--ghost" data-delmatch="${ri}" data-mi="${mi}" aria-label="Rimuovi partita">✕</button>
         </div>`).join('')}
         <button class="pf-btn pf-btn--ghost" data-addmatch="${ri}" style="margin-top:var(--space-sm)">＋ Partita</button>
       </div>`).join('')

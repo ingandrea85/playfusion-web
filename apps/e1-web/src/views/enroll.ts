@@ -1,7 +1,9 @@
-import { renderOrganizerWorkspace, esc, renderShareLink, wireShareLinks, type WorkspaceTab } from '@playfusion/app-shell'
+import { renderOrganizerWorkspace, esc, renderShareLink, wireShareLinks } from '@playfusion/app-shell'
 import type { EventDetail, RegistrationView, RegistrationWindowView } from '@playfusion/rest-client'
 import { eventLabels } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
+import { workspaceTabs } from './workspace.js'
+import { toast } from '../toast.js'
 
 export interface EnrollData { event: EventDetail; window: RegistrationWindowView; pending: RegistrationView[]; confirmed: RegistrationView[]; e3BaseUrl: string; enrollToken?: string }
 
@@ -17,15 +19,8 @@ export function enrollUrl(e3BaseUrl: string, id: string, token?: string): string
   return token ? `${base}?token=${encodeURIComponent(token)}${hash}` : `${base}${hash}`
 }
 
-const tabs = (id: string): WorkspaceTab[] => [
-  { key: 'overview', label: 'Panoramica', href: `#/events/${encodeURIComponent(id)}` },
-  { key: 'enroll', label: 'Iscrizioni', href: `#/events/${encodeURIComponent(id)}/enroll` },
-  { key: 'participants', label: 'Partecipanti', href: `#/events/${encodeURIComponent(id)}/participants` },
-]
-
 /** S14 — PB-2 direct roster: the organizer types teams straight in (no invite window / inbox). */
 function renderRoster(d: EnrollData): string {
-  const id = d.event.sportEventId
   const lb = eventLabels(d.event)
   const indiv = d.event.participantType === 'individual'
   const opts = d.event.categorie.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('')
@@ -40,14 +35,15 @@ function renderRoster(d: EnrollData): string {
     return `<div class="pf-card"><h3 class="pf-h4">${esc(c)} · <span class="pf-mono">${teams.length}</span></h3>
       <ul class="pf-stack" style="list-style:none;padding:0">${items}</ul></div>`
   }).join('')
-  return `${renderOrganizerWorkspace({ name: `${esc(d.event.name ?? d.event.sport)}`, meta: `${esc(d.event.dates.from)}→${esc(d.event.dates.to)}` }, tabs(id), 'enroll')}
-    <main class="pf-container">
+  const nameLbl = `Nome ${indiv ? 'giocatore' : 'squadra'}`
+  return `${renderOrganizerWorkspace({ name: `${esc(d.event.name ?? d.event.sport)}`, meta: `${esc(d.event.dates.from)}→${esc(d.event.dates.to)}` }, workspaceTabs(d.event), 'enroll')}
+    <main id="pf-main" class="pf-container">
       <div id="err"></div>
       <div class="pf-card"><h2>${esc(lb.participantPlural)} (inserimento diretto)</h2>
         <p class="pf-muted">PB-2: aggiungi qui ${indiv ? 'i giocatori' : 'le squadre'}. Il nome inserito è quello che comparirà nel calendario, nelle classifiche e nel tabellone.</p>
-        <div class="pf-row">
-          <select id="rteam-cat">${opts}</select>
-          <input id="rteam-name" placeholder="Nome ${indiv ? 'giocatore' : 'squadra'}" style="flex:1" />
+        <div class="pf-row" style="align-items:flex-end">
+          <div class="pf-field" style="margin-bottom:0"><label for="rteam-cat">Categoria</label><select id="rteam-cat">${opts}</select></div>
+          <div class="pf-field" style="margin-bottom:0;flex:1"><label for="rteam-name">${esc(nameLbl)}</label><input id="rteam-name" placeholder="es. ${indiv ? 'Mario Rossi' : 'Rossi FC'}" /></div>
           <button class="pf-btn pf-btn--primary" data-addteam>Aggiungi</button>
         </div></div>
       ${lists}
@@ -59,10 +55,10 @@ export function renderEnroll(d: EnrollData): string {
   const id = d.event.sportEventId
   const open = d.window.state === 'Open'
   const capFor = (c: string) => d.window.categories.find((x) => x.categoria === c)
-  const capRows = d.event.categorie.map((c) => {
+  const capRows = d.event.categorie.map((c, i) => {
     const w = capFor(c)
-    return `<div class="pf-field"><label>${esc(c)}${w ? ` · ${w.count}/${w.cap} (${w.remaining} liberi)` : ''}</label>
-      <input type="number" min="0" data-cap="${esc(c)}" value="${w ? w.cap : ''}" placeholder="posti" /></div>`
+    return `<div class="pf-field"><label for="cap-${i}">${esc(c)}${w ? ` · ${w.count}/${w.cap} (${w.remaining} liberi)` : ''}</label>
+      <input id="cap-${i}" type="number" min="0" data-cap="${esc(c)}" value="${w ? w.cap : ''}" placeholder="posti" /></div>`
   }).join('')
   const shareUrl = enrollUrl(d.e3BaseUrl, id, d.enrollToken)
   const shareCard = open ? `<div class="pf-card"><h2>Link iscrizioni</h2>
@@ -74,8 +70,8 @@ export function renderEnroll(d: EnrollData): string {
         <span><button class="pf-btn pf-btn--primary" data-confirm="${esc(r.registrationId)}">Conferma</button>
           <button class="pf-btn" data-reject="${esc(r.registrationId)}">Rifiuta</button></span></div></li>`).join('')
     : `<li class="pf-card pf-muted">Nessuna richiesta in attesa.</li>`
-  return `${renderOrganizerWorkspace({ name: `${esc(d.event.sport)} · ${esc(d.event.categorie.join(', '))}`, meta: `${esc(d.event.dates.from)}→${esc(d.event.dates.to)}` }, tabs(id), 'enroll')}
-    <main class="pf-container">
+  return `${renderOrganizerWorkspace({ name: `${esc(d.event.sport)} · ${esc(d.event.categorie.join(', '))}`, meta: `${esc(d.event.dates.from)}→${esc(d.event.dates.to)}` }, workspaceTabs(d.event), 'enroll')}
+    <main id="pf-main" class="pf-container">
       <div id="err"></div>
       <div class="pf-card"><h2>Finestra iscrizioni · <span class="pf-mono">${open ? 'Aperta' : 'Chiusa'}</span></h2>
         ${capRows}
@@ -109,7 +105,7 @@ export const enrollScreen: Screen<EnrollData> = {
         const v = Number(i.value)
         if (i.value !== '' && v >= 0) caps[i.getAttribute('data-cap')!] = v
       })
-      try { await ctx.client.o5.openRegistrationWindow(id, caps); ctx.refresh() } catch { fail('Apertura non riuscita.') }
+      try { await ctx.client.o5.openRegistrationWindow(id, caps); toast('Iscrizioni aggiornate', 'success'); ctx.refresh() } catch { fail('Apertura non riuscita.') }
     })
     wireShareLinks(root)
     root.querySelector('#inbox')?.addEventListener('click', async (e) => {
@@ -117,8 +113,13 @@ export const enrollScreen: Screen<EnrollData> = {
       const cId = t.closest('[data-confirm]')?.getAttribute('data-confirm')
       const rId = t.closest('[data-reject]')?.getAttribute('data-reject')
       try {
-        if (cId) { await ctx.client.o5.confirmRegistration(cId); ctx.refresh() }
-        else if (rId) { await ctx.client.o5.rejectRegistration(rId, 'rejected by organizer'); ctx.refresh() }
+        if (cId) { await ctx.client.o5.confirmRegistration(cId); toast('Iscrizione confermata', 'success'); ctx.refresh() }
+        else if (rId) {
+          // E1-2: rejection is destructive — confirm, naming the applicant.
+          const ref = d.pending.find((r) => r.registrationId === rId)?.participantRef ?? 'questa richiesta'
+          if (!confirm(`Rifiutare l'iscrizione di "${ref}"? L'operazione non è reversibile.`)) return
+          await ctx.client.o5.rejectRegistration(rId, 'rejected by organizer'); toast('Iscrizione rifiutata', 'success'); ctx.refresh()
+        }
       } catch { fail('Operazione non riuscita.') }
     })
   },
@@ -131,12 +132,16 @@ function mountRoster(root: ParentNode, ctx: ViewCtx, d: EnrollData, fail: (m: st
     const cat = root.querySelector<HTMLSelectElement>('#rteam-cat')?.value ?? ''
     const name = (root.querySelector<HTMLInputElement>('#rteam-name')?.value ?? '').trim()
     if (!cat || !name) { fail('Indica categoria e nome squadra.'); return }
-    try { await ctx.client.o5.addTeam(id, { categoria: cat, teamName: name }); ctx.refresh() }
+    try { await ctx.client.o5.addTeam(id, { categoria: cat, teamName: name }); toast('Aggiunto', 'success'); ctx.refresh() }
     catch (e) { fail((e as { code?: string }).code === 'DUPLICATE_TEAM' ? 'Squadra già presente in questa categoria.' : 'Aggiunta non riuscita.') }
   })
   root.addEventListener('click', async (e) => {
     const rId = (e.target as HTMLElement).closest('[data-remove]')?.getAttribute('data-remove')
     if (!rId) return
-    try { await ctx.client.o5.removeTeam(rId); ctx.refresh() } catch { fail('Rimozione non riuscita.') }
+    // E1-2: removing a team is destructive — confirm, naming the team.
+    const label = d.confirmed.find((r) => r.registrationId === rId)?.teamName
+      ?? d.confirmed.find((r) => r.registrationId === rId)?.participantRef ?? 'questo elemento'
+    if (!confirm(`Rimuovere "${label}"? L'operazione non è reversibile.`)) return
+    try { await ctx.client.o5.removeTeam(rId); toast('Rimosso', 'success'); ctx.refresh() } catch { fail('Rimozione non riuscita.') }
   })
 }

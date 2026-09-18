@@ -1,0 +1,22 @@
+/* E1-owned styles (not part of the shared chrome). Imported once from main.ts. */
+
+/* E1-10: lightweight per-view loading placeholder painted before a screen's load() resolves,
+   so the previous screen doesn't linger during slow navigations. */
+.pf-skeleton { padding: var(--space-lg, 24px); }
+.pf-skeleton__bar { height: 14px; border-radius: 7px; background: var(--color-border, #e2e6ee); margin: 0 0 12px; opacity: .7; }
+.pf-skeleton__bar--title { height: 26px; width: 40%; margin-bottom: 20px; }
+.pf-skeleton__bar:nth-child(2) { width: 90%; }
+.pf-skeleton__bar:nth-child(3) { width: 75%; }
+.pf-skeleton__bar:nth-child(4) { width: 82%; }
+@keyframes pf-skeleton-pulse { 0%,100% { opacity: .45; } 50% { opacity: .8; } }
+.pf-skeleton__bar { animation: pf-skeleton-pulse 1.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .pf-skeleton__bar { animation: none; } }
+
+/* A1/A2/A4: visually hidden but still focusable and read by screen readers. */
+.pf-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* A2: the segmented control keeps focusable radios (no `hidden`); show focus on the label. */
+.pf-segopt:focus-within { outline: 2px solid var(--color-action-primary, #0b5fff); outline-offset: 2px; }

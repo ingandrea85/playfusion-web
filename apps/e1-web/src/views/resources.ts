@@ -88,7 +88,7 @@ function relationsCard(d: ResourcesData): string {
   const chips = (d.config.relations ?? []).map((e) => {
     const f = nodes.find((n) => n.nodeId === e.from)?.label ?? e.from
     const t = nodes.find((n) => n.nodeId === e.to)?.label ?? e.to
-    return `<span class="pf-rel-chip js-rel-chip">${esc(f)} → ${esc(t)} <button class="pf-rel-x" data-delrel="${esc(e.from)}|${esc(e.to)}">✕</button></span>`
+    return `<span class="pf-rel-chip js-rel-chip">${esc(f)} → ${esc(t)} <button class="pf-rel-x" data-delrel="${esc(e.from)}|${esc(e.to)}" aria-label="Rimuovi relazione ${esc(f)} → ${esc(t)}">✕</button></span>`
   }).join('')
   const nodeOpts = nodes.map((n) => `<option value="${esc(n.nodeId)}">${esc(n.label)}</option>`).join('')
   return `<div class="pf-card"><h2 class="pf-h3">Sequenza (relazioni)</h2>
@@ -313,6 +313,9 @@ export const resourcesScreen: Screen<ResourcesData> = {
     })
     root.querySelectorAll<HTMLButtonElement>('[data-delres]').forEach((b) => b.addEventListener('click', () => {
       const rid = b.dataset.delres!
+      // E1-5: deleting a resource cascades to its assignments and any relations it takes part in.
+      const rName = d.config.resources.find((r) => r.resourceId === rid)?.name ?? 'questa risorsa'
+      if (!confirm(`Rimuovere la risorsa "${rName}"? Verranno eliminate anche le sue assegnazioni e le relazioni collegate.`)) return
       // Same relation pruning as data-delgroup below: an ungrouped resource can itself be a
       // relation endpoint ("Docce" -> "r"), so deleting it must drop those relations too, or the
       // next save fails validateResourceConfig ("nodo inesistente") and the resource is stuck.
@@ -338,6 +341,9 @@ export const resourcesScreen: Screen<ResourcesData> = {
     })
     root.querySelectorAll<HTMLButtonElement>('[data-delgroup]').forEach((b) => b.addEventListener('click', () => {
       const gid = b.dataset.delgroup!
+      // E1-5: removing a group also drops any sequence relations that reference it.
+      const gName = (d.config.groups ?? []).find((g) => g.groupId === gid)?.name ?? 'questo gruppo'
+      if (!confirm(`Rimuovere il gruppo "${gName}"? Le relazioni di sequenza collegate al gruppo verranno rimosse.`)) return
       void save({
         ...d.config,
         groups: (d.config.groups ?? []).filter((g) => g.groupId !== gid),
@@ -360,6 +366,8 @@ export const resourcesScreen: Screen<ResourcesData> = {
     })
     root.querySelectorAll<HTMLButtonElement>('[data-delrel]').forEach((b) => b.addEventListener('click', () => {
       const [from, to] = b.dataset.delrel!.split('|')
+      // E1-5: removing a sequence relation changes the order teams flow through the resources.
+      if (!confirm('Rimuovere questa relazione di sequenza? L\'ordine tra le risorse collegate verrà aggiornato.')) return
       void save({ ...d.config, relations: (d.config.relations ?? []).filter((e) => !(e.from === from && e.to === to)) })
     }))
     // Per-node modalità (Wave B): patch the node's mode on its group (if it's a grouped node) or

@@ -25,5 +25,5 @@ export function renderOrgShell(activeKey: string, body: string): string {
     `<a class="pf-wtab${t.key === activeKey ? ' pf-wtab--active' : ''}" href="${t.href}">${esc(t.label)}</a>`).join('')
   return `${renderOrganizerTopbar('dashboard')}
     <div class="pf-orgnav"><nav class="pf-container pf-wtabs">${nav}</nav></div>
-    <main class="pf-container">${body}</main>`
+    <main id="pf-main" class="pf-container">${body}</main>`
 }

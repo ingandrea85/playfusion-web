@@ -17,7 +17,7 @@ export function renderSports(sports: SportProfile[]): string {
           <button class="pf-btn pf-btn--ghost" data-del="${esc(s.id)}">Elimina</button>
         </td></tr>`).join('')
     : `<tr><td colspan="6" class="pf-muted">Nessuno sport configurato.</td></tr>`
-  return `<main class="pf-container">
+  return `<main id="pf-main" class="pf-container">
     <div class="pf-row" style="margin-bottom:var(--space-lg)">
       <div class="pf-pagehead" style="margin-bottom:0"><div class="pf-eyebrow">Admin</div><h1>Sport</h1></div>
       <a class="pf-btn pf-btn--primary" href="#/sports/new">＋ Nuovo sport</a>

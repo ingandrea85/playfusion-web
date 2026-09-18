@@ -1,7 +1,9 @@
-import { esc } from '@playfusion/app-shell'
+import { esc, withPending } from '@playfusion/app-shell'
 import type { AnnouncementView, EventDetail, RegistrationView } from '@playfusion/rest-client'
+import { eventLabels } from '@playfusion/rest-client'
 import { inlineError, lockCard, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
+import { toast } from '../toast.js'
 
 export interface AnnouncementsData { event: EventDetail; announcements: AnnouncementView[]; confirmed: RegistrationView[]; locked?: boolean }
 
@@ -34,10 +36,10 @@ export function renderAnnouncements(data: AnnouncementsData, activeTab = 'announ
   const body = `<div id="err"></div>
     <div class="pf-card">
       <h2 class="pf-h3">Nuovo avviso</h2>
-      <div class="pf-field"><label>Titolo</label><input id="a-title" placeholder="Es. Cambio campo" /></div>
-      <div class="pf-field"><label>Testo</label><textarea id="a-body" rows="3" placeholder="Dettagli dell'avviso"></textarea></div>
+      <div class="pf-field"><label for="a-title">Titolo</label><input id="a-title" placeholder="Es. Cambio campo" /></div>
+      <div class="pf-field"><label for="a-body">Testo</label><textarea id="a-body" rows="3" placeholder="Dettagli dell'avviso"></textarea></div>
       <div class="pf-row" style="align-items:flex-end;gap:var(--space-md)">
-        <div class="pf-field" style="margin-bottom:0;min-width:200px"><label>Destinatari</label><select id="a-cat">${opts}</select></div>
+        <div class="pf-field" style="margin-bottom:0;min-width:200px"><label for="a-cat">Destinatari</label><select id="a-cat">${opts}</select></div>
         <label class="pf-switch"><input type="checkbox" id="a-pin" /> In evidenza</label>
       </div>
       <p class="pf-muted" id="a-reach"></p>
@@ -66,7 +68,10 @@ export const announcementsScreen: Screen<AnnouncementsData> = {
 
     const catSel = q<HTMLSelectElement>('#a-cat')
     const selectedScope = (): string | null => (catSel.value === '' ? null : catSel.value)
-    const updateReach = () => { q('#a-reach').textContent = `Sarà visibile a ${reachOf(data.confirmed, selectedScope())} squadre confermate.` }
+    // E1-13: use the event's participant plural label (Squadre / Giocatori) with matching agreement.
+    const lb = eventLabels(data.event)
+    const confAdj = data.event.participantType === 'individual' ? 'confermati' : 'confermate'
+    const updateReach = () => { q('#a-reach').textContent = `Sarà visibile a ${reachOf(data.confirmed, selectedScope())} ${lb.participantPlural.toLowerCase()} ${confAdj}.` }
     catSel.addEventListener('change', updateReach)
     updateReach()
 
@@ -74,11 +79,13 @@ export const announcementsScreen: Screen<AnnouncementsData> = {
       const title = q<HTMLInputElement>('#a-title').value.trim()
       const bodyText = q<HTMLTextAreaElement>('#a-body').value.trim()
       if (!title || !bodyText) { fail('Inserisci titolo e testo.'); return }
-      const btn = q<HTMLButtonElement>('#a-pub'); btn.disabled = true
-      try {
-        await ctx.client.o9.publishAnnouncement(id, { categoryId: selectedScope(), title, body: bodyText, pinned: q<HTMLInputElement>('#a-pin').checked })
-        ctx.refresh()
-      } catch { fail('Pubblicazione non riuscita. Riprova.'); btn.disabled = false }
+      const btn = q<HTMLButtonElement>('#a-pub')
+      await withPending(btn, async () => {
+        try {
+          await ctx.client.o9.publishAnnouncement(id, { categoryId: selectedScope(), title, body: bodyText, pinned: q<HTMLInputElement>('#a-pin').checked })
+          toast('Avviso pubblicato', 'success'); ctx.refresh()
+        } catch { fail('Pubblicazione non riuscita. Riprova.') }
+      })
     })
 
     root.querySelectorAll<HTMLButtonElement>('#list [data-pin]').forEach((b) => b.addEventListener('click', async () => {

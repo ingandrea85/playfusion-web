@@ -58,12 +58,24 @@ describe('brand mount', () => {
     expect(o1.setBrand).not.toHaveBeenCalled()
   })
 
-  it('reset removes the brand and reverts the theme', async () => {
+  it('reset removes the brand and reverts the theme (after confirm)', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true) // E1-12: reset is confirmed
     applyBrand({ logoText: 'X', primaryColor: '#111', accentColor: '#222' })
     const { root, o1, refresh } = mountWith({ logoText: 'X', primaryColor: '#111', accentColor: '#222' })
     root.querySelector<HTMLButtonElement>('#b-reset')!.click()
+    expect(confirmSpy).toHaveBeenCalled()
     await vi.waitFor(() => expect(o1.resetBrand).toHaveBeenCalledWith('org-1'))
     await vi.waitFor(() => expect(refresh).toHaveBeenCalled())
     expect(document.documentElement.style.getPropertyValue('--color-action-primary')).toBe('')
+    confirmSpy.mockRestore()
+  })
+
+  it('reset is aborted when the confirm is dismissed (E1-12)', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const { root, o1 } = mountWith({ logoText: 'X', primaryColor: '#111', accentColor: '#222' })
+    root.querySelector<HTMLButtonElement>('#b-reset')!.click()
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(o1.resetBrand).not.toHaveBeenCalled()
+    confirmSpy.mockRestore()
   })
 })

@@ -29,8 +29,8 @@ export function renderUserBadge(user: Auth0User): string {
     </button>
     <div class="pf-userbadge__menu" id="ub-menu" role="menu" hidden>
       ${user.email ? `<div class="pf-userbadge__email">${esc(user.email)}</div>` : ''}
-      <button class="pf-menuitem" id="ub-pwd" role="menuitem">🔑 Cambia password</button>
-      <button class="pf-menuitem" id="ub-logout" role="menuitem">↩ Esci</button>
+      <button class="pf-menuitem" id="ub-pwd" role="menuitem"><span aria-hidden="true">🔑</span> Cambia password</button>
+      <button class="pf-menuitem" id="ub-logout" role="menuitem"><span aria-hidden="true">↩</span> Esci</button>
       <div class="pf-userbadge__status" id="ub-status" hidden></div>
     </div>
   </div>`
@@ -43,20 +43,39 @@ export function mountUserBadge(root: ParentNode, port: Auth0Port): void {
   const status = root.querySelector<HTMLElement>('#ub-status')
   if (!toggle || !menu || !status) return
 
-  const setOpen = (open: boolean) => { menu.hidden = !open; toggle.setAttribute('aria-expanded', String(open)) }
+  const menuItems = (): HTMLElement[] => Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"]'))
+  const setOpen = (open: boolean) => {
+    menu.hidden = !open
+    toggle.setAttribute('aria-expanded', String(open))
+    // A14: on open, move focus to the first menu item so keyboard users land inside the menu.
+    if (open) menuItems()[0]?.focus()
+  }
   toggle.addEventListener('click', (e) => { e.stopPropagation(); setOpen(menu.hidden) })
   // Click outside closes the menu.
   document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.pf-userbadge')) setOpen(false) })
 
-  const flash = (msg: string, ok = true) => {
+  // A14: keyboard support — Escape closes and restores focus to the toggle; Up/Down cycle items.
+  menu.addEventListener('keydown', (e) => {
+    const items = menuItems()
+    const idx = items.indexOf(document.activeElement as HTMLElement)
+    if (e.key === 'Escape') { e.preventDefault(); setOpen(false); toggle.focus() }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); items[(idx + 1) % items.length]?.focus() }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); items[(idx - 1 + items.length) % items.length]?.focus() }
+  })
+  toggle.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) { e.preventDefault(); setOpen(false); toggle.focus() } })
+
+  // A13: keep the leading emoji decorative (aria-hidden) so screen readers don't announce it.
+  const flash = (msg: string, ok = true, icon?: string) => {
     status.hidden = false
-    status.textContent = msg
+    status.replaceChildren()
+    if (icon) { const s = document.createElement('span'); s.setAttribute('aria-hidden', 'true'); s.textContent = `${icon} `; status.appendChild(s) }
+    status.appendChild(document.createTextNode(msg))
     status.classList.toggle('pf-userbadge__status--err', !ok)
   }
 
   root.querySelector<HTMLButtonElement>('#ub-pwd')!.addEventListener('click', async () => {
     flash('Invio in corso…')
-    try { await port.changePassword(); flash('📧 Ti abbiamo inviato un\'email per reimpostare la password.') }
+    try { await port.changePassword(); flash('Ti abbiamo inviato un\'email per reimpostare la password.', true, '📧') }
     catch { flash('Non è stato possibile avviare il cambio password.', false) }
   })
   root.querySelector<HTMLButtonElement>('#ub-logout')!.addEventListener('click', () => { void port.logout() })

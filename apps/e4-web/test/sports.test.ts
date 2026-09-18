@@ -36,4 +36,18 @@ describe('sport editor', () => {
     const root = document.createElement('div'); root.innerHTML = renderSportEditor(sport({ participants: 'team', points: { win: 3, draw: 1, loss: 0 } }))
     expect(collectSport(root).points).toEqual({ win: 3, draw: 1, loss: 0 })
   })
+  it('the participant radios stay focusable (sr-only, not hidden) inside a fieldset/legend (A2)', () => {
+    const root = document.createElement('div'); root.innerHTML = renderSportEditor(sport())
+    const radios = root.querySelectorAll<HTMLInputElement>('input[name="sp-part"]')
+    expect(radios.length).toBe(3)
+    radios.forEach((r) => { expect(r.hidden).toBe(false); expect(r.classList.contains('pf-sr-only')).toBe(true) })
+    expect(root.querySelector('fieldset > legend')?.textContent).toContain('Tipo partecipante')
+  })
+  it('associates the name/label/points labels with their inputs via for/id (A1)', () => {
+    const root = document.createElement('div'); root.innerHTML = renderSportEditor(sport())
+    for (const id of ['sp-name', 'sp-label', 'sp-win', 'sp-draw', 'sp-loss']) {
+      expect(root.querySelector(`label[for="${id}"]`)).not.toBeNull()
+      expect(root.querySelector(`#${id}`)).not.toBeNull()
+    }
+  })
 })

@@ -126,6 +126,7 @@ describe('S17 resources view', () => {
     // can never remove the resource.
     const saveResources = vi.fn().mockResolvedValue({})
     const ctx = { client: { o7: { saveResources } } as any, orgId: 'o', e3BaseUrl: '', navigate: () => {}, refresh: vi.fn() }
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true) // E1-5: resource deletion is confirmed
     const d: ResourcesData = { ...base, config: { ...base.config, relations: [{ from: 'r', to: 'mensa' }] } }
     const root = document.createElement('div')
     root.innerHTML = renderResources(d)
@@ -135,5 +136,6 @@ describe('S17 resources view', () => {
     const saved = saveResources.mock.calls[0]![1]
     expect(saved.resources.find((x: any) => x.resourceId === 'r')).toBeUndefined()
     expect(saved.relations).toEqual([])
+    confirmSpy.mockRestore()
   })
 })

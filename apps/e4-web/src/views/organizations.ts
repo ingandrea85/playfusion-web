@@ -23,7 +23,7 @@ export function renderOrganizations(rows: OrgRow[]): string {
         <td><a class="pf-btn pf-btn--ghost" href="#/organizations/${encodeURIComponent(r.id)}">Apri →</a></td>
       </tr>`).join('')
     : `<tr><td colspan="4" class="pf-muted">Nessuna organizzazione.</td></tr>`
-  return `<main class="pf-container">
+  return `<main id="pf-main" class="pf-container">
     <div class="pf-pagehead"><div class="pf-eyebrow">Admin</div><h1>Organizzazioni</h1></div>
     <div class="pf-card" style="padding:0;overflow-x:auto">
       <table class="pf-table">

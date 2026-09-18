@@ -1,10 +1,11 @@
-import { esc } from '@playfusion/app-shell'
+import { esc, withPending } from '@playfusion/app-shell'
 import type { EventDetail, EventSite, OrgSiteDefaults, ResolvedEventSite } from '@playfusion/rest-client'
 import { resolveEventSite } from '@playfusion/rest-client'
 import { inlineError, lockCard, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
 import { sponsorRow, collectSponsors } from './org-site.js'
 import { richField, richFieldBare, initRichEditors } from './rich-editor.js'
+import { toast } from '../toast.js'
 
 export interface EventSiteData { event: EventDetail; org: OrgSiteDefaults | null; locked?: boolean }
 
@@ -143,9 +144,11 @@ export const eventSiteScreen: Screen<EventSiteData> = {
     })
 
     q<HTMLButtonElement>('#s-save').addEventListener('click', async () => {
-      const btn = q<HTMLButtonElement>('#s-save'); btn.disabled = true
-      try { await ctx.client.o3.setEventSite(data.event.sportEventId, collectEventSite(root)); ctx.refresh() }
-      catch { err.innerHTML = inlineError('Salvataggio non riuscito. Riprova.'); btn.disabled = false }
+      const btn = q<HTMLButtonElement>('#s-save')
+      await withPending(btn, async () => {
+        try { await ctx.client.o3.setEventSite(data.event.sportEventId, collectEventSite(root)); toast('Sito salvato', 'success'); ctx.refresh() }
+        catch { err.innerHTML = inlineError('Salvataggio non riuscito. Riprova.') }
+      })
     })
   },
 }

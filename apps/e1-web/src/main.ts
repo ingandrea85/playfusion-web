@@ -1,6 +1,7 @@
 import '@playfusion/tokens/tokens.css'
 import '@playfusion/app-shell/chrome.css'
 import '@playfusion/ui'
+import './e1.css'
 import { HashRouter, trackActivity } from '@playfusion/app-shell'
 import { createClient } from '@playfusion/rest-client'
 import { readConfig } from './config.js'

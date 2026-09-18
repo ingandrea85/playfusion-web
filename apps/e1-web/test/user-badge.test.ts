@@ -64,4 +64,32 @@ describe('mountUserBadge', () => {
     host.querySelector<HTMLButtonElement>('#ub-logout')!.click()
     expect(port.logout).toHaveBeenCalled()
   })
+
+  it('opens with focus on the first item; Escape closes and restores focus to the toggle (A14)', () => {
+    const host = mount(user(), fakePort())
+    const toggle = host.querySelector<HTMLButtonElement>('#ub-toggle')!
+    const menu = host.querySelector<HTMLElement>('#ub-menu')!
+    toggle.click()
+    expect(menu.hidden).toBe(false)
+    expect(document.activeElement).toBe(host.querySelector('#ub-pwd'))
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    expect(menu.hidden).toBe(true)
+    expect(document.activeElement).toBe(toggle)
+  })
+
+  it('ArrowDown moves focus to the next menu item (A14)', () => {
+    const host = mount(user(), fakePort())
+    host.querySelector<HTMLButtonElement>('#ub-toggle')!.click()
+    const menu = host.querySelector<HTMLElement>('#ub-menu')!
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    expect(document.activeElement).toBe(host.querySelector('#ub-logout'))
+  })
+})
+
+describe('renderUserBadge accessibility (A13)', () => {
+  it('marks the decorative menu-item emoji aria-hidden', () => {
+    const html = renderUserBadge(user())
+    expect(html).toContain('<span aria-hidden="true">🔑</span>')
+    expect(html).toContain('<span aria-hidden="true">↩</span>')
+  })
 })

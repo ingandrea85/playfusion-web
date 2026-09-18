@@ -16,24 +16,30 @@ const blank = (): SportProfile => ({ id: '', name: '', participants: 'team', sco
 export function renderSportEditor(sport: SportProfile | null): string {
   const s = sport ?? blank()
   const noDraws = s.points.draw === null
+  // A2: keep the radios in the tab order (focusable) — visually hidden, not `hidden` — and let the
+  // label show focus via :focus-within.
   const seg = (cur: SportParticipants) => PARTS.map((p) =>
-    `<label class="pf-segopt${p.key === cur ? ' on' : ''}"><input type="radio" name="sp-part" value="${p.key}"${p.key === cur ? ' checked' : ''} hidden/>${esc(p.label)}</label>`).join('')
+    `<label class="pf-segopt${p.key === cur ? ' on' : ''}"><input type="radio" name="sp-part" value="${p.key}"${p.key === cur ? ' checked' : ''} class="pf-sr-only"/>${esc(p.label)}</label>`).join('')
   const tbRows = TIE_BREAKS.map((t) => `<label class="pf-tbopt"><input type="checkbox" class="js-tb" value="${t.key}"${s.tieBreak.includes(t.key) ? ' checked' : ''}/> ${esc(t.label)}</label>`).join('')
-  return `<main class="pf-container">
+  return `<main id="pf-main" class="pf-container">
+    <style>
+      .pf-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+      .pf-segopt:focus-within{outline:2px solid var(--color-action-primary,#0b5fff);outline-offset:2px}
+    </style>
     <div class="pf-pagehead"><a class="pf-eyebrow" href="#/sports">← Sport</a><h1>${sport ? 'Modifica sport' : 'Nuovo sport'}</h1></div>
     <div id="err"></div>
     <div class="pf-card">
-      <div class="pf-field"><label>Nome sport</label><input id="sp-name" value="${esc(s.name)}" placeholder="Es. Tennis" /></div>
-      <div class="pf-field"><label>Tipo partecipante ammesso</label><div class="pf-seg" id="sp-part-seg">${seg(s.participants)}</div></div>
-      <div class="pf-field"><label>Etichetta punteggio</label><input id="sp-label" value="${esc(s.scoreLabel)}" placeholder="Es. Set, Reti, Punti" /></div>
+      <div class="pf-field"><label for="sp-name">Nome sport</label><input id="sp-name" value="${esc(s.name)}" placeholder="Es. Tennis" /></div>
+      <fieldset class="pf-field" style="border:0;padding:0;margin:0 0 var(--space-md)"><legend style="padding:0;font:inherit">Tipo partecipante ammesso</legend><div class="pf-seg" id="sp-part-seg">${seg(s.participants)}</div></fieldset>
+      <div class="pf-field"><label for="sp-label">Etichetta punteggio</label><input id="sp-label" value="${esc(s.scoreLabel)}" placeholder="Es. Set, Reti, Punti" /></div>
       <div class="pf-field"><label><input type="checkbox" id="sp-nodraw"${noDraws ? ' checked' : ''}/> Nessun pareggio</label></div>
       <div class="pf-row" style="gap:var(--space-md)">
-        <div class="pf-field" style="width:120px"><label>Punti vittoria</label><input id="sp-win" type="number" value="${s.points.win}" /></div>
-        <div class="pf-field" style="width:120px"><label>Punti pareggio</label><input id="sp-draw" type="number" value="${s.points.draw ?? 1}"${noDraws ? ' disabled' : ''} /></div>
-        <div class="pf-field" style="width:120px"><label>Punti sconfitta</label><input id="sp-loss" type="number" value="${s.points.loss}" /></div>
+        <div class="pf-field" style="width:120px"><label for="sp-win">Punti vittoria</label><input id="sp-win" type="number" value="${s.points.win}" /></div>
+        <div class="pf-field" style="width:120px"><label for="sp-draw">Punti pareggio</label><input id="sp-draw" type="number" value="${s.points.draw ?? 1}"${noDraws ? ' disabled' : ''} /></div>
+        <div class="pf-field" style="width:120px"><label for="sp-loss">Punti sconfitta</label><input id="sp-loss" type="number" value="${s.points.loss}" /></div>
       </div>
-      <div class="pf-field"><label>Criteri di spareggio (dopo i punti)</label><div class="pf-stack" id="sp-tb">${tbRows}</div>
-        <p class="pf-muted" style="font-size:13px;margin:6px 0 0">L'ordine è quello dell'elenco; i punti sono sempre il criterio primario.</p></div>
+      <fieldset class="pf-field" style="border:0;padding:0"><legend style="padding:0;font:inherit">Criteri di spareggio (dopo i punti)</legend><div class="pf-stack" id="sp-tb">${tbRows}</div>
+        <p class="pf-muted" style="font-size:13px;margin:6px 0 0">L'ordine è quello dell'elenco; i punti sono sempre il criterio primario.</p></fieldset>
       <div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)"><button class="pf-btn pf-btn--primary" id="sp-save">Salva</button><a class="pf-btn" href="#/sports">Annulla</a></div>
     </div>
   </main>`
