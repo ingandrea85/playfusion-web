@@ -2,12 +2,195 @@
    Mockup token names substituted to the PS-B design system (libs/tokens).
    Only the selectors app-shell's chrome.ts renders are ported (see task-4 brief step 9). */
 
+/* ============================================================================
+   Hand-authored design tokens & theming (NOT auto-generated).
+   chrome.css is imported AFTER @playfusion/tokens/tokens.css, so this :root —
+   same specificity, later in the cascade — extends/overrides the generated set.
+   Attribute selectors (:root[data-theme=…]) outrank a bare :root, so a manual
+   theme toggle always wins over the OS `prefers-color-scheme`.
+   ========================================================================= */
+:root {
+  /* DS5 — type scale, mapped onto the existing ramp. */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+
+  /* DS12/DS13 — button radius + intermediate spacing steps. */
+  --radius-btn: 10px;
+  --space-2xs: 2px;
+  --space-xs2: 6px;
+  --space-sm2: 12px;
+
+  /* DS7 — status / phase / plan tint tokens (light theme). */
+  --color-warning-soft-bg: #fef3e2;
+  --color-warning-soft-fg: #b45309;
+  --color-success-soft-bg: #eafaf1;
+  --color-success-soft-fg: var(--color-feedback-success);
+  --color-danger-soft-bg: #fdeaea;
+  --color-danger-soft-fg: #c0392b;
+  --color-neutral-soft-bg: #eef2f7;
+  --color-neutral-soft-bg2: #f2f3f5;
+  --color-plan-pro-bg: #eaf1ff;
+  --color-plan-pro-fg: #0b5fff;
+  --color-plan-business-bg: #efe9ff;
+  --color-plan-business-fg: #6d28d9;
+}
+
+/* DS3 — dark theme. Only tokens are redefined (never component rules). The same
+   value set is applied under the media query AND the explicit attribute override
+   so a manual toggle can win over the OS preference. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface-bg: #0e1420;
+    --color-surface-default: #161d2b;
+    --color-surface-sunken: #1e2736;
+    --color-text-default: #e6edf6;
+    --color-text-muted: #94a3b8;
+    --color-text-soft: #cbd5e1;
+    --color-border-default: #29344a;
+    --color-border-strong: #3a4658;
+    --color-status-finished: #94a3b8;
+    --color-hero-gradient-from: #16233d;
+    --color-hero-gradient-to: #3a2411;
+    --color-tertiary: #0e1420;
+    --pf-chart-track: #29344a;
+    --color-feedback-success: #22c55e;
+    --color-feedback-warning: #fbbf24;
+    --color-feedback-danger: #f87171;
+    --color-warning-soft-bg: #3a2a12;
+    --color-warning-soft-fg: #f4b567;
+    --color-success-soft-bg: #10301f;
+    --color-success-soft-fg: #4ade80;
+    --color-danger-soft-bg: #3a1a1a;
+    --color-danger-soft-fg: #f19a9a;
+    --color-neutral-soft-bg: #232d3c;
+    --color-neutral-soft-bg2: #2a3341;
+    --color-plan-pro-bg: #16233d;
+    --color-plan-pro-fg: #8fb2ff;
+    --color-plan-business-bg: #241b3d;
+    --color-plan-business-fg: #bda4ff;
+  }
+}
+:root[data-theme="dark"] {
+  --color-surface-bg: #0e1420;
+  --color-surface-default: #161d2b;
+  --color-surface-sunken: #1e2736;
+  --color-text-default: #e6edf6;
+  --color-text-muted: #94a3b8;
+  --color-text-soft: #cbd5e1;
+  --color-border-default: #29344a;
+  --color-border-strong: #3a4658;
+  --color-status-finished: #94a3b8;
+  --color-hero-gradient-from: #16233d;
+  --color-hero-gradient-to: #3a2411;
+  --color-tertiary: #0e1420;
+  --pf-chart-track: #29344a;
+  --color-feedback-success: #22c55e;
+  --color-feedback-warning: #fbbf24;
+  --color-feedback-danger: #f87171;
+  --color-warning-soft-bg: #3a2a12;
+  --color-warning-soft-fg: #f4b567;
+  --color-success-soft-bg: #10301f;
+  --color-success-soft-fg: #4ade80;
+  --color-danger-soft-bg: #3a1a1a;
+  --color-danger-soft-fg: #f19a9a;
+  --color-neutral-soft-bg: #232d3c;
+  --color-neutral-soft-bg2: #2a3341;
+  --color-plan-pro-bg: #16233d;
+  --color-plan-pro-fg: #8fb2ff;
+  --color-plan-business-bg: #241b3d;
+  --color-plan-business-fg: #bda4ff;
+}
+/* Explicit light override — restores the generated light values when the user
+   toggles to light on a dark-preferring OS. */
+:root[data-theme="light"] {
+  --color-surface-bg: #f4f7fb;
+  --color-surface-default: #ffffff;
+  --color-surface-sunken: #eef2f8;
+  --color-text-default: #0f172a;
+  --color-text-muted: #475569;
+  --color-text-soft: #334155;
+  --color-border-default: #d9e2ec;
+  --color-border-strong: #cbd5e1;
+  --color-status-finished: #64748b;
+  --color-hero-gradient-from: #eef4ff;
+  --color-hero-gradient-to: #fff2e8;
+  --color-tertiary: #f4f7fb;
+  --pf-chart-track: #e6eaf0;
+  --color-feedback-success: #16a34a;
+  --color-feedback-warning: #f59e0b;
+  --color-feedback-danger: #dc2626;
+  --color-warning-soft-bg: #fef3e2;
+  --color-warning-soft-fg: #b45309;
+  --color-success-soft-bg: #eafaf1;
+  --color-success-soft-fg: var(--color-feedback-success);
+  --color-danger-soft-bg: #fdeaea;
+  --color-danger-soft-fg: #c0392b;
+  --color-neutral-soft-bg: #eef2f7;
+  --color-neutral-soft-bg2: #f2f3f5;
+  --color-plan-pro-bg: #eaf1ff;
+  --color-plan-pro-fg: #0b5fff;
+  --color-plan-business-bg: #efe9ff;
+  --color-plan-business-fg: #6d28d9;
+}
+
+/* DS8 — shared badge/pill primitive. Placed before the component rules so each
+   variant's own font-size (e.g. the 11px pills) still wins; this establishes the
+   canonical radius + type scale + weight without altering any rendered look. */
+.pf-badge, .pf-wphase, .pf-mstatus, .pf-delay, .pf-role, .pf-annchip, .pf-annauto, .pf-brk__badge, .pf-brk__pos, .pf-pill {
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+}
+.pf-badge, .pf-wphase, .pf-mstatus, .pf-delay, .pf-role, .pf-annchip, .pf-annauto, .pf-brk__badge, .pf-brk__pos {
+  font-weight: 700;
+}
+
+/* A8 — visible keyboard focus. :focus-visible only, so mouse focus stays subtle.
+   Uses the action-primary colour; high enough specificity to beat UA defaults. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.pf-tab:focus-visible,
+.pf-wtab:focus-visible,
+.pf-segopt:focus-visible,
+.pf-input:focus-visible,
+.pf-menuitem:focus-visible,
+.pf-stepper__btn:focus-visible {
+  outline: 2px solid var(--color-action-primary);
+  outline-offset: 1px;
+}
+
+/* A11 — skip link: off-screen until focused, then pinned top-left. Targets the
+   app's main content container (id="pf-main"). */
+.pf-skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 1000;
+  padding: 10px var(--space-md);
+  background: var(--color-action-primary);
+  color: #fff;
+  border-radius: 0 0 var(--radius-md) 0;
+  font-weight: 700;
+  text-decoration: none;
+}
+.pf-skip:focus {
+  left: 0;
+}
+
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: var(--text-base);
   line-height: 1.5;
   color: var(--color-text-default);
   background: var(--color-surface-bg);
@@ -15,9 +198,9 @@ body {
 }
 a { color: var(--color-action-primary); }
 h1, h2, h3 { font-family: var(--font-display); font-weight: 800; line-height: 1.1; letter-spacing: -0.01em; margin: 0; }
-h1 { font-size: 30px; }
-h2 { font-size: 20px; }
-h3 { font-size: 15px; letter-spacing: 0.02em; }
+h1 { font-size: var(--text-3xl); }
+h2 { font-size: var(--text-xl); }
+h3 { font-size: var(--text-base); letter-spacing: 0.02em; }
 
 /* ---------- Layout ---------- */
 .pf-container { max-width: 1080px; margin: 0 auto; padding: var(--space-xl) var(--space-lg) var(--space-2xl); }
@@ -27,16 +210,16 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-topbar {
   position: sticky; top: 0; z-index: 10;
   display: flex; align-items: center; gap: var(--space-md);
-  padding: 12px var(--space-lg);
+  padding: var(--space-sm2) var(--space-lg);
   background: color-mix(in srgb, var(--color-surface-default) 88%, transparent);
   backdrop-filter: saturate(1.2) blur(8px);
   border-bottom: 1px solid var(--color-border-default);
 }
-.pf-brand { display: inline-flex; align-items: baseline; gap: 2px;
+.pf-brand { display: inline-flex; align-items: baseline; gap: var(--space-2xs);
   font-family: var(--font-display); font-weight: 800; font-size: 19px; letter-spacing: -0.02em;
   color: var(--color-text-default); text-decoration: none; }
 .pf-brand b { color: var(--color-action-primary); }
-.pf-mark { width: 22px; height: 22px; flex: none; align-self: center; margin-right: 6px; }
+.pf-mark { width: 22px; height: 22px; flex: none; align-self: center; margin-right: var(--space-xs2); }
 .pf-brand small { font-family: var(--font-sans); font-weight: 600; font-size: 12px; color: var(--color-text-muted);
   text-transform: uppercase; letter-spacing: 0.08em; margin-left: var(--space-sm); }
 .pf-topbar nav { display: flex; align-items: center; gap: var(--space-lg); margin-left: auto; }
@@ -58,7 +241,7 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 
 /* ---------- Buttons ---------- */
 .pf-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm);
-  padding: 10px var(--space-md); border-radius: 10px; /* mockup --radius-2 = 10px, no PS-B token */ border: 1px solid var(--color-border-default);
+  padding: 10px var(--space-md); border-radius: var(--radius-btn); border: 1px solid var(--color-border-default);
   background: var(--color-surface-default); color: var(--color-text-default); font-family: var(--font-sans);
   font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; transition: background .15s ease, border-color .15s ease; }
 .pf-btn:hover { border-color: var(--color-border-strong); background: var(--color-surface-sunken); }
@@ -70,9 +253,9 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-btn:disabled, .pf-btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 
 /* ---------- Category tag (age bracket + capacity) ---------- */
-.pf-catlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
-.pf-cat { display: flex; align-items: center; gap: 12px; padding: 12px var(--space-md);
-  background: var(--color-surface-default); border: 1px solid var(--color-border-default); border-radius: 10px; /* mockup --radius-2 = 10px, no PS-B token */ }
+.pf-catlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--space-sm2); margin: 0; padding: 0; list-style: none; }
+.pf-cat { display: flex; align-items: center; gap: var(--space-sm2); padding: var(--space-sm2) var(--space-md);
+  background: var(--color-surface-default); border: 1px solid var(--color-border-default); border-radius: var(--radius-btn); }
 .pf-cat__label { font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em;
   color: var(--color-action-primary); flex: none; }
 .pf-cat__body { flex: 1; min-width: 0; }
@@ -84,7 +267,7 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-cat--full .pf-cat__cap { color: var(--color-feedback-success); font-weight: 700; }
 
 /* ---------- E3 Public hero (matchday poster) ---------- */
-.pf-publicbar { display: flex; align-items: center; padding: 12px var(--space-lg);
+.pf-publicbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; padding: var(--space-sm2) var(--space-lg);
   background: var(--color-surface-default); border-bottom: 1px solid var(--color-border-default); }
 .pf-hero { background: linear-gradient(135deg, var(--color-hero-gradient-from), var(--color-hero-gradient-to)); border-bottom: 1px solid var(--color-border-default); }
 .pf-hero__inner { max-width: 600px; margin: 0 auto; padding: var(--space-2xl) var(--space-lg); }
@@ -96,16 +279,16 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-muted { color: var(--color-text-muted); }
 .pf-mono { font-family: var(--font-mono); font-size: 12.5px; color: var(--color-text-muted); }
 .pf-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); flex-wrap: wrap; }
-.pf-stack > * + * { margin-top: 12px; }
+.pf-stack > * + * { margin-top: var(--space-sm2); }
 
 /* ---------- Organizer workspace (hero + tabs) ---------- */
 .pf-whero { position: sticky; top: 0; z-index: 20; background: var(--color-surface-default); border-bottom: 1px solid var(--color-border-strong); }
 .pf-whero__inner { max-width: 960px; margin: 0 auto; padding: var(--space-md) var(--space-md) 12px; }
 .pf-whero h1 { margin: 6px 0 4px; }
 .pf-wphase { display: inline-block; padding: 3px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 700; }
-.pf-wphase--prep { background: #fef3e2; color: #b45309; }
-.pf-wphase--live { background: #eafaf1; color: var(--color-feedback-success); }
-.pf-wphase--done { background: #eef2f7; color: var(--color-text-soft); }
+.pf-wphase--prep { background: var(--color-warning-soft-bg); color: var(--color-warning-soft-fg); }
+.pf-wphase--live { background: var(--color-success-soft-bg); color: var(--color-success-soft-fg); }
+.pf-wphase--done { background: var(--color-neutral-soft-bg); color: var(--color-text-soft); }
 .pf-wtabs { display: flex; gap: 2px; max-width: 960px; margin: 0 auto; padding: 0 var(--space-md); overflow-x: auto; }
 .pf-wtab { padding: 10px 14px; font-weight: 700; font-size: 14px; color: var(--color-text-soft); text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap; }
 .pf-wtab--active { color: var(--color-action-primary); border-bottom-color: var(--color-action-primary); }
@@ -119,7 +302,7 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-sitepreview-card { position: sticky; top: 80px; }
 .pf-ovrswitch { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--color-text-soft); cursor: pointer; }
 .pf-ovrgroup .js-ovr-body { margin-top: var(--space-sm); }
-.pf-siteprev__hero { padding: 12px; border-radius: 10px; background: var(--color-action-primary); color: #fff; margin-bottom: var(--space-md); }
+.pf-siteprev__hero { padding: var(--space-sm2); border-radius: var(--radius-btn); background: var(--color-action-primary); color: #fff; margin-bottom: var(--space-md); }
 .pf-siteprev__hero .pf-eyebrow { color: rgba(255,255,255,.8); }
 @media (max-width: 860px) { .pf-sitegrid { grid-template-columns: 1fr; } .pf-sitepreview-card { position: static; } }
 
@@ -147,10 +330,10 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-tbopt { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--color-border-strong); border-radius: 8px; font-size: 14px; }
 
 /* E4 admin plan badges. */
-.pf-plan--pro { background: #eaf1ff; color: #0b5fff; }
-.pf-plan--business { background: #efe9ff; color: #6d28d9; }
-.pf-plan--trial { background: #fef3e2; color: #b45309; }
-.pf-plan--free { background: #eef2f7; color: var(--color-text-soft); }
+.pf-plan--pro { background: var(--color-plan-pro-bg); color: var(--color-plan-pro-fg); }
+.pf-plan--business { background: var(--color-plan-business-bg); color: var(--color-plan-business-fg); }
+.pf-plan--trial { background: var(--color-warning-soft-bg); color: var(--color-warning-soft-fg); }
+.pf-plan--free { background: var(--color-neutral-soft-bg); color: var(--color-text-soft); }
 /* Rendered rich text (sanitised HTML from the WYSIWYG): About / Programma.
    pre-line preserves literal newlines — both legacy plain-text content and Quill HTML that carries
    raw \n inside a block — so line breaks render without needing a <br> everywhere. */
@@ -162,11 +345,17 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-esite-rich blockquote { margin: .6em 0; padding-left: 12px; border-left: 3px solid var(--color-border-strong); color: var(--color-text-soft); }
 
 /* ---------- Form primitives (create-event + enroll forms) ---------- */
-.pf-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-md); }
+.pf-field { display: flex; flex-direction: column; gap: var(--space-xs2); margin-bottom: var(--space-md); }
 .pf-field label { font-weight: 700; font-size: 13px; color: var(--color-text-soft); }
-.pf-field input, .pf-field select, .pf-field textarea { padding: 11px 12px; border: 1px solid var(--color-border-strong); border-radius: 8px; font: inherit; background: var(--color-surface-default); color: var(--color-text-default); }
+.pf-field input, .pf-field select, .pf-field textarea { padding: 11px 12px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-lg); font: inherit; background: var(--color-surface-default); color: var(--color-text-default); }
 .pf-field textarea { resize: vertical; }
 .pf-field input:focus, .pf-field select:focus, .pf-field textarea:focus { outline: none; border-color: var(--color-action-primary); }
+.pf-field input:focus-visible, .pf-field select:focus-visible, .pf-field textarea:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 1px; }
+
+/* DS4 — canonical standalone text input (used across apps), mirrors .pf-field input. */
+.pf-input { padding: 11px 12px; border: 1px solid var(--color-border-strong); border-radius: var(--radius-lg); font: inherit; background: var(--color-surface-default); color: var(--color-text-default); }
+.pf-input:focus { outline: none; border-color: var(--color-action-primary); }
+.pf-input:focus-visible { outline: 2px solid var(--color-action-primary); outline-offset: 1px; }
 .pf-switch { display: inline-flex; align-items: center; gap: var(--space-sm); }
 .pf-switch input { width: 18px; height: 18px; accent-color: var(--color-action-primary); }
 
@@ -187,8 +376,8 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
   background: var(--color-surface-sunken); color: var(--color-action-primary); }
 .pf-tbview { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px;
   font-family: var(--font-mono); font-size: 13px; color: var(--color-text-default); }
-.pf-h3 { font-size: 18px; margin: 0 0 12px; }
-.pf-h4 { font-size: 15px; margin: var(--space-md) 0 6px; }
+.pf-h3 { font-size: var(--text-lg); margin: 0 0 var(--space-sm2); }
+.pf-h4 { font-size: var(--text-base); margin: var(--space-md) 0 var(--space-xs2); }
 
 /* ---------- Calendar (S7 — shared E1 organizer + E3 public) ---------- */
 .pf-calday { margin-bottom: var(--space-lg); }
@@ -211,6 +400,15 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-table th, .pf-table td { padding: 6px 8px; text-align: center; border-bottom: 1px solid var(--color-border-default); white-space: nowrap; }
 .pf-table th { font-size: 12px; color: var(--color-text-muted); font-weight: 700; }
 .pf-table td:nth-child(2), .pf-table th:nth-child(2) { text-align: left; }
+/* A12 — the team cell is a <th scope="row">; keep it looking like a data cell, not a column header. */
+.pf-table tbody th { font-size: 14px; color: var(--color-text-default); font-weight: 400; }
+.pf-table abbr { text-decoration: none; cursor: help; }
+/* P4 — keep the team column visible during horizontal scroll. */
+.pf-table td:nth-child(2), .pf-table th:nth-child(2) {
+  position: sticky; left: 0; z-index: 1;
+  background: var(--color-surface-default);
+  box-shadow: 1px 0 0 var(--color-border-default);
+}
 
 /* ---------- Tie-break resolution (S11, E1 only) ---------- */
 .pf-tieaudit { font-size: 13px; margin: 0 0 var(--space-md); }
@@ -245,7 +443,7 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-brk__t--win .nm { font-weight: 750; color: var(--color-feedback-success); }
 .pf-brk__t--win .sc { color: var(--color-feedback-success); font-weight: 700; }
 .pf-brk__t--tbd .nm { color: var(--color-text-muted); font-style: italic; }
-.pf-brk__badge { margin: 0 9px 8px; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); background: #fef3e2; color: #b45309; }
+.pf-brk__badge { margin: 0 9px 8px; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--color-warning-soft-bg); color: var(--color-warning-soft-fg); }
 .pf-brk__col:not(.pf-brk__col--last) .pf-brk__m::after { content: ""; position: absolute; left: 100%; top: 50%; width: var(--brk-gap); height: 2px; background: var(--color-border-strong); }
 .pf-brk__col:not(.pf-brk__col--last) .pf-brk__m:nth-child(odd)::before { content: ""; position: absolute; left: calc(100% + var(--brk-gap)); top: 50%; width: 2px; height: calc(var(--brk-h) / var(--n)); background: var(--color-border-strong); }
 /* Show the tree on wide screens, the per-round list on mobile. */
@@ -278,7 +476,7 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 /* B7 — E3 resource steward check-off rows. A pending team (waiting on a predecessor) is dimmed;
    a served team is accent-tinted with a leading ✓ so the steward sees state at a glance. */
 .pf-checkoff-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); font-size: 13px; padding: 2px 0; }
-.pf-checkoff-row--pending { opacity: 0.5; color: var(--color-text-muted, #6b7280); }
+.pf-checkoff-row--pending { opacity: 0.5; color: var(--color-text-muted); }
 .pf-checkoff-row--served { background: color-mix(in srgb, var(--color-action-accent) 9%, transparent); border-radius: var(--radius-sm); padding: 2px 6px; }
 .pf-checkoff-row--served > span:first-child::before { content: '✓ '; color: var(--color-action-accent); font-weight: 700; }
 
@@ -336,7 +534,8 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-finrank__pos { min-width: 2.2em; font-weight: 700; color: var(--color-text-muted); }
 
 /* ---------- Category/girone tabs (S23) ---------- */
-.pf-tabs { display: flex; flex-wrap: wrap; gap: var(--space-xs); overflow-x: auto; margin-bottom: var(--space-sm); padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+/* P7 — a filter bar scrolls horizontally rather than wrapping; thin scrollbar as a subtle affordance. */
+.pf-tabs { display: flex; flex-wrap: nowrap; gap: var(--space-xs); overflow-x: auto; margin-bottom: var(--space-sm); padding-bottom: var(--space-2xs); -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
 .pf-tab { flex: 0 0 auto; padding: 6px 12px; border: 1px solid var(--color-border-default); background: var(--color-surface-default);
   border-radius: var(--radius-pill); font: inherit; font-size: 13px; font-weight: 600; color: var(--color-text-muted); cursor: pointer; white-space: nowrap; }
 .pf-tab:hover { border-color: var(--color-border-strong); }
@@ -369,17 +568,17 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 /* ---------- Match lifecycle badges + delay (S26) ---------- */
 .pf-mstatus { display: inline-block; padding: 1px 8px; border-radius: var(--radius-pill); font-size: 11px;
   font-weight: 700; vertical-align: middle; white-space: nowrap; }
-.pf-mstatus--sched { background: #eef2f7; color: var(--color-text-soft); }
-.pf-mstatus--live { background: #fdeaea; color: #c0392b; }
-.pf-mstatus--done { background: #eafaf1; color: var(--color-feedback-success); }
-.pf-mstatus--cancel { background: #f2f3f5; color: var(--color-text-muted); }
-.pf-mstatus--decide { background: #fef3e2; color: #b45309; }
+.pf-mstatus--sched { background: var(--color-neutral-soft-bg); color: var(--color-text-soft); }
+.pf-mstatus--live { background: var(--color-danger-soft-bg); color: var(--color-danger-soft-fg); }
+.pf-mstatus--done { background: var(--color-success-soft-bg); color: var(--color-success-soft-fg); }
+.pf-mstatus--cancel { background: var(--color-neutral-soft-bg2); color: var(--color-text-muted); }
+.pf-mstatus--decide { background: var(--color-warning-soft-bg); color: var(--color-warning-soft-fg); }
 .pf-delay { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: var(--radius-pill);
-  font-size: 11px; font-weight: 700; background: #fef3e2; color: #b45309; white-space: nowrap; }
+  font-size: 11px; font-weight: 700; background: var(--color-warning-soft-bg); color: var(--color-warning-soft-fg); white-space: nowrap; }
 .pf-match--cancelled .pf-match__teams { text-decoration: line-through; color: var(--color-text-muted); }
 .pf-dirmatch--cancelled { opacity: 0.6; }
 .pf-dirmatch--cancelled .pf-dirmatch__teams { text-decoration: line-through; }
-.pf-dirmatch--live { border-color: #c0392b; }
+.pf-dirmatch--live { border-color: var(--color-danger-soft-fg); }
 
 /* ---------- Bottom sheet (S26, mobile-first) ---------- */
 .pf-sheet-overlay { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.4);
@@ -491,3 +690,15 @@ h3 { font-size: 15px; letter-spacing: 0.02em; }
 .pf-formula__cap { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--color-text-muted); margin-bottom: 4px; }
 .pf-formula__explain { margin: 0 0 var(--space-sm); font-size: 13.5px; }
 .pf-formula .pf-bracket { margin-top: var(--space-sm); }
+
+/* P6 — comfortable tap targets on touch pointers: filter pills, ghost buttons, workspace &
+   sub-tabs reach the 44px minimum. */
+@media (pointer: coarse) {
+  .pf-tab, .pf-btn--ghost, .pf-wtab, .pf-tabs--sub .pf-tab {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}

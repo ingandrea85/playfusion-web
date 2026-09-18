@@ -1,27 +1,35 @@
-import { renderOrganizerTopbar, esc } from '@playfusion/app-shell'
+import { renderOrganizerTopbar, esc, withPending } from '@playfusion/app-shell'
 import type { Client, CreateEventInput, EventDraft, SportProfile } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
+import { toast } from '../toast.js'
 
 /** Task 8: applies an AI-generated draft — create the event, draw gironi per category (dependency
  *  order: gironi must exist before schedule generation reads group/pool composition), generate the
  *  schedule, then navigate to the new event. Pure w.r.t. the DOM so it's unit-testable without it. */
-export async function applyDraft(client: Client, navigate: (h: string) => void, draft: EventDraft): Promise<void> {
+export async function applyDraft(client: Client, navigate: (h: string) => void, draft: EventDraft): Promise<{ partial: boolean }> {
   const created = await client.o3.createEvent(draft.event)
   const id = created.sportEventId
-  if (draft.groupsByCategory) {
-    for (const cat of draft.event.categorie) {
-      const g = draft.groupsByCategory[cat]
-      if (g && g.groups.length) await client.o3.drawGironi(id, cat, g.groups.length)
+  // The event now exists. If a downstream step (gironi/schedule) fails it's a PARTIAL success: don't
+  // strand the user on the assistant with the event orphaned — land them in the new event's workspace
+  // (returning `partial:true` so the caller can flag what still needs finishing by hand). E1-15.
+  let partial = false
+  try {
+    if (draft.groupsByCategory) {
+      for (const cat of draft.event.categorie) {
+        const g = draft.groupsByCategory[cat]
+        if (g && g.groups.length) await client.o3.drawGironi(id, cat, g.groups.length)
+      }
     }
-  }
-  await client.o7.generateSchedule(id, draft.schedule)
+    await client.o7.generateSchedule(id, draft.schedule)
+  } catch { partial = true }
   navigate(`#/events/${encodeURIComponent(id)}`)
+  return { partial }
 }
 
 /** Chip markup for the category list — shared by the initial render and mount's redraw(). */
 export function renderCatChips(categorie: string[]): string {
   return categorie.map((c, i) =>
-    `<li class="pf-cat"><span class="pf-cat__label">${esc(c)}</span><button type="button" class="pf-btn pf-btn--ghost" data-cat-remove="${i}">✕</button></li>`).join('')
+    `<li class="pf-cat"><span class="pf-cat__label">${esc(c)}</span><button type="button" class="pf-btn pf-btn--ghost" data-cat-remove="${i}" aria-label="Rimuovi categoria ${esc(c)}">✕</button></li>`).join('')
 }
 
 const FORMAT_LABEL: Record<NonNullable<CreateEventInput['format']>, string> = {
@@ -55,46 +63,63 @@ function assistantPanel(hasAi: boolean): string {
   </div>`
 }
 
+/** E1-6: sports catalog failed to load → a recoverable state (not the false "empty catalog"). */
+export function renderSportsLoadError(): string {
+  return `${renderOrganizerTopbar('dashboard')}
+    <main id="pf-main" class="pf-container pf-container--narrow">
+      <div class="pf-pagehead"><div class="pf-eyebrow">Nuovo</div><h1>Crea evento</h1></div>
+      <div class="pf-card" role="alert" style="border-color:var(--color-feedback-danger)">
+        <h2 class="pf-h3" style="margin-top:0">Impossibile caricare gli sport</h2>
+        <p class="pf-muted">Non siamo riusciti a caricare il catalogo sport, quindi per ora non puoi creare l'evento. Riprova tra poco.</p>
+        <div class="pf-row" style="justify-content:flex-start;gap:var(--space-sm)">
+          <button class="pf-btn pf-btn--primary" type="button" data-retry-sports>Riprova</button>
+          <a class="pf-btn" href="#/">← Torna ai tornei</a>
+        </div>
+      </div>
+    </main>`
+}
+
 export function renderCreateEvent(categorie: string[] = [], sports: SportProfile[] = [], hasAi = false): string {
   const sportOpts = sports.map((s) => `<option value="${esc(s.id)}" data-part="${s.participants}">${esc(s.name)}</option>`).join('')
   const formatOpts = (Object.keys(FORMAT_LABEL) as (keyof typeof FORMAT_LABEL)[])
     .map((k) => `<option value="${k}"${k === 'groups+bracket' ? ' selected' : ''}>${FORMAT_LABEL[k]}</option>`).join('')
   return `${renderOrganizerTopbar('dashboard')}
-    <main class="pf-container pf-container--narrow">
+    <main id="pf-main" class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">Nuovo</div><h1>Crea evento</h1></div>
       ${AI_ASSISTANT_ENABLED ? assistantPanel(hasAi) : ''}
       <div id="err"></div>
       <form id="form" class="pf-card">
-        <div class="pf-field"><label>Playbook</label>
-          <select name="playbook">
+        <div class="pf-field"><label for="ce-playbook">Playbook</label>
+          <select name="playbook" id="ce-playbook">
             <option value="PB-1">PB-1 · Iscrizione con inviti</option>
             <option value="PB-2">PB-2 · Inserimento diretto squadre</option>
           </select>
         </div>
-        <div class="pf-field"><label>Nome evento</label><input name="name" placeholder="es. Torneo Estivo Memorial" /></div>
-        <div class="pf-field"><label>Sport</label>
+        <div class="pf-field"><label for="ce-name">Nome evento</label><input id="ce-name" name="name" placeholder="es. Torneo Estivo Memorial" /></div>
+        <div class="pf-field"><label for="sportId">Sport</label>
           <select name="sportId" id="sportId" required>${sports.length ? sportOpts : '<option value="" disabled selected>Nessuno sport in catalogo</option>'}</select>
           <p class="pf-muted" style="font-size:13px;margin:6px 0 0">Punteggio, punti e criteri di spareggio vengono dal profilo sport.</p>
         </div>
-        <div class="pf-field" id="part-field" hidden><label>Tipo partecipante</label>
+        <fieldset class="pf-field" id="part-field" hidden style="border:0;padding:0;margin:0 0 var(--space-md)">
+          <legend style="padding:0;font:inherit">Tipo partecipante</legend>
           <div class="pf-seg">
-            <label class="pf-segopt on"><input type="radio" name="participantType" value="team" checked hidden/>Squadra</label>
-            <label class="pf-segopt"><input type="radio" name="participantType" value="individual" hidden/>Individuale</label>
+            <label class="pf-segopt on"><input type="radio" name="participantType" value="team" checked class="pf-sr-only"/>Squadra</label>
+            <label class="pf-segopt"><input type="radio" name="participantType" value="individual" class="pf-sr-only"/>Individuale</label>
           </div>
+        </fieldset>
+        <div class="pf-field"><label for="ce-format">Formato dell'evento</label>
+          <select name="format" id="ce-format">${formatOpts}</select>
         </div>
-        <div class="pf-field"><label>Formato dell'evento</label>
-          <select name="format">${formatOpts}</select>
-        </div>
-        <div class="pf-field"><label>Luogo</label><input name="location" placeholder="es. Centro Sportivo Comunale" /></div>
-        <div class="pf-field"><label>Categorie</label>
+        <div class="pf-field"><label for="ce-location">Luogo</label><input id="ce-location" name="location" placeholder="es. Centro Sportivo Comunale" /></div>
+        <div class="pf-field"><label for="cat">Categorie</label>
           <div class="pf-row"><input id="cat" placeholder="es. U10" /><button type="button" class="pf-btn" data-cat-add>Aggiungi</button></div>
           <ul class="pf-catlist" id="cats">${renderCatChips(categorie)}</ul>
         </div>
         <div class="pf-row" style="align-items:flex-end">
-          <div class="pf-field" style="flex:1"><label>Inizio</label><input type="date" name="from" required /></div>
-          <div class="pf-field" style="width:120px"><label>Ora</label><input type="time" name="startTime" /></div>
+          <div class="pf-field" style="flex:1"><label for="ce-from">Inizio</label><input id="ce-from" type="date" name="from" required /></div>
+          <div class="pf-field" style="width:120px"><label for="ce-startTime">Ora</label><input id="ce-startTime" type="time" name="startTime" /></div>
         </div>
-        <div class="pf-field"><label>Fine</label><input type="date" name="to" required /></div>
+        <div class="pf-field"><label for="ce-to">Fine</label><input id="ce-to" type="date" name="to" required /><p class="pf-muted" id="ce-date-err" role="alert" style="color:var(--color-feedback-danger);margin:6px 0 0" hidden></p></div>
         <button class="pf-btn pf-btn--primary pf-btn--lg" type="submit" data-create>Crea evento</button>
       </form>
     </main>`
@@ -103,7 +128,7 @@ export function renderCreateEvent(categorie: string[] = [], sports: SportProfile
 /** S20 Free plan cap: a FREE org may keep only 1 event → block with an upgrade link. */
 export function renderCapBlocked(): string {
   return `${renderOrganizerTopbar('dashboard')}
-    <main class="pf-container pf-container--narrow">
+    <main id="pf-main" class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">Nuovo</div><h1>Crea evento</h1></div>
       <div class="pf-card">
         <h2 class="pf-h3">Hai raggiunto il limite del piano Free</h2>
@@ -116,20 +141,22 @@ export function renderCapBlocked(): string {
     </main>`
 }
 
-export interface CreateEventGate { capReached: boolean; sports: SportProfile[]; hasAi: boolean }
+export interface CreateEventGate { capReached: boolean; sports: SportProfile[]; hasAi: boolean; sportsFailed: boolean }
 
 export const createEventScreen: Screen<CreateEventGate> = {
   load: async (ctx) => {
-    const [events, sports] = await Promise.all([
+    const [events, sportsRes] = await Promise.all([
       ctx.client.o3.listEvents().catch(() => [] as unknown[]),
-      ctx.client.o3.listSports().catch(() => [] as SportProfile[]),
+      // E1-6: track a genuine load failure separately from an empty catalog.
+      ctx.client.o3.listSports().then((s) => ({ ok: true as const, s })).catch(() => ({ ok: false as const, s: [] as SportProfile[] })),
     ])
     const max = ctx.entitlements.maxActiveEvents
-    return { capReached: max !== null && events.length >= max, sports, hasAi: ctx.entitlements.hasAiAssistant }
+    return { capReached: max !== null && events.length >= max, sports: sportsRes.s, hasAi: ctx.entitlements.hasAiAssistant, sportsFailed: !sportsRes.ok }
   },
-  render: (data) => (data.capReached ? renderCapBlocked() : renderCreateEvent([], data.sports, data.hasAi)),
+  render: (data) => (data.capReached ? renderCapBlocked() : data.sportsFailed ? renderSportsLoadError() : renderCreateEvent([], data.sports, data.hasAi)),
   mount(root, ctx: ViewCtx, data) {
     if (data.capReached) return
+    if (data.sportsFailed) { root.querySelector('[data-retry-sports]')?.addEventListener('click', () => ctx.refresh()); return }
     const categorie: string[] = []
     const cats = root.querySelector('#cats')!
     const catInput = root.querySelector<HTMLInputElement>('#cat')!
@@ -148,9 +175,10 @@ export const createEventScreen: Screen<CreateEventGate> = {
         o.classList.toggle('on', (o.querySelector('input') as HTMLInputElement).checked))))
 
     const redraw = () => { cats.innerHTML = renderCatChips(categorie) }
-    root.querySelector('[data-cat-add]')!.addEventListener('click', () => {
-      const v = catInput.value.trim(); if (!v) return; categorie.push(v); catInput.value = ''; redraw()
-    })
+    const addCat = () => { const v = catInput.value.trim(); if (!v) return; categorie.push(v); catInput.value = ''; redraw() }
+    root.querySelector('[data-cat-add]')!.addEventListener('click', addCat)
+    // E1-8: Enter in the category input adds a category instead of submitting the whole form.
+    catInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addCat() } })
     cats.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest('[data-cat-remove]'); if (!b) return
       categorie.splice(Number(b.getAttribute('data-cat-remove')), 1); redraw()
@@ -172,14 +200,24 @@ export const createEventScreen: Screen<CreateEventGate> = {
       const name = trimmed('name'); if (name) input.name = name
       const location = trimmed('location'); if (location) input.location = location
       const startTime = trimmed('startTime'); if (startTime) input.startTime = startTime
+      const dateErr = root.querySelector<HTMLElement>('#ce-date-err')!
+      dateErr.hidden = true
       if (!sportId || !input.categorie.length || !input.dates.from || !input.dates.to) {
         err.innerHTML = inlineError('Scegli lo sport, almeno una categoria e le date.'); return
       }
-      const btn = f.querySelector<HTMLButtonElement>('[data-create]')!; btn.disabled = true
-      try {
-        const created = await ctx.client.o3.createEvent(input)
-        ctx.navigate(`#/events/${encodeURIComponent(created.sportEventId)}`)
-      } catch { err.innerHTML = inlineError('Creazione non riuscita. Riprova.'); btn.disabled = false }
+      // E1-7: the end date can't precede the start date.
+      if (input.dates.from > input.dates.to) {
+        dateErr.textContent = 'La data di fine non può essere precedente all\'inizio.'; dateErr.hidden = false
+        root.querySelector<HTMLInputElement>('#ce-to')?.focus(); return
+      }
+      const btn = f.querySelector<HTMLButtonElement>('[data-create]')!
+      await withPending(btn, async () => {
+        try {
+          const created = await ctx.client.o3.createEvent(input)
+          toast('Evento creato', 'success')
+          ctx.navigate(`#/events/${encodeURIComponent(created.sportEventId)}`)
+        } catch { err.innerHTML = inlineError('Creazione non riuscita. Riprova.') }
+      })
     })
 
     // Task 8: AI assistant interaction (only wired when the panel is rendered — entitled orgs).
@@ -235,9 +273,14 @@ export const createEventScreen: Screen<CreateEventGate> = {
           <button class="pf-btn pf-btn--primary" id="pf-ai-apply" type="button">Applica configurazione</button>
         </div></div>`
       out.querySelector('#pf-ai-apply')!.addEventListener('click', async () => {
-        const btn = out.querySelector<HTMLButtonElement>('#pf-ai-apply')!; btn.disabled = true
-        try { await applyDraft(ctx.client, ctx.navigate, draft) }
-        catch { out.innerHTML = inlineError('Evento creato solo in parte. Controlla dal workspace.'); btn.disabled = false }
+        const btn = out.querySelector<HTMLButtonElement>('#pf-ai-apply')!
+        await withPending(btn, async () => {
+          try {
+            // E1-15: applyDraft always lands on the created event; a partial success flags what to finish.
+            const { partial } = await applyDraft(ctx.client, ctx.navigate, draft)
+            if (partial) toast('Evento creato: gironi o calendario non completati, finiscili dal workspace.', 'error')
+          } catch { out.innerHTML = inlineError('Creazione non riuscita. Riprova.') }
+        })
       })
       // "Modifica a mano" prefill is best-effort: fill the name field if present.
       out.querySelector('#pf-ai-edit')!.addEventListener('click', () => {

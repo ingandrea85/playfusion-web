@@ -28,6 +28,14 @@ describe('e3 apply', () => {
     expect(html).toContain('data-apply')
   })
 
+  it('inputs have associated <label> (A4/A1): for/id pairs, not just placeholders', () => {
+    const html = renderApply(ev, win, true)
+    expect(html).toContain('<label for="apply-name">')
+    expect(html).toContain('id="apply-name"')
+    expect(html).toContain('<label for="apply-cat">')
+    expect(html).toContain('id="apply-cat"')
+  })
+
   it('shows a "all full" notice instead of the form when no category has room', () => {
     const allFull = { ...win, categories: [
       { categoria: 'U10', cap: 4, count: 4, remaining: 0 },

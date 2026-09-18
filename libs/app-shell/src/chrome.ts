@@ -2,10 +2,14 @@ import { esc } from './html.js'
 import { brandWordmark } from './brand.js'
 import { copyToClipboard } from './clipboard.js'
 
+/** A11 — skip link. Visually hidden until focused, jumps to the app's main content
+ *  container (which must carry id="pf-main"). */
+export const SKIP_LINK = '<a class="pf-skip" href="#pf-main">Salta al contenuto</a>'
+
 export function renderOrganizerTopbar(active: string): string {
   const link = (href: string, label: string, key: string) =>
     `<a href="${href}"${active === key ? ' aria-current="page"' : ''}>${label}</a>`
-  return `<header class="pf-topbar">
+  return `${SKIP_LINK}<header class="pf-topbar">
     <a class="pf-brand" href="#/">${brandWordmark()}<small>Organizer</small></a>
     <nav>${link('#/', 'Eventi', 'dashboard')}</nav>
   </header>`
@@ -24,7 +28,7 @@ export function renderOrganizerWorkspace(h: WorkspaceHeader, tabs: WorkspaceTab[
 }
 
 export function renderPublicTopbar(brandHtml?: string): string {
-  return `<header class="pf-publicbar"><a class="pf-brand" href="#/">${brandHtml ?? brandWordmark()}</a></header>`
+  return `${SKIP_LINK}<header class="pf-publicbar"><a class="pf-brand" href="#/">${brandHtml ?? brandWordmark()}</a></header>`
 }
 
 /** S26 match lifecycle (mirrors rest-client/o7 MatchStatus). */
@@ -58,7 +62,7 @@ export function displayStatus(m: CalendarMatch): MatchStatus {
 
 const STATUS_META: Record<MatchStatus, { label: string; mod: string; dot: string }> = {
   SCHEDULED: { label: 'Programmata', mod: 'sched', dot: '' },
-  LIVE: { label: 'In corso', mod: 'live', dot: '🔴 ' },
+  LIVE: { label: 'In corso', mod: 'live', dot: '<span aria-hidden="true">🔴</span> ' },
   FINISHED: { label: 'Finita', mod: 'done', dot: '' },
   CANCELLED: { label: 'Annullata', mod: 'cancel', dot: '' },
 }
@@ -93,12 +97,45 @@ export function matchDelayLabel(m: CalendarMatch, now: Date = new Date()): strin
 /** Mount a mobile bottom-sheet into `host`, returning its content element + a `close()`. The
  *  sheet is anchored to the bottom of the viewport (thumb-reach) so the director never scrolls
  *  up to reach the score controls (S26). Tapping the backdrop closes it. */
+let sheetSeq = 0
+const SHEET_FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 export function openSheet(host: HTMLElement, innerHtml: string): { el: HTMLElement; close: () => void } {
-  host.innerHTML = `<div class="pf-sheet-overlay"><div class="pf-sheet" role="dialog" aria-modal="true">${innerHtml}</div></div>`
+  // A3 — remember where focus was so we can restore it on close.
+  const prevFocus = document.activeElement as HTMLElement | null
+  host.innerHTML = `<div class="pf-sheet-overlay"><div class="pf-sheet" role="dialog" aria-modal="true" tabindex="-1">${innerHtml}</div></div>`
   const overlay = host.querySelector<HTMLElement>('.pf-sheet-overlay')!
-  const close = () => { host.innerHTML = '' }
+  const dialog = host.querySelector<HTMLElement>('.pf-sheet')!
+  // Label the dialog by its first heading (generate an id if needed).
+  const heading = dialog.querySelector<HTMLElement>('h1, h2, h3, h4, .pf-h3, .pf-h4')
+  if (heading) {
+    if (!heading.id) heading.id = `pf-sheet-title-${++sheetSeq}`
+    dialog.setAttribute('aria-labelledby', heading.id)
+  }
+  const focusables = (): HTMLElement[] => Array.from(dialog.querySelectorAll<HTMLElement>(SHEET_FOCUSABLE))
+  let closed = false
+  const close = () => {
+    if (closed) return
+    closed = true
+    document.removeEventListener('keydown', onKey, true)
+    host.innerHTML = ''
+    // Restore focus to the element that opened the sheet.
+    if (prevFocus && typeof prevFocus.focus === 'function') prevFocus.focus()
+  }
+  function onKey(e: KeyboardEvent): void {
+    if (e.key === 'Escape') { e.preventDefault(); close(); return }
+    if (e.key !== 'Tab') return
+    const items = focusables()
+    if (!items.length) { e.preventDefault(); dialog.focus(); return }
+    const first = items[0]!, last = items[items.length - 1]!
+    const active = document.activeElement
+    if (e.shiftKey && (active === first || active === dialog)) { e.preventDefault(); last.focus() }
+    else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus() }
+  }
+  document.addEventListener('keydown', onKey, true)
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close() })
-  return { el: host.querySelector<HTMLElement>('.pf-sheet')!, close }
+  // Move focus into the dialog: first focusable, else the dialog itself.
+  ;(focusables()[0] ?? dialog).focus()
+  return { el: dialog, close }
 }
 
 /** Calendar rendering — grouped by day, matches sorted by time then field. Shared by the E1
@@ -142,11 +179,12 @@ export function renderCalendar(matches: CalendarMatch[], catName: (id: string) =
  *  (e.g. 'home'/'away'); read the value back with readStepper and wire the buttons with
  *  wireSteppers after mounting. Value clamps at 0. */
 export function renderStepper(id: string, label: string, value = 0): string {
+  const v = Math.max(0, Math.floor(value))
   return `<div class="pf-stepper">
     <div class="pf-stepper__label">${esc(label)}</div>
     <div class="pf-stepper__ctl">
       <button type="button" class="pf-stepper__btn" data-step="${esc(id)}" data-delta="-1" aria-label="meno">−</button>
-      <span class="pf-stepper__val" id="stp-${esc(id)}">${Math.max(0, Math.floor(value))}</span>
+      <span class="pf-stepper__val" id="stp-${esc(id)}" role="spinbutton" aria-label="${esc(label)}" aria-valuemin="0" aria-valuenow="${v}">${v}</span>
       <button type="button" class="pf-stepper__btn" data-step="${esc(id)}" data-delta="1" aria-label="più">+</button>
     </div>
   </div>`
@@ -154,7 +192,9 @@ export function renderStepper(id: string, label: string, value = 0): string {
 export function wireSteppers(root: ParentNode): void {
   root.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) => b.addEventListener('click', () => {
     const el = root.querySelector<HTMLElement>(`#stp-${b.dataset.step}`); if (!el) return
-    el.textContent = String(Math.max(0, (Number(el.textContent) || 0) + Number(b.dataset.delta)))
+    const next = String(Math.max(0, (Number(el.textContent) || 0) + Number(b.dataset.delta)))
+    el.textContent = next
+    el.setAttribute('aria-valuenow', next) // A9 — keep the spinbutton value in sync for AT
   }))
 }
 export const readStepper = (root: ParentNode, id: string): number =>
@@ -165,8 +205,10 @@ export const readStepper = (root: ParentNode, id: string): number =>
 export interface Tab { key: string; label: string }
 export function renderTabs(items: Tab[], activeKey: string): string {
   if (!items.length) return ''
-  return `<nav class="pf-tabs">${items.map((t) =>
-    `<button type="button" class="pf-tab${t.key === activeKey ? ' pf-tab--active' : ''}" data-key="${esc(t.key)}" aria-selected="${t.key === activeKey}">${esc(t.label)}</button>`).join('')}</nav>`
+  // A7 — these are toggle filters, not ARIA tabs: a button group with aria-pressed is the
+  // correct semantic (aria-selected on plain buttons in a <nav> is invalid).
+  return `<nav class="pf-tabs" role="group">${items.map((t) =>
+    `<button type="button" class="pf-tab${t.key === activeKey ? ' pf-tab--active' : ''}" data-key="${esc(t.key)}" aria-pressed="${t.key === activeKey}">${esc(t.label)}</button>`).join('')}</nav>`
 }
 /** Shared "share this link" control (enrollment / director / steward), one uniform graphic: an
  *  optional label, a read-only URL input, a Copia button and an Apri link. When `url` is empty (a
@@ -179,7 +221,7 @@ export function renderShareLink(opts: { url: string; label?: string; placeholder
   return `<div class="pf-sharelink">
     ${label ? `<div class="pf-sharelink__label">${esc(label)}</div>` : ''}
     <div class="pf-row" style="gap:var(--space-sm)">
-      <input class="pf-sharelink__url" readonly value="${esc(url)}" placeholder="${esc(placeholder)}" style="flex:1;min-width:8em" />
+      <input class="pf-sharelink__url" readonly value="${esc(url)}" placeholder="${esc(placeholder)}" aria-label="${esc(label ?? 'Link')}" style="flex:1;min-width:8em" />
       <button type="button" class="pf-btn js-sharelink-copy" data-url="${esc(url)}" ${dis}>Copia</button>
       <a class="pf-btn js-sharelink-open" href="${has ? esc(url) : '#'}" target="_blank" rel="noopener" ${dis} ${has ? '' : 'aria-disabled="true" tabindex="-1"'}>Apri</a>
     </div>
@@ -264,18 +306,23 @@ export interface GroupStandingView { categoryId: string; groupLabel: string; row
 
 /** Standings tables, one per group (S10). Shared by the E1 Classifiche tab and the E3 public
  *  standings — read-only in both. Rows are pre-sorted by the caller (o7 standings engine). */
-export function renderStandings(groups: GroupStandingView[], catName: (id: string) => string, participantLabel = 'Squadra'): string {
-  if (!groups.length) return `<p class="pf-muted">Nessuna classifica: genera il calendario e inserisci i risultati.</p>`
+export type Audience = 'organizer' | 'public'
+export function renderStandings(groups: GroupStandingView[], catName: (id: string) => string, participantLabel = 'Squadra', audience: Audience = 'organizer'): string {
+  if (!groups.length) return `<p class="pf-muted">${audience === 'public'
+    ? 'Le classifiche saranno disponibili a torneo iniziato.'
+    : 'Nessuna classifica: genera il calendario e inserisci i risultati.'}</p>`
+  // A12 — <abbr> expands the column codes for screen readers.
+  const th = (code: string, title: string) => `<th scope="col"><abbr title="${title}">${code}</abbr></th>`
   return groups.map((g) => {
     const rows = g.rows.map((r, i) => `<tr>
-      <td class="pf-mono">${i + 1}</td><td>${esc(r.team)}</td>
+      <td class="pf-mono">${i + 1}</td><th scope="row">${esc(r.team)}</th>
       <td>${r.played}</td><td>${r.won}</td><td>${r.drawn}</td><td>${r.lost}</td>
       <td>${r.goalsFor}</td><td>${r.goalsAgainst}</td><td>${r.goalDiff}</td><td><b>${r.points}</b></td>
     </tr>`).join('')
     return `<div class="pf-standings">
       <div class="pf-calday__head pf-mono">${esc(catName(g.categoryId))} · ${esc(g.groupLabel)}</div>
       <table class="pf-table"><thead><tr>
-        <th>#</th><th>${esc(participantLabel)}</th><th>PG</th><th>V</th><th>N</th><th>P</th><th>GF</th><th>GS</th><th>DR</th><th>Pti</th>
+        <th scope="col">#</th><th scope="col">${esc(participantLabel)}</th>${th('PG', 'Partite giocate')}${th('V', 'Vinte')}${th('N', 'Nulle')}${th('P', 'Perse')}${th('GF', 'Gol fatti')}${th('GS', 'Gol subiti')}${th('DR', 'Differenza reti')}${th('Pti', 'Punti')}
       </tr></thead><tbody>${rows}</tbody></table>
     </div>`
   }).join('')
@@ -418,8 +465,10 @@ function bracketRangeChip(inBracket: BracketMatch[]): string {
  *  (3º/4º, 5º/6º, spareggi …) list below, each led by its position badge. The bracket head shows the
  *  overall range ("posizioni 1º–8º"). Non-tree brackets (single finals, girone finale) stay a plain
  *  list. Winner highlighted (✓), drawn KO flagged "⚠ Chi passa?", unresolved slots muted. Read-only. */
-export function renderBracket(finals: BracketMatch[], catName: (id: string) => string): string {
-  if (!finals.length) return `<p class="pf-muted">Nessun tabellone: configura la fase finale e genera il calendario.</p>`
+export function renderBracket(finals: BracketMatch[], catName: (id: string) => string, audience: Audience = 'organizer'): string {
+  if (!finals.length) return `<p class="pf-muted">${audience === 'public'
+    ? 'Il tabellone sarà disponibile a fase finale avviata.'
+    : 'Nessun tabellone: configura la fase finale e genera il calendario.'}</p>`
   const brackets = [...new Set(finals.map((f) => f.bracketLabel ?? 'Finali'))]
   return brackets.map((bl) => {
     const inBracket = finals.filter((f) => (f.bracketLabel ?? 'Finali') === bl)
@@ -447,8 +496,10 @@ export function renderBracket(finals: BracketMatch[], catName: (id: string) => s
 /** S13: one category's progressive final ranking (podium/placements). `team` set = decided;
  *  otherwise "— da definire" (a result/decision/tie still pending). */
 export interface FinalStandingRowView { position: number; team?: string; pending?: 'result' | 'tie' }
-export function renderFinalStanding(rows: FinalStandingRowView[]): string {
-  if (!rows.length) return `<p class="pf-muted">Classifica finale non ancora disponibile: gioca le fasi finali.</p>`
+export function renderFinalStanding(rows: FinalStandingRowView[], audience: Audience = 'organizer'): string {
+  if (!rows.length) return `<p class="pf-muted">${audience === 'public'
+    ? 'La classifica finale sarà disponibile a torneo concluso.'
+    : 'Classifica finale non ancora disponibile: gioca le fasi finali.'}</p>`
   const li = rows.map((r) => `<li class="pf-finrank__row">
     <span class="pf-finrank__pos pf-mono">${r.position}º</span>
     <span>${r.team ? esc(r.team) : `<span class="pf-muted">— da definire${r.pending === 'tie' ? ' (parità da risolvere)' : ''}</span>`}</span>

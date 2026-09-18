@@ -21,6 +21,13 @@ describe('participants render', () => {
   it('shows an empty-state when there are no confirmed participants', () => {
     expect(renderParticipants({ event, confirmed: [], fees: {} })).toMatch(/Nessun partecipante/i)
   })
+  it('renders the full workspace tab bar, not the reduced 3-tab one (E1-3)', () => {
+    const html = renderParticipants({ event, confirmed: [], fees: {} })
+    expect(html).toContain('#/events/e1/schedule')
+    expect(html).toContain('#/events/e1/standings')
+    expect(html).toContain('#/events/e1/finals')
+    expect(html).toContain('pf-wtab--active')
+  })
   it('shows the team NAME, not the participantRef id (direct roster / PB-2)', () => {
     const html = renderParticipants({
       event,

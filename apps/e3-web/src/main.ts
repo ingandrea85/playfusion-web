@@ -1,5 +1,6 @@
 import '@playfusion/tokens/tokens.css'
 import '@playfusion/app-shell/chrome.css'
+import './e3.css'
 import '@playfusion/ui'
 import { HashRouter, applyBrand, trackActivity, renderPublicFooter } from '@playfusion/app-shell'
 import { createClient, resolveEventSite, eventLabels } from '@playfusion/rest-client'
@@ -23,7 +24,20 @@ document.body.insertAdjacentHTML('beforeend', renderPublicFooter())
 
 /** Renders a small error card into #app so a rejected call never leaves a blank page. */
 function errorCard(msg: string): string {
-  return `<main class="pf-container"><div class="pf-card">${msg}</div></main>`
+  return `<main id="pf-main" class="pf-container"><div class="pf-card">${msg}</div></main>`
+}
+
+/** P3: paint an immediate, lightweight skeleton into #app so a route entry never shows a blank
+ *  white screen while its data resolves. Overwritten by the real content once the awaits settle. */
+function paintSkeleton(): void {
+  app.innerHTML = `<main id="pf-main" class="pf-container" aria-busy="true">
+    <div class="pf-skeleton pf-skeleton--head"></div>
+    <div class="pf-card">
+      <div class="pf-skeleton pf-skeleton--line"></div>
+      <div class="pf-skeleton pf-skeleton--line"></div>
+      <div class="pf-skeleton pf-skeleton--line"></div>
+    </div>
+  </main>`
 }
 
 /** S18: apply the event's tenant brand (colours + public wordmark) before rendering. Best-effort. */
@@ -67,7 +81,7 @@ async function applyRoute(id: string) {
       const btn = form.querySelector<HTMLButtonElement>('[data-apply]')!; btn.disabled = true
       try {
         await client.o5.applyRegistration(input)
-        app.innerHTML = `<main class="pf-container pf-container--narrow"><div class="pf-card">Iscrizione inviata! Sarà confermata dall'organizzatore. <a href="#/events/${encodeURIComponent(id)}">Torna all'evento</a></div></main>`
+        app.innerHTML = `<main id="pf-main" class="pf-container pf-container--narrow"><div class="pf-card">Iscrizione inviata! Sarà confermata dall'organizzatore. <a href="#/events/${encodeURIComponent(id)}">Torna all'evento</a></div></main>`
       } catch { msg.innerHTML = '<div class="pf-card" style="border-color:var(--color-feedback-danger)">Iscrizione non riuscita. Riprova.</div>'; btn.disabled = false }
     })
   } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
@@ -98,6 +112,7 @@ new HashRouter()
     } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/standings', async ({ id }) => {
+    paintSkeleton()
     try {
       const [ev, standings] = await Promise.all([client.o3.getEvent(id), client.o7.getStandings(id)]); await applyEventBrand(ev)
       // Epic #143 (S4): solo tabellone has no standings — send the visitor to the bracket instead.
@@ -109,6 +124,7 @@ new HashRouter()
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/calendar', async ({ id }) => {
+    paintSkeleton()
     try { const [ev, sched, matches] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id)]); await applyEventBrand(ev); app.innerHTML = renderPublicCalendar(ev, sched, matches); wirePublicCalendar(app, matches) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
@@ -132,10 +148,12 @@ new HashRouter()
     } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id/bracket', async ({ id }) => {
+    paintSkeleton()
     try { const [ev, sched, matches, ranking] = await Promise.all([client.o3.getEvent(id), client.o7.getSchedule(id), client.o7.getMatches(id), client.o7.getFinalStandings(id)]); await applyEventBrand(ev); if (ev.format === 'festival') { location.hash = `#/events/${encodeURIComponent(id)}/calendar`; return } app.innerHTML = renderPublicBracket(ev, sched, matches, ranking); wirePublicBracket(app, matches, ranking) }
     catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
   .on('#/events/:id', async ({ id }) => {
+    paintSkeleton()
     try {
       const [ev, win, sched] = await Promise.all([client.o3.getEvent(id), client.o5.getRegistrationWindow(id), client.o7.getSchedule(id)])
       await applyEventBrand(ev)
@@ -144,5 +162,5 @@ new HashRouter()
       app.innerHTML = renderLanding(ev, win, sched.status === 'PUBLISHED', resolveEventSite(orgSite, ev.site))
     } catch { app.innerHTML = errorCard('Si è verificato un errore. Ricarica la pagina.') }
   })
-  .on('#/', () => { app.innerHTML = '<main class="pf-container"><div class="pf-card pf-muted">Apri il link del tuo evento.</div></main>' })
+  .on('#/', () => { app.innerHTML = '<main id="pf-main" class="pf-container"><div class="pf-card pf-muted">Apri il link del tuo evento.</div></main>' })
   .start()

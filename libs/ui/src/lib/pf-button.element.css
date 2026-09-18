@@ -30,14 +30,16 @@
 .pf-button--lg { padding: 0.625rem 1.25rem; font-size: 1rem; }
 
 /* Variants */
+/* DS1/DS2 — primary unified on the shipped ORANGE accent (matches .pf-btn--primary in
+   the app shell) so the component library agrees with production. */
 .pf-button--primary {
-  background: var(--color-action-primary);
+  background: var(--color-action-accent);
   color: #ffffff;
-  border-color: var(--color-action-primary);
+  border-color: var(--color-action-accent);
 }
 .pf-button--primary:hover:not(:disabled) {
-  background: var(--color-action-primary-hover);
-  border-color: var(--color-action-primary-hover);
+  background: var(--color-action-accent-hover);
+  border-color: var(--color-action-accent-hover);
 }
 
 .pf-button--secondary {

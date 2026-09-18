@@ -1,0 +1,30 @@
+/* E3-owned styles (not part of the shared chrome). */
+
+/* P3: lightweight loading skeleton painted synchronously on route entry, so a cold start /
+   slow network never shows a blank white screen while the event data resolves. */
+.pf-skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-surface-sunken, rgba(0, 0, 0, 0.06));
+}
+.pf-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  animation: pf-skeleton-shimmer 1.2s ease-in-out infinite;
+}
+.pf-skeleton--head { height: 34px; width: 40%; margin-bottom: var(--space-lg); }
+.pf-skeleton--line { height: 16px; margin: var(--space-sm) 0; }
+.pf-skeleton--line:nth-child(2) { width: 90%; }
+.pf-skeleton--line:nth-child(3) { width: 75%; }
+.pf-skeleton--line:nth-child(4) { width: 82%; }
+
+@keyframes pf-skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pf-skeleton::after { animation: none; }
+}

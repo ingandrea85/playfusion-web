@@ -64,7 +64,7 @@ export function workspaceShell(event: EventDetail, activeTab: string, body: stri
     { name: esc(eventTitle(event)), meta: esc(heroMeta(event)), phaseLabel: phase ? PHASE_LABEL[phase] : undefined, phaseMod: phase ? PHASE_MOD[phase] : undefined },
     workspaceTabs(event), activeTab,
   )
-  return `${hero}<main class="pf-container">${body}</main>`
+  return `${hero}<main id="pf-main" class="pf-container">${body}</main>`
 }
 const shell = workspaceShell
 

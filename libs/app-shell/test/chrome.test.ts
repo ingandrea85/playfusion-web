@@ -35,7 +35,11 @@ describe('S23 tabs', () => {
     const html = renderTabs([{ key: 'U10', label: 'U10' }, { key: 'U12', label: 'U12' }], 'U12')
     expect(html).toContain('data-key="U10"')
     expect(html).toMatch(/data-key="U12"[^>]*pf-tab--active|pf-tab--active[^>]*data-key="U12"/)
-    expect(html).toContain('aria-selected="true"')
+    // A7 — toggle-filter semantics: aria-pressed, not the invalid aria-selected on <nav> buttons.
+    expect(html).toContain('aria-pressed="true"')
+    expect(html).toContain('aria-pressed="false"')
+    expect(html).not.toContain('aria-selected')
+    expect(html).toContain('role="group"')
   })
   it('renderTabs is empty for no items', () => { expect(renderTabs([], 'x')).toBe('') })
   it('categoryKeys/groupKeys derive distinct keys in order', () => {
@@ -193,6 +197,83 @@ describe('bracket full classification (S13)', () => {
     expect(html).toContain('→ 1º–4º')                // Semifinali feeder → decides positions 1–4
     expect(html).toContain('1º/2º')                  // position chip on the final
     expect(html).toContain('3º/4º')                  // position chip on the placement final
+  })
+})
+
+import { renderStandings, renderFinalStanding, renderShareLink, SKIP_LINK } from '../src/chrome'
+
+describe('A11 skip link', () => {
+  it('both topbars start with a skip link targeting the main content id', () => {
+    expect(renderOrganizerTopbar('dashboard').startsWith(SKIP_LINK)).toBe(true)
+    expect(renderPublicTopbar().startsWith(SKIP_LINK)).toBe(true)
+    expect(SKIP_LINK).toContain('href="#pf-main"')
+    expect(SKIP_LINK).toContain('pf-skip')
+  })
+})
+
+describe('A12 standings accessibility', () => {
+  const groups = [{ categoryId: 'U10', groupLabel: 'Girone A', rows: [
+    { team: 'Alfa', played: 1, won: 1, drawn: 0, lost: 0, goalsFor: 2, goalsAgainst: 0, goalDiff: 2, points: 3 },
+  ] }]
+  it('headers are scoped columns with abbr, team is a row header', () => {
+    const html = renderStandings(groups, (id) => id)
+    expect(html).toContain('<th scope="col">#</th>')
+    expect(html).toContain('<abbr title="Partite giocate">PG</abbr>')
+    expect(html).toContain('<abbr title="Differenza reti">DR</abbr>')
+    expect(html).toContain('<th scope="row">Alfa</th>')
+  })
+})
+
+describe('P2 audience-aware empty states', () => {
+  it('standings/bracket/final ranking speak to organizers by default, visitors when public', () => {
+    expect(renderStandings([], (id) => id)).toContain('genera il calendario')
+    expect(renderStandings([], (id) => id, 'Squadra', 'public')).toContain('a torneo iniziato')
+    expect(renderBracket([], (id) => id)).toContain('configura la fase finale')
+    expect(renderBracket([], (id) => id, 'public')).toContain('fase finale avviata')
+    expect(renderFinalStanding([])).toContain('gioca le fasi finali')
+    expect(renderFinalStanding([], 'public')).toContain('a torneo concluso')
+  })
+})
+
+describe('A9 stepper spinbutton', () => {
+  it('exposes role=spinbutton with a value kept in sync on +/-', () => {
+    const root = document.createElement('div')
+    root.innerHTML = renderStepper('home', 'Casa', 2)
+    const val = root.querySelector<HTMLElement>('#stp-home')!
+    expect(val.getAttribute('role')).toBe('spinbutton')
+    expect(val.getAttribute('aria-valuemin')).toBe('0')
+    expect(val.getAttribute('aria-valuenow')).toBe('2')
+    wireSteppers(root)
+    root.querySelector<HTMLButtonElement>('[data-step="home"][data-delta="1"]')!.click()
+    expect(val.getAttribute('aria-valuenow')).toBe('3')
+  })
+})
+
+describe('A15 share-link input has an accessible name', () => {
+  it('falls back to "Link" and uses the given label', () => {
+    expect(renderShareLink({ url: 'https://x' })).toContain('aria-label="Link"')
+    expect(renderShareLink({ url: 'https://x', label: 'Codice arbitro' })).toContain('aria-label="Codice arbitro"')
+  })
+})
+
+describe('A3 bottom-sheet focus management', () => {
+  it('labels the dialog by its heading, focuses inside, closes on Escape and restores focus', () => {
+    const opener = document.createElement('button')
+    document.body.appendChild(opener)
+    opener.focus()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const { el } = openSheet(host, '<h3>Titolo</h3><button id="in">OK</button>')
+    // aria-labelledby points at the (now id-bearing) heading
+    const headingId = el.querySelector('h3')!.id
+    expect(headingId).toBeTruthy()
+    expect(el.getAttribute('aria-labelledby')).toBe(headingId)
+    // focus moved into the dialog (first focusable)
+    expect(document.activeElement).toBe(el.querySelector('#in'))
+    // Escape closes and restores focus to the opener
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(host.querySelector('.pf-sheet-overlay')).toBeNull()
+    expect(document.activeElement).toBe(opener)
   })
 })
 

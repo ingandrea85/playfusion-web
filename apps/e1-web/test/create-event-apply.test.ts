@@ -37,5 +37,23 @@ describe('applyDraft', () => {
     await applyDraft(client, vi.fn(), bracket)
     expect(client.o3.drawGironi).not.toHaveBeenCalled()
   })
+  it('on a downstream failure still navigates to the created event and reports partial (E1-15)', async () => {
+    const client = {
+      o3: { createEvent: vi.fn(async () => ({ sportEventId: 'ev-9', status: 'Published' })), drawGironi: vi.fn(async () => { throw new Error('boom') }) },
+      o7: { generateSchedule: vi.fn(async () => ({} as any)) },
+    } as any
+    const navigate = vi.fn()
+    const res = await applyDraft(client, navigate, draft)
+    expect(navigate).toHaveBeenCalledWith('#/events/ev-9')
+    expect(res.partial).toBe(true)
+  })
+  it('reports partial:false on full success', async () => {
+    const client = {
+      o3: { createEvent: vi.fn(async () => ({ sportEventId: 'ev-1', status: 'Published' })), drawGironi: vi.fn(async () => ({ groups: [], locked: false })) },
+      o7: { generateSchedule: vi.fn(async () => ({} as any)) },
+    } as any
+    const res = await applyDraft(client, vi.fn(), draft)
+    expect(res.partial).toBe(false)
+  })
 }
 )

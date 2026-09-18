@@ -1,4 +1,4 @@
-import { esc, renderTabs } from '@playfusion/app-shell'
+import { esc, renderTabs, withPending } from '@playfusion/app-shell'
 import type { CategoryGironi, EventDetail, GironiMap, Group } from '@playfusion/rest-client'
 import { inlineError, type Screen, type ViewCtx } from '../view.js'
 import { workspaceShell } from './workspace.js'
@@ -99,10 +99,11 @@ export const gironiScreen: Screen<GironiData> = {
 
       const drawBtn = content.querySelector<HTMLButtonElement>('#draw')
       if (drawBtn && !locked) drawBtn.addEventListener('click', async () => {
-        drawBtn.disabled = true
         const n = Number((content.querySelector('#groupsCount') as HTMLInputElement).value) || 2
-        try { gironi[sel] = await ctx.client.o3.drawGironi(id, sel, n); draw() }
-        catch { fail('Sorteggio non riuscito. Riprova.'); drawBtn.disabled = false }
+        await withPending(drawBtn, async () => {
+          try { gironi[sel] = await ctx.client.o3.drawGironi(id, sel, n); draw() }
+          catch { fail('Sorteggio non riuscito. Riprova.') }
+        })
       })
 
       const lock = content.querySelector<HTMLInputElement>('#lock')

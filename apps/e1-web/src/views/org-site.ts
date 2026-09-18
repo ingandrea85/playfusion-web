@@ -1,8 +1,9 @@
-import { esc } from '@playfusion/app-shell'
+import { esc, withPending } from '@playfusion/app-shell'
 import type { OrgSiteDefaults, Sponsor } from '@playfusion/rest-client'
 import { inlineError, lockCard, notAuthorizedCard, type Screen, type ViewCtx } from '../view.js'
 import { renderOrgShell } from './org.js'
 import { richField, initRichEditors } from './rich-editor.js'
+import { toast } from '../toast.js'
 
 export interface OrgSiteData { site: OrgSiteDefaults | null; locked?: boolean; forbidden?: boolean }
 
@@ -13,7 +14,7 @@ export function sponsorRow(s: Partial<Sponsor> = {}): string {
     <div class="pf-field" style="margin:0;flex:1 1 160px"><label>Link (opz.)</label><input class="js-sp-url" value="${esc(s.url ?? '')}" placeholder="https://…" /></div>
     <div class="pf-field" style="margin:0;flex:1 1 160px"><label>Logo URL (opz.)</label><input class="js-sp-logo" value="${esc(s.logoUrl ?? '')}" placeholder="https://…/logo.png" /></div>
     <div class="pf-field" style="margin:0;width:120px"><label>Ruolo (opz.)</label><input class="js-sp-tier" value="${esc(s.tier ?? '')}" placeholder="Partner" /></div>
-    <button type="button" class="pf-btn pf-btn--ghost js-sp-del" title="Rimuovi">✕</button>
+    <button type="button" class="pf-btn pf-btn--ghost js-sp-del" title="Rimuovi" aria-label="Rimuovi sponsor">✕</button>
   </div>`
 }
 
@@ -92,9 +93,11 @@ export const orgSiteScreen: Screen<OrgSiteData> = {
         contacts: { email: val('#s-c-email') || undefined, phone: val('#s-c-phone') || undefined, social: val('#s-c-social') || undefined },
         sponsors: collectSponsors(sponsors),
       }
-      const btn = q<HTMLButtonElement>('#s-save'); btn.disabled = true
-      try { await ctx.client.o1.setSite(ctx.orgId, site); ctx.refresh() }
-      catch { fail('Salvataggio non riuscito. Riprova.'); btn.disabled = false }
+      const btn = q<HTMLButtonElement>('#s-save')
+      await withPending(btn, async () => {
+        try { await ctx.client.o1.setSite(ctx.orgId, site); toast('Contenuti salvati', 'success'); ctx.refresh() }
+        catch { fail('Salvataggio non riuscito. Riprova.') }
+      })
     })
   },
 }

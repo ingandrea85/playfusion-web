@@ -28,6 +28,13 @@ describe('enroll render', () => {
     expect(renderEnroll({ ...base, window: { sportEventId: 'e1', state: 'Open', categories: [] }, pending: [] }))
       .toMatch(/Nessuna richiesta/i)
   })
+  it('renders the full workspace tab bar, not the reduced 3-tab one (E1-3)', () => {
+    const html = renderEnroll({ ...base, window: { sportEventId: 'e1', state: 'Closed', categories: [] }, pending: [] })
+    expect(html).toContain('#/events/e1/schedule')
+    expect(html).toContain('#/events/e1/standings')
+    expect(html).toContain('#/events/e1/finals')
+    expect(html).toContain('pf-wtab--active') // the active enroll tab is marked
+  })
 })
 
 describe('enroll link (enrollment token)', () => {

@@ -43,7 +43,7 @@ function subscriptionCard(sub: Subscription | null): string {
 }
 
 export function renderOrganization(data: OrgDetailData): string {
-  return `<main class="pf-container">
+  return `<main id="pf-main" class="pf-container">
     <div class="pf-pagehead"><a class="pf-eyebrow" href="#/">← Organizzazioni</a><h1>${esc(data.detail.name)}</h1>
       <div class="pf-mono pf-muted">${esc(data.detail.id)}</div></div>
     ${subscriptionCard(data.sub)}

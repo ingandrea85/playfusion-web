@@ -1,7 +1,8 @@
-import { esc, applyBrand } from '@playfusion/app-shell'
+import { esc, applyBrand, withPending } from '@playfusion/app-shell'
 import type { Brand } from '@playfusion/rest-client'
 import { inlineError, lockCard, notAuthorizedCard, type Screen, type ViewCtx } from '../view.js'
 import { renderOrgShell } from './org.js'
+import { toast } from '../toast.js'
 
 export interface BrandData { brand: Brand | null; locked?: boolean; forbidden?: boolean }
 
@@ -30,10 +31,10 @@ export function renderBrand(data: BrandData): string {
     <div class="pf-card">
       <h2 class="pf-h3">Brand organizzazione</h2>
       <p class="pf-muted">Logo testuale e colori del tuo brand, applicati allo spazio organizzatore e al portale pubblico. Lascia vuoto per usare il tema PlayFusion.</p>
-      <div class="pf-field"><label>Logo (testo)</label><input id="b-logo" maxlength="40" placeholder="Es. Acme Cup" value="${esc(logoText)}" /></div>
+      <div class="pf-field"><label for="b-logo">Logo (testo)</label><input id="b-logo" maxlength="40" placeholder="Es. Acme Cup" value="${esc(logoText)}" /></div>
       <div class="pf-row" style="gap:var(--space-lg)">
-        <div class="pf-field" style="margin-bottom:0"><label>Colore primario</label><input id="b-primary" type="color" value="${esc(primary)}" /></div>
-        <div class="pf-field" style="margin-bottom:0"><label>Colore accento</label><input id="b-accent" type="color" value="${esc(accent)}" /></div>
+        <div class="pf-field" style="margin-bottom:0"><label for="b-primary">Colore primario</label><input id="b-primary" type="color" value="${esc(primary)}" /></div>
+        <div class="pf-field" style="margin-bottom:0"><label for="b-accent">Colore accento</label><input id="b-accent" type="color" value="${esc(accent)}" /></div>
       </div>
       <div class="pf-eyebrow" style="margin-top:var(--space-md)">Anteprima</div>
       ${preview(logoText, primary, accent)}
@@ -71,13 +72,17 @@ export const brandScreen: Screen<BrandData> = {
       const logoText = logo.value.trim()
       if (!logoText) { fail('Inserisci un logo testuale.'); return }
       const brand: Brand = { logoText, primaryColor: primary.value, accentColor: accent.value }
-      const btn = q<HTMLButtonElement>('#b-save'); btn.disabled = true
-      try { await ctx.client.o1.setBrand(ctx.orgId, brand); applyBrand(brand); ctx.refresh() }
-      catch { fail('Salvataggio non riuscito. Riprova.'); btn.disabled = false }
+      const btn = q<HTMLButtonElement>('#b-save')
+      await withPending(btn, async () => {
+        try { await ctx.client.o1.setBrand(ctx.orgId, brand); applyBrand(brand); toast('Brand salvato', 'success'); ctx.refresh() }
+        catch { fail('Salvataggio non riuscito. Riprova.') }
+      })
     })
 
     q<HTMLButtonElement>('#b-reset').addEventListener('click', async () => {
-      try { await ctx.client.o1.resetBrand(ctx.orgId); applyBrand(null); ctx.refresh() }
+      // E1-12: resetting the brand discards the custom logo/colours — confirm first.
+      if (!confirm('Ripristinare il tema PlayFusion di default? Logo e colori personalizzati verranno rimossi.')) return
+      try { await ctx.client.o1.resetBrand(ctx.orgId); applyBrand(null); toast('Brand ripristinato', 'success'); ctx.refresh() }
       catch { fail('Ripristino non riuscito. Riprova.') }
     })
   },

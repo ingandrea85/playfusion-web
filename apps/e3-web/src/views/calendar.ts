@@ -22,7 +22,7 @@ export function renderPublicCalendar(event: EventDetail, schedule: ScheduleView,
        <div id="calbody">${renderCalendar(filterMatches(matches, selCat, 'ALL', 'ALL'), catName)}</div>`
     : `<p class="pf-muted">Il calendario non è ancora stato pubblicato.</p>`
   return `${renderPublicTopbar()}
-    <main class="pf-container pf-container--narrow">
+    <main id="pf-main" class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">${esc(event.name ?? event.sport)}</div><h1>Calendario</h1></div>
       <div class="pf-card">${inner}</div>
       <div class="pf-row"><a class="pf-btn" href="#/events/${id}">← Torna all'evento</a></div>

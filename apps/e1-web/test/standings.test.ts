@@ -23,8 +23,9 @@ describe('e1 standings view', () => {
   it('uses the "Giocatore" column header for an individual event (S5)', () => {
     const indiv: EventDetail = { ...event, participantType: 'individual', sportProfile: { sportId: 't', name: 'Tennis', scoreLabel: 'Set', points: { win: 2, draw: null, loss: 0 }, tieBreak: [] } }
     const html = renderStandingsView({ event: indiv, standings })
-    expect(html).toContain('<th>Giocatore</th>')
-    expect(html).not.toContain('<th>Squadra</th>')
+    // attribute-agnostic: the shared table th now carries scope="col" (a11y), so match the header text.
+    expect(html).toContain('>Giocatore</th>')
+    expect(html).not.toContain('>Squadra</th>')
   })
 })
 

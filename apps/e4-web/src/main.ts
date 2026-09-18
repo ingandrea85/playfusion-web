@@ -13,7 +13,7 @@ import { renderSportEditor, collectSport } from './views/sport-editor.js'
 const cfg = readConfig(import.meta.env)
 const app = document.getElementById('app')!
 
-const errorCard = (msg: string) => `<main class="pf-container"><div class="pf-card">${esc(msg)}</div></main>`
+const errorCard = (msg: string) => `<main id="pf-main" class="pf-container"><div class="pf-card">${esc(msg)}</div></main>`
 
 /** Fixed admin topbar with the logged-in admin + logout. */
 function topbar(port: Auth0Port, email?: string): void {
@@ -34,7 +34,7 @@ async function boot() {
     const user = await port.getUser().catch(() => undefined)
     if (!user?.roles.includes('platform_admin')) {
       topbar(port, user?.email)
-      app.innerHTML = `<main class="pf-container"><div class="pf-card">
+      app.innerHTML = `<main id="pf-main" class="pf-container"><div class="pf-card">
         <h1 class="pf-h3">Accesso riservato</h1>
         <p class="pf-muted">Questa console è riservata agli amministratori di piattaforma (<code>platform_admin</code>).</p></div></main>`
       return

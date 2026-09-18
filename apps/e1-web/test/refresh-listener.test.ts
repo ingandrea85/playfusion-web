@@ -12,6 +12,7 @@ describe('participants mount does not accumulate listeners across refresh', () =
       confirmed: [{ registrationId: 'r2', participantRef: 'B', sportEventId: 'e1', categoria: 'U10', status: 'Confirmed' as const }],
       fees: { r2: 'Requested' as const },
     }
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true) // E1-14: pay is confirmed
     const root = document.createElement('div')
 
     // First mount, mimicking runScreen(root, ctx, params, participantsScreen)
@@ -29,5 +30,6 @@ describe('participants mount does not accumulate listeners across refresh', () =
 
     expect(payFee).toHaveBeenCalledTimes(1)
     expect(payFee).toHaveBeenCalledWith('r2')
+    confirmSpy.mockRestore()
   })
 })

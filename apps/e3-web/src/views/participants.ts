@@ -22,14 +22,18 @@ const teamList = (rows: RegistrationView[], selCat: string, singular = 'Squadra'
 export function renderParticipants(rows: RegistrationView[], plural = 'Squadre', singular = 'Squadra'): string {
   const cats = categories(rows)
   const selCat = cats[0] ?? ''
+  // P12: derive the event id from a row so the page carries the same "← Torna all'evento"
+  // back row as calendar/standings/bracket/avvisi.
+  const id = encodeURIComponent(rows[0]?.sportEventId ?? '')
   const body = cats.length
     ? `<div id="pt-cattabs">${renderTabs(cats.map((c) => ({ key: c, label: c })), selCat)}</div>
        <div id="ptbody">${teamList(rows, selCat, singular)}</div>`
     : `<p class="pf-muted">Nessun${singular === 'Giocatore' ? ' giocatore confermato' : 'a squadra confermata'}.</p>`
   return `${renderPublicTopbar()}
-    <main class="pf-container pf-container--narrow">
+    <main id="pf-main" class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><h1>${esc(plural)} iscritt${plural === 'Giocatori' ? 'i' : 'e'}</h1></div>
       <div class="pf-card">${body}</div>
+      <div class="pf-row"><a class="pf-btn" href="#/events/${id}">← Torna all'evento</a></div>
     </main>`
 }
 

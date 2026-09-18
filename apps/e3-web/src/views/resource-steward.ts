@@ -120,7 +120,7 @@ export function renderResourceSteward(event: EventDetail, plan: ResourcePlan, da
   const nodes = [...plan.nodes].sort((a, b) => a.topoIndex - b.topoIndex)
   const body = nodes.map((n) => (n.mode === 'free' ? freeNode(n, day, plan) : scheduledNode(n, day, plan))).join('')
   return `${renderPublicTopbar()}
-    <main class="pf-container pf-container--narrow">
+    <main id="pf-main" class="pf-container pf-container--narrow">
       <div class="pf-pagehead"><div class="pf-eyebrow">Check-off risorse</div><h1>${esc(event.name ?? event.sport)}</h1>
         <div class="pf-mono pf-muted">${esc(day)}</div></div>
       <div id="rs-err"></div>

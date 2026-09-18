@@ -1,7 +1,8 @@
-import { esc } from '@playfusion/app-shell'
+import { esc, withPending } from '@playfusion/app-shell'
 import type { Invitation, Member, OrgRole } from '@playfusion/rest-client'
 import { inlineError, lockCard, notAuthorizedCard, type Screen, type ViewCtx } from '../view.js'
 import { renderOrgShell } from './org.js'
+import { toast } from '../toast.js'
 
 export interface MembersData { members: Member[]; invitations: Invitation[]; locked?: boolean; forbidden?: boolean }
 
@@ -53,10 +54,10 @@ export function renderMembers(data: MembersData): string {
     ${invitationsCard(data.invitations)}
     <div class="pf-card">
       <h2 class="pf-h3">Invita un membro</h2>
-      <div class="pf-field"><label>Nome</label><input id="i-name" placeholder="Es. Marco Rossi" /></div>
-      <div class="pf-field"><label>Email</label><input id="i-email" type="email" placeholder="marco@example.com" /></div>
+      <div class="pf-field"><label for="i-name">Nome</label><input id="i-name" placeholder="Es. Marco Rossi" /></div>
+      <div class="pf-field"><label for="i-email">Email</label><input id="i-email" type="email" placeholder="marco@example.com" /></div>
       <div class="pf-row" style="align-items:flex-end;gap:var(--space-md)">
-        <div class="pf-field" style="margin-bottom:0;min-width:180px"><label>Ruolo</label><select id="i-role">${roleOptions('ORGANIZER')}</select></div>
+        <div class="pf-field" style="margin-bottom:0;min-width:180px"><label for="i-role">Ruolo</label><select id="i-role">${roleOptions('ORGANIZER')}</select></div>
         <button class="pf-btn pf-btn--primary" id="i-invite">Invita</button>
       </div>
       <p class="pf-muted" style="margin-top:var(--space-sm)">L'invito parte via email (Auth0): il membro entra nell'organizzazione accettando. I direttori invece accedono col link magico, non da qui.</p>
@@ -85,23 +86,25 @@ export const membersScreen: Screen<MembersData> = {
       const email = q<HTMLInputElement>('#i-email').value.trim()
       const role = q<HTMLSelectElement>('#i-role').value as OrgRole
       if (!name || !email) { fail('Inserisci nome ed email.'); return }
-      const btn = q<HTMLButtonElement>('#i-invite'); btn.disabled = true
-      try { await ctx.client.o2.inviteMember(ctx.orgId, { name, email, role }); ctx.refresh() }
-      catch { fail('Invito non riuscito. Riprova.'); btn.disabled = false }
+      const btn = q<HTMLButtonElement>('#i-invite')
+      await withPending(btn, async () => {
+        try { await ctx.client.o2.inviteMember(ctx.orgId, { name, email, role }); toast('Invito inviato', 'success'); ctx.refresh() }
+        catch { fail('Invito non riuscito. Riprova.') }
+      })
     })
 
     root.querySelectorAll<HTMLSelectElement>('.js-role').forEach((sel) => sel.addEventListener('change', async () => {
-      try { await ctx.client.o2.changeMemberRole(ctx.orgId, sel.dataset.id!, sel.value as OrgRole); ctx.refresh() }
+      try { await ctx.client.o2.changeMemberRole(ctx.orgId, sel.dataset.id!, sel.value as OrgRole); toast('Ruolo aggiornato', 'success'); ctx.refresh() }
       catch (e: any) { fail(e?.status === 409 ? 'Un\'organizzazione deve mantenere almeno un owner.' : 'Cambio ruolo non riuscito.'); ctx.refresh() }
     }))
     root.querySelectorAll<HTMLButtonElement>('[data-remove]').forEach((b) => b.addEventListener('click', async () => {
       if (!confirm('Rimuovere il membro?')) return
-      try { await ctx.client.o2.removeMember(ctx.orgId, b.dataset.remove!); ctx.refresh() }
+      try { await ctx.client.o2.removeMember(ctx.orgId, b.dataset.remove!); toast('Membro rimosso', 'success'); ctx.refresh() }
       catch (e: any) { fail(e?.status === 409 ? 'Un\'organizzazione deve mantenere almeno un owner.' : 'Rimozione non riuscita.') }
     }))
     root.querySelectorAll<HTMLButtonElement>('[data-revoke]').forEach((b) => b.addEventListener('click', async () => {
       if (!confirm('Revocare l\'invito?')) return
-      try { await ctx.client.o2.revokeInvitation(ctx.orgId, b.dataset.revoke!); ctx.refresh() }
+      try { await ctx.client.o2.revokeInvitation(ctx.orgId, b.dataset.revoke!); toast('Invito revocato', 'success'); ctx.refresh() }
       catch { fail('Revoca non riuscita. Riprova.') }
     }))
   },
